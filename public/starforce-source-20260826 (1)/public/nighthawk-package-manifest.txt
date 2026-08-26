@@ -1,0 +1,15 @@
+NIGHTHAWK VEHICLE DATABASE PACKAGE
+
+Package contents:
+- nighthawk/index.html
+- nighthawk-api.php (rename to api.php on Hostinger)
+- nighthawk/config.example.php (rename to config.php on Hostinger)
+- nighthawk/INSTALL.txt
+- nighthawk/README-INSTALL.txt
+
+Live database:
+- Existing Hostinger MySQL database
+- Existing table: vehicles
+- Existing approved records are preserved
+
+The package must not include config.php with real credentials.

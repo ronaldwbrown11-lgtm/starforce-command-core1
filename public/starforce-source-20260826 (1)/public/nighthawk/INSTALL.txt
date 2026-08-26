@@ -1,0 +1,14 @@
+NIGHTHAWK VEHICLE DATABASE
+
+This package is not live until its files are uploaded to Hostinger.
+
+Hostinger upload:
+1. Open the nighthawk.starforcebase1198.com website in File Manager.
+2. Open its public_html folder.
+3. Upload index.html, api.php, and config.php.
+4. Edit config.php with the existing MySQL database credentials.
+5. Confirm the table name is vehicles.
+6. Visit https://nighthawk.starforcebase1198.com/api.php?action=list
+7. Open https://nighthawk.starforcebase1198.com/
+
+Do not delete or recreate the vehicles table. Existing approved rows are preserved.
