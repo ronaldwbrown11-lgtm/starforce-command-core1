@@ -20,6 +20,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { SiteShell, PageHero, HoloCard, StatusPill } from "@/components/uf";
+import { ReactionBar } from "@/components/widgets/ReactionBar";
 import { useAuth } from "@/hooks/use-auth";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { TIER_ORDER, tierLabel, type TierId } from "@/lib/tiers";
@@ -251,6 +252,8 @@ export default function MissionDetail() {
                 ) : null}
               </HoloCard>
             ) : null}
+
+            <ReactionBar targetId={mission._id} targetType="report" />
           </div>
 
           {/* Report-in panel */}

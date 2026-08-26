@@ -93,8 +93,7 @@ const PortalAnchor = forwardRef<HTMLDivElement, { children: ReactNode }>(
 );
 
 function UnreadBadge() {
-  const items = useQuery(api.social.listNotifications, { limit: 50 });
-  const unread = (items ?? []).filter((n) => !n.readAt).length;
+  const unread = useQuery(api.social.unreadNotificationCount, {});
   if (!unread) return null;
   return (
     <span

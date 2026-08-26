@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { SiteShell, PageHero, StatusPill } from "@/components/uf";
 import { StoryProgressTracker } from "@/components/widgets/StoryProgressTracker";
 import { ReactionBar } from "@/components/widgets/ReactionBar";
+import { MiniBadgeRow } from "@/components/widgets/MiniBadgeRow";
 import { LiveComments } from "@/components/widgets/LiveComments";
 import { usePageMeta } from "@/hooks/use-page-meta";
 
@@ -52,6 +53,23 @@ export default function StoryDetail() {
         secondary={{ label: "Back to stories", href: "/stories", variant: "ghost" }}
       />
       <section className="uf-section max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12">
+        {story.author ? (
+          <aside
+            aria-label="Story author"
+            className="uf-card mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 !p-4"
+          >
+            <span className="text-xs uppercase tracking-[0.18em] text-uf-muted">
+              Filed by
+            </span>
+            <span className="text-sm font-semibold text-uf-cyan">
+              {story.author.displayName}
+            </span>
+            <span className="uf-pill !text-[10px] !px-2 !py-0.5">
+              {story.author.rank}
+            </span>
+            <MiniBadgeRow ids={story.author.achievements} max={4} />
+          </aside>
+        ) : null}
         <div className="sticky top-20 z-10 mb-6">
           <StoryProgressTracker
             storyId={story._id}

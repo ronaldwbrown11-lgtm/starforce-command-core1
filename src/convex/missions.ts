@@ -1,6 +1,12 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import {
+  awardAchievements,
+  bumpContribution,
+  evaluateAchievements,
+} from "./achievements";
+import { CREDIT_RATES, grantCredits } from "./economy";
 
 // Canonical tier rank (mirrors src/lib/tiers.ts TIER_ORDER). Used to enforce
 // mission clearance server-side so the client lock is not the only gate.
@@ -149,6 +155,18 @@ export const fileMissionReport = mutation({
     });
 
     await ctx.db.patch(userId, { xp: (user.xp ?? 0) + xpAwarded });
+
+    // Achievement + economy hooks — filed reports count as verified
+    // contributions and earn credits.
+    await awardAchievements(ctx, userId, ["explorer"]);
+    await bumpContribution(ctx, userId);
+    await evaluateAchievements(ctx, userId);
+    await grantCredits(
+      ctx,
+      userId,
+      CREDIT_RATES.missionReport,
+      "mission.report",
+    );
 
     await ctx.db.insert("activityFeed", {
       actorId: userId,

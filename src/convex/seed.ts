@@ -3,6 +3,7 @@
 import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
+import { STATIC_IMAGES } from "./staticCovers";
 
 // =========================================================================
 // Demo seed for Star Force Base 1198.
@@ -966,11 +967,19 @@ const FLEET_REPORTS = [
 ];
 
 const GROUP_SPECS = [
-  { name: "Sector Patrol", slug: "sector-patrol", description: "Active patrol wing for the Sol system-Gemini.", category: "operations", privacy: "public", memberCount: 7 },
+  { name: "Sector Patrol", slug: "sector-patrol", description: "Active patrol wing for the Sol system-Gemini.", category: "ops", privacy: "public", memberCount: 7 },
   { name: "Cartographers' Guild", slug: "cartographers-guild", description: "Mapping the Outer Belt, sector by sector.", category: "intel", privacy: "public", memberCount: 6 },
   { name: "Listening Post Ops", slug: "listening-post-ops", description: "Operators of the listening-post network.", category: "intel", privacy: "private", memberCount: 4 },
   { name: "Bridge Council", slug: "bridge-council", description: "Cross-faction moderator circle.", category: "governance", privacy: "classified", memberCount: 6 },
+  // Lore-themed micro-communities (#3): factions, ship crews, homeworlds.
+  { name: "Ultra Force Vanguard", slug: "ultra-force-vanguard", description: "The standing fleet. Drills, tactics, and faction pride.", category: "faction", privacy: "public", memberCount: 12 },
+  { name: "G.I.A. Riftwatch", slug: "gia-riftwatch", description: "Galactic Intelligence Agency field analysts tracking rift anomalies.", category: "faction", privacy: "private", memberCount: 8 },
+  { name: "Chrono Monks Archive", slug: "chrono-monks-archive", description: "Keepers of the timeline. We debate causality over tea.", category: "faction", privacy: "public", memberCount: 5 },
+  { name: "Starforge Union Yards", slug: "starforge-union-yards", description: "Shipwrights and engineers — blueprints, refits, and drydock gossip.", category: "faction", privacy: "public", memberCount: 9 },
+  { name: "ISS Aurora Crew", slug: "iss-aurora-crew", description: "Crew of the ISV Aurora. Ship's mess, shared lore, monthly missions.", category: "ship", privacy: "private", memberCount: 6 },
+  { name: "New Terra Homeworld Collective", slug: "new-terra-collective", description: "Adopted homeworld of the Sol diaspora. Culture, festivals, petitions.", category: "planet", privacy: "public", memberCount: 11 },
 ];
+
 
 // ---- Group workspace demo data (memberships, posts, chat, missions/events) ----
 
@@ -1266,6 +1275,20 @@ const MODERATION_ITEMS = [
  * seed upserts skip existing rows, so this is the way to replace stored
  * covers without wiping data. Run: bunx convex run seed:refreshCovers '{}'
  */
+/**
+ * Cover keys whose imagery ships as a static site file in `public/covers/`
+ * (see `staticCovers.ts`). At render time the static URL wins over any
+ * `coverStorageId`, so uploading a Convex storage copy for these slugs is
+ * pure waste — it burns file storage on every seed run and leaves orphaned
+ * assets behind. Both seed paths skip them.
+ *
+ * Note: the two `lorelib-image-*` plates are NOT skipped — their stored copy
+ * doubles as the downloadable Lore Library file (`fileStorageId`).
+ */
+function isStaticCoverKey(key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(STATIC_IMAGES, key);
+}
+
 export const refreshCovers = action({
   args: {},
   handler: async (ctx) => {
@@ -1284,6 +1307,10 @@ export const refreshCovers = action({
     >();
     const diagnostics: Array<{ key: string; source: string; fetchError?: string }> = [];
     for (const c of COVER_SPECS) {
+      if (isStaticCoverKey(c.key)) {
+        diagnostics.push({ key: c.key, source: "static-file" });
+        continue;
+      }
       const { storageId, byteSize, mimeType, source, fetchError } =
         await fetchOrBuildCover(ctx, c.spec);
       coverByKey.set(c.key, {

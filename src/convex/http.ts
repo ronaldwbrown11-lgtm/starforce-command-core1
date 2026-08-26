@@ -27,7 +27,7 @@ http.route({
   method: "GET",
   handler: httpAction(async () =>
     new Response(
-      "User-agent: *\nAllow: /\nDisallow: /operator\nDisallow: /account\nDisallow: /messages\nSitemap: https://lovely-koala-228.convex.site/sitemap.xml\n",
+      "User-agent: *\nAllow: /\nDisallow: /operator\nDisallow: /account\nDisallow: /messages\nSitemap: https://starforcebase1198.com/sitemap.xml\n",
       { headers: { "Content-Type": "text/plain; charset=utf-8" } },
     )),
 });

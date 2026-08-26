@@ -2,6 +2,12 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireOperatorCapability } from "./admin";
+import {
+  awardAchievements,
+  bumpContribution,
+  evaluateAchievements,
+} from "./achievements";
+import { CREDIT_RATES, grantCredits } from "./economy";
 
 // =========================================================================
 // Discoveries — member-charted star systems on the galaxy map.
@@ -243,6 +249,16 @@ export const discoveryApprovalAction = mutation({
           }),
           createdAt: Date.now(),
         });
+        // Achievement + economy hooks — only on the first approval.
+        await awardAchievements(ctx, item.authorId, ["temporal_investigator"]);
+        await bumpContribution(ctx, item.authorId);
+        await evaluateAchievements(ctx, item.authorId);
+        await grantCredits(
+          ctx,
+          item.authorId,
+          CREDIT_RATES.discoveryApproved,
+          "discovery.approved",
+        );
       }
     }
 

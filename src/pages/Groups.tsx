@@ -11,6 +11,7 @@ import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
 import { usePageMeta } from "@/hooks/use-page-meta";
 export default function Groups() {
   const [privacy, setPrivacy] = useState("");
+  const [cat, setCat] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
@@ -21,7 +22,7 @@ export default function Groups() {
   const navigate = useNavigate();
   const groups = useQuery(
     api.groups.listGroups,
-    privacy ? { privacy } : {},
+    privacy || cat ? { privacy: privacy || undefined, category: cat || undefined } : {},
   );
   const memberships = useQuery(api.groups.myGroupMemberships);
   const joinGroup = useMutation(api.groups.joinGroup);
@@ -115,6 +116,25 @@ export default function Groups() {
             </button>
           ))}
         </div>
+        <div className="mb-6 flex flex-wrap gap-2" aria-label="Filter groups by community type">
+          {[
+            ["", "All types"],
+            ["ops", "Operations"],
+            ["faction", "Factions"],
+            ["ship", "Ship crews"],
+            ["planet", "Homeworlds"],
+            ["social", "Social"],
+          ].map(([value, label]) => (
+            <button
+              key={value || "all-types"}
+              type="button"
+              className={`uf-pill ${cat === value ? "shadow-[var(--uf-glow-violet)]" : ""}`}
+              onClick={() => setCat(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
         {showCreate && (
           <HoloCard id="create-group" className="mb-8">
@@ -158,6 +178,9 @@ export default function Groups() {
                       onChange={(e) => setCategory(e.target.value)}
                       className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
                     >
+                      <option value="faction">Faction (Ultra Force, G.I.A., Starforge, Chrono Monks)</option>
+                      <option value="ship">Starship crew</option>
+                      <option value="planet">Homeworld</option>
                       <option value="ops">Operations</option>
                       <option value="intel">Intel</option>
                       <option value="governance">Governance</option>

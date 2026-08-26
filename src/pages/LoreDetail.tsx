@@ -9,6 +9,7 @@ import {
   StatusPill,
 } from "@/components/uf";
 import { LiveComments } from "@/components/widgets/LiveComments";
+import { ReactionBar } from "@/components/widgets/ReactionBar";
 import {
   PersonnelDossierBrowser,
   isPersonnelArchive,
@@ -96,6 +97,9 @@ export default function LoreDetail() {
             </p>
           ) : null}
         </article>
+        <div className="mt-6">
+          <ReactionBar targetId={entry._id} targetType="lore" />
+        </div>
         <div className="mt-8">
           <LiveComments postId={entry._id} parentType="lore" limit={20} />
         </div>
@@ -242,6 +246,9 @@ function LibraryItemView({ item }: { item: LibraryItem }) {
         )}
 
         <div className="mt-8">
+          <div className="mt-6">
+            <ReactionBar targetId={item._id} targetType="lore" />
+          </div>
           <LiveComments postId={item._id} parentType="lore" limit={20} />
         </div>
       </section>

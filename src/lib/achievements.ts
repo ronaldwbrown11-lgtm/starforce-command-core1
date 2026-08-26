@@ -3,12 +3,17 @@ import {
   BookMarked,
   Compass,
   Crown,
+  Hammer,
+  Hourglass,
   Library,
+  Medal,
+  MessageCircle,
   PenTool,
   Plane,
   Radio,
   Shield,
   ShieldCheck,
+  Ship,
   Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -89,8 +94,62 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementCatalogEntry> = {
     description: "Joined Star Force Base 1198 at launch.",
     tone: "cyan",
   },
+  first_contact: {
+    icon: MessageCircle,
+    label: "First Contact",
+    description: "Sent your first transmission to the community.",
+    tone: "cyan",
+  },
+  starforge_artisan: {
+    icon: Hammer,
+    label: "Starforge Artisan",
+    description: "First artwork approved for the archive.",
+    tone: "violet",
+  },
+  temporal_investigator: {
+    icon: Hourglass,
+    label: "Temporal Investigator",
+    description: "Certified a discovery from the sector map.",
+    tone: "green",
+  },
+  fleet_commander: {
+    icon: Ship,
+    label: "Fleet Commander",
+    description: "One hundred verified contributions to the fleet.",
+    tone: "gold",
+  },
+  founders_crest: {
+    icon: Medal,
+    label: "Founder's Crest",
+    description: "Charter member of Star Force Base 1198.",
+    tone: "gold",
+  },
 };
+
+// Accent color per tone, shared by the medallion widget and the compact
+// badge rows used on story pages and comments.
+export function achievementToneColor(tone: AchievementTone): string {
+  switch (tone) {
+    case "violet":
+      return "var(--uf-violet)";
+    case "gold":
+      return "var(--uf-gold)";
+    case "green":
+      return "var(--uf-green)";
+    default:
+      return "var(--uf-cyan)";
+  }
+}
 
 export function getAchievement(id: string): AchievementCatalogEntry | undefined {
   return ACHIEVEMENT_CATALOG[id];
+}
+
+export function achievementIdsFor(ids: string[]): AchievementCatalogEntry[] {
+  const out: AchievementCatalogEntry[] = [];
+  for (const id of ids) {
+    const entry = getAchievement(id);
+    if (entry) out.push(entry);
+  }
+  return out;
 }

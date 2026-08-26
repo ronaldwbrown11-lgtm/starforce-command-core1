@@ -5,6 +5,7 @@ import { Link, useSearchParams } from "react-router";
 import { SiteShell, PageHero, NeonButton, HoloCard, StatusPill } from "@/components/uf";
 import { ScrollReveal, ScaleReveal } from "@/hooks/use-scroll-reveal";
 import { TrendingTags } from "@/components/widgets/TrendingTags";
+import { ContinueReading } from "@/components/widgets/ContinueReading";
 import { usePageMeta } from "@/hooks/use-page-meta";
 
 export default function Stories() {
@@ -46,6 +47,7 @@ export default function Stories() {
         secondary={{ label: "Submit Story", href: "/submit", variant: "ghost" }}
       />
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+        <ContinueReading limit={3} />
         <div className="grid md:grid-cols-3 gap-3 mb-6">
           <label className="text-xs uppercase tracking-[0.16em] text-uf-muted flex flex-col gap-1">
             Search

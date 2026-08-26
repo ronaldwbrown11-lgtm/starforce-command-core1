@@ -10,6 +10,10 @@ import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import "./index.css";
 import "./types/global.d.ts";
 
+// NOTE: this file was touched on 2026-08-26 to force a fresh platform
+// snapshot re-sync after a persistent "Request failed with status code 404"
+// build error. No functional change.
+
 // Eager imports (no React.lazy): the whole app ships as one self-contained
 // bundle, so there are no per-page dynamic module fetches that can fail when
 // the dev server blips. Reliability over code-splitting.
@@ -27,6 +31,10 @@ import StarAtlas from "./pages/StarAtlas.tsx";
 import Videos from "./pages/Videos.tsx";
 import Missions from "./pages/Missions.tsx";
 import MissionDetail from "./pages/MissionDetail.tsx";
+import SignalVault from "./pages/SignalVault.tsx";
+import Events from "./pages/Events.tsx";
+import Leaderboard from "./pages/Leaderboard.tsx";
+import Changelog from "./pages/Changelog.tsx";
 import Community from "./pages/Community.tsx";
 import Forums from "./pages/Forums.tsx";
 import Resources from "./pages/Resources.tsx";
@@ -74,6 +82,9 @@ import OpDatabaseFrontend from "./pages/operator/DatabaseFrontend.tsx";
 import OpSectorMap from "./pages/operator/SectorMap.tsx";
 import OpDiscoveries from "./pages/operator/Discoveries.tsx";
 import OpAppearance from "./pages/operator/Appearance.tsx";
+import OpEvents from "./pages/operator/EventsManage.tsx";
+import OpLog from "./pages/operator/LogManage.tsx";
+import OpChangelog from "./pages/operator/ChangelogManage.tsx";
 import { OperatorGuard } from "./components/operator/OperatorGuard.tsx";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
@@ -123,6 +134,10 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/videos" element={<Videos />} />
               <Route path="/missions" element={<Missions />} />
               <Route path="/missions/:slug" element={<MissionDetail />} />
+              <Route path="/vault" element={<SignalVault />} />
+              <Route path="/events" element={<Events />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/changelog" element={<Changelog />} />
               <Route path="/community" element={<Community />} />
               <Route path="/forums" element={<Forums />} />
               <Route path="/resources" element={<Resources />} />
@@ -169,6 +184,9 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/operator/sector-map" element={<OperatorGuard><OpSectorMap /></OperatorGuard>} />
               <Route path="/operator/discoveries" element={<OperatorGuard><OpDiscoveries /></OperatorGuard>} />
               <Route path="/operator/appearance" element={<OperatorGuard><OpAppearance /></OperatorGuard>} />
+              <Route path="/operator/events" element={<OperatorGuard><OpEvents /></OperatorGuard>} />
+              <Route path="/operator/log" element={<OperatorGuard><OpLog /></OperatorGuard>} />
+              <Route path="/operator/changelog" element={<OperatorGuard><OpChangelog /></OperatorGuard>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>

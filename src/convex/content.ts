@@ -1,5 +1,6 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import { staticImageFor } from "./staticCovers";
 
 // =========================================================================
 // Content queries — public, no auth required.
@@ -27,6 +28,7 @@ function asStoryStatus(value: string | undefined): StoryStatus {
 
 type MaybeCoverRow = {
   coverStorageId?: string | null | undefined;
+  slug?: string | null;
 };
 
 // Server-side helper: appends resolved coverUrl to every row in a list.
@@ -37,9 +39,13 @@ async function withCoverUrls<T extends MaybeCoverRow>(
   return Promise.all(
     rows.map(async (r) => ({
       ...r,
-      coverUrl: r.coverStorageId
-        ? await ctx.storage.getUrl(r.coverStorageId)
-        : null,
+      // Static seed imagery is served from the site host (no Convex egress);
+      // falls back to Convex storage for everything else.
+      coverUrl:
+        staticImageFor(r.slug) ??
+        (r.coverStorageId
+          ? await ctx.storage.getUrl(r.coverStorageId)
+          : null),
     })),
   );
 }
@@ -47,6 +53,7 @@ async function withCoverUrls<T extends MaybeCoverRow>(
 type MaybeFileRow = {
   coverStorageId?: string | null | undefined;
   fileStorageId?: string | null | undefined;
+  slug?: string | null;
 };
 
 // Transmission/resource rows also resolve `fileUrl` (uploaded video/doc) so
@@ -58,12 +65,16 @@ async function withFileUrls<T extends MaybeFileRow>(
   return Promise.all(
     rows.map(async (r) => ({
       ...r,
-      coverUrl: r.coverStorageId
-        ? await ctx.storage.getUrl(r.coverStorageId)
-        : null,
-      fileUrl: r.fileStorageId
-        ? await ctx.storage.getUrl(r.fileStorageId)
-        : null,
+      coverUrl:
+        staticImageFor(r.slug) ??
+        (r.coverStorageId
+          ? await ctx.storage.getUrl(r.coverStorageId)
+          : null),
+      fileUrl:
+        staticImageFor(r.slug) ??
+        (r.fileStorageId
+          ? await ctx.storage.getUrl(r.fileStorageId)
+          : null),
     })),
   );
 }
@@ -99,10 +110,24 @@ export const storyBySlug = query({
       .withIndex("by_slug", (q) => q.eq("slug", slug))
       .first();
     if (!story) return null;
+    // Join the author for the byline card (name, rank, badge rack).
+    const author = story.authorId ? await ctx.db.get(story.authorId) : null;
     return {
       ...story,
-      coverUrl: story.coverStorageId
-        ? await ctx.storage.getUrl(story.coverStorageId)
+      coverUrl:
+        staticImageFor(story.slug) ??
+        (story.coverStorageId
+          ? await ctx.storage.getUrl(story.coverStorageId)
+          : null),
+      author: author
+        ? {
+            displayName:
+              author.displayName ??
+              author.email?.split("@")[0] ??
+              "Unnamed recruit",
+            rank: author.rank ?? "Recruit",
+            achievements: author.achievements ?? [],
+          }
         : null,
     };
   },
@@ -181,9 +206,11 @@ export const loreRandom = query({
     const pick = filtered[Math.floor(Math.random() * filtered.length)];
     return {
       ...pick,
-      coverUrl: pick.coverStorageId
-        ? await ctx.storage.getUrl(pick.coverStorageId)
-        : null,
+      coverUrl:
+        staticImageFor(pick.slug) ??
+        (pick.coverStorageId
+          ? await ctx.storage.getUrl(pick.coverStorageId)
+          : null),
     };
   },
 });
@@ -196,9 +223,11 @@ export const loreBySlug = query({
     if (!entry) return null;
     return {
       ...entry,
-      coverUrl: entry.coverStorageId
-        ? await ctx.storage.getUrl(entry.coverStorageId)
-        : null,
+      coverUrl:
+        staticImageFor(entry.slug) ??
+        (entry.coverStorageId
+          ? await ctx.storage.getUrl(entry.coverStorageId)
+          : null),
     };
   },
 });

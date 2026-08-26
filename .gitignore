@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Local-only build artifacts and owner backups (excluded from deploys by
+# design — deploy.yml excludes isolate/ and backups/ from FTP). These are
+# large and must not enter the repo snapshot the platform builds from.
+isolate
+backups
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

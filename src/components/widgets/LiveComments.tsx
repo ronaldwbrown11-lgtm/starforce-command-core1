@@ -4,6 +4,7 @@ import { api } from "@/convex/_generated/api";
 import { HoloCard } from "../uf/Panel";
 import { StatusPill } from "../uf/StatusPill";
 import { NeonButton } from "../uf/NeonButton";
+import { MiniBadgeRow } from "./MiniBadgeRow";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
@@ -119,6 +120,19 @@ export function LiveComments({
           items.map((c) => (
             <li key={c._id}>
               <article className="uf-card !p-3">
+                <header className="flex flex-wrap items-center gap-2 mb-2">
+                  {c.author ? (
+                    <>
+                      <span className="text-xs font-semibold tracking-wide text-uf-cyan">
+                        {c.author.displayName}
+                      </span>
+                      <span className="uf-pill !text-[10px] !px-2 !py-0.5">
+                        {c.author.rank}
+                      </span>
+                      <MiniBadgeRow ids={c.author.achievements} max={3} />
+                    </>
+                  ) : null}
+                </header>
                 <p className="text-sm whitespace-pre-wrap">{c.content}</p>
                 <footer className="flex flex-wrap items-center justify-between mt-2 text-xs text-uf-muted gap-2">
                   <time dateTime={new Date(c.createdAt).toISOString()}>

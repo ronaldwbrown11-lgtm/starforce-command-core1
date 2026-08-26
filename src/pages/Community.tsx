@@ -4,6 +4,7 @@ import { ActivityFeed } from "@/components/widgets/ActivityFeed";
 import { TrendingStories } from "@/components/widgets/TrendingStories";
 import { OnlineUsers } from "@/components/widgets/OnlineUsers";
 import { MemberSpotlight } from "@/components/widgets/MemberSpotlight";
+import { CaptainLogPanel } from "@/components/widgets/CaptainLogPanel";
 import { Link } from "react-router";
 import { usePageMeta } from "@/hooks/use-page-meta";
 
@@ -39,6 +40,9 @@ export default function Community() {
             <TrendingStories limit={5} />
           </div>
         </div>
+      </section>
+      <section className="uf-section max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12">
+        <CaptainLogPanel limit={3} />
       </section>
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
         <header className="mb-6">

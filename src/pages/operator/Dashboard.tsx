@@ -39,6 +39,24 @@ export default function OperatorDashboard() {
           </HoloCard>
         ))}
       </section>
+      <section aria-label="Community studio" className="mb-6">
+        <span className="uf-eyebrow">Community studio</span>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: "Events Calendar", href: "/operator/events", desc: "Schedule Lore Lab, faction meetings, and countdowns" },
+            { label: "Captain's Log", href: "/operator/log", desc: "Post daily behind-the-scenes updates" },
+            { label: "Changelog", href: "/operator/changelog", desc: "Release notes for the fleet" },
+            { label: "Signal Vault", href: "/vault", desc: "Preview the ciphers members decrypt" },
+          ].map((c) => (
+            <a key={c.href} href={c.href} className="block h-full">
+              <HoloCard className="h-full !p-4 transition-all hover:-translate-y-0.5">
+                <p className="text-sm font-semibold text-uf-cyan">{c.label}</p>
+                <p className="text-uf-muted text-xs mt-1">{c.desc}</p>
+              </HoloCard>
+            </a>
+          ))}
+        </div>
+      </section>
       <section className="uf-grid uf-grid--2 mb-6">
         <HoloCard>
           <header className="flex items-center justify-between mb-3">

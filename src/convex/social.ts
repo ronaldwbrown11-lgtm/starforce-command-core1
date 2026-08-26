@@ -1,6 +1,12 @@
 import { query, mutation, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import {
+  awardAchievements,
+  bumpContribution,
+  evaluateAchievements,
+} from "./achievements";
+import { CREDIT_RATES, grantCredits } from "./economy";
 import type { Id } from "./_generated/dataModel";
 
 // =========================================================================
@@ -49,6 +55,13 @@ export const addComment = mutation({
       targetId: args.postId,
       createdAt: Date.now(),
     });
+
+    // Achievement + economy hooks — comments count as community
+    // contributions and earn credits.
+    await awardAchievements(ctx, userId, ["first_contact"]);
+    await bumpContribution(ctx, userId);
+    await evaluateAchievements(ctx, userId);
+    await grantCredits(ctx, userId, CREDIT_RATES.comment, "comment.posted");
 
     // Notify the owner of what was commented on (or the parent comment's
     // author when this is a reply), unless the actor is commenting on their
@@ -142,8 +155,28 @@ export const listComments = query({
       .withIndex("by_post", (q) => q.eq("postId", args.postId))
       .order("desc")
       .take(args.limit ?? 50);
-    return all.filter(
+    const published = all.filter(
       (c) => c.status === "published" && (!args.parentType || c.parentType === args.parentType),
+    );
+    // Join the author so the UI can show name, rank, and badge rack without
+    // a second round-trip per comment.
+    return Promise.all(
+      published.map(async (c) => {
+        const author = c.authorId ? await ctx.db.get(c.authorId) : null;
+        return {
+          ...c,
+          author: author
+            ? {
+                displayName:
+                  author.displayName ??
+                  author.email?.split("@")[0] ??
+                  "Unnamed recruit",
+                rank: author.rank ?? "Recruit",
+                achievements: author.achievements ?? [],
+              }
+            : null,
+        };
+      }),
     );
   },
 });
@@ -214,6 +247,21 @@ export const markNotificationRead = mutation({
   args: { id: v.id("notifications") },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.id, { readAt: Date.now() });
+  },
+});
+
+// Cheap unread count for the header bell badge (reactive, no payload).
+export const unreadNotificationCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return 0;
+    const rows = await ctx.db
+      .query("notifications")
+      .withIndex("by_user_unread", (q) => q.eq("userId", userId))
+      .order("asc")
+      .take(200);
+    return rows.filter((n) => !n.readAt).length;
   },
 });
 
@@ -290,6 +338,32 @@ export const memberSpotlight = query({
     return candidates
       .slice()
       .sort((a, b) => (b.xp ?? 0) - (a.xp ?? 0))[0];
+  },
+});
+
+// Standalone /leaderboard: top members by XP, with rank, faction, tier,
+// contributions, and badge count. Marks the signed-in viewer's own row.
+export const leaderboard = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const me = await getAuthUserId(ctx);
+    const users = await ctx.db.query("users").collect();
+    return users
+      .filter((u) => !u.isAnonymous && (u.displayName || u.email))
+      .map((u) => ({
+        _id: u._id,
+        displayName:
+          u.displayName ?? u.email?.split("@")[0] ?? "Unnamed recruit",
+        rank: u.rank ?? "Recruit",
+        tier: u.tier ?? "free",
+        fleet: u.fleet ?? null,
+        xp: u.xp ?? 0,
+        contributions: u.contributionCount ?? 0,
+        badges: (u.achievements ?? []).length,
+        isMe: me === u._id,
+      }))
+      .sort((a, b) => b.xp - a.xp)
+      .slice(0, args.limit ?? 50);
   },
 });
 
@@ -502,5 +576,35 @@ export const getStoryProgress = query({
         q.eq("userId", userId).eq("storyId", args.storyId),
       )
       .first();
+  },
+});
+
+// "Continue reading" feed: the signed-in member's most recently updated
+// in-progress stories (percent < 100), joined with story metadata.
+export const myInProgressStories = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+    const rows = await ctx.db
+      .query("storyProgress")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(args.limit ?? 5);
+    const inProgress = rows.filter((r) => r.percent < 100);
+    return Promise.all(
+      inProgress.map(async (r) => {
+        const story = await ctx.db.get(r.storyId);
+        if (!story || story.status !== "published") return null;
+        return {
+          storyId: r.storyId,
+          title: story.title,
+          slug: story.slug,
+          series: story.series ?? null,
+          percent: r.percent,
+          updatedAt: r.updatedAt,
+        };
+      }),
+    ).then((rows) => rows.filter((r): r is NonNullable<typeof r> => r !== null));
   },
 });

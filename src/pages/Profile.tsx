@@ -15,6 +15,7 @@ import { AchievementBadges } from "@/components/widgets/AchievementBadges";
 import { FleetAffiliation } from "@/components/widgets/FleetAffiliation";
 import { useAuth } from "@/hooks/use-auth";
 import { tierLabel, tierPillVariant } from "@/lib/tiers";
+import { FRAME_CATALOG } from "@/lib/economy";
 
 import { usePageMeta } from "@/hooks/use-page-meta";
 export default function Profile() {
@@ -118,12 +119,20 @@ export default function Profile() {
               <div
                 aria-hidden
                 className="h-14 w-14 rounded-full flex items-center justify-center text-2xl font-semibold shrink-0 overflow-hidden"
-                style={{
-                  background:
-                    "conic-gradient(from 220deg, var(--uf-cyan), var(--uf-violet), var(--uf-magenta), var(--uf-cyan))",
-                  color: "#001018",
-                  boxShadow: "0 0 18px rgba(0,229,255,0.35)",
-                }}
+                style={
+                  profile?.frame && FRAME_CATALOG[profile.frame]
+                    ? {
+                        background: `conic-gradient(from 220deg, ${FRAME_CATALOG[profile.frame].colors[0]}, ${FRAME_CATALOG[profile.frame].colors[1]}, ${FRAME_CATALOG[profile.frame].colors[2]}, ${FRAME_CATALOG[profile.frame].colors[0]})`,
+                        color: "#001018",
+                        boxShadow: `0 0 18px ${FRAME_CATALOG[profile.frame].colors[0]}66`,
+                      }
+                    : {
+                        background:
+                          "conic-gradient(from 220deg, var(--uf-cyan), var(--uf-violet), var(--uf-magenta), var(--uf-cyan))",
+                        color: "#001018",
+                        boxShadow: "0 0 18px rgba(0,229,255,0.35)",
+                      }
+                }
               >
                 {avatarUrl ? (
                   <img

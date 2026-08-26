@@ -8,6 +8,11 @@ describe("achievement catalog", () => {
     expect(ACHIEVEMENT_CATALOG["crew_chief"]).toBeDefined();
     expect(ACHIEVEMENT_CATALOG["centurion"]).toBeDefined();
     expect(ACHIEVEMENT_CATALOG["pioneer"]).toBeDefined();
+    expect(ACHIEVEMENT_CATALOG["first_contact"]).toBeDefined();
+    expect(ACHIEVEMENT_CATALOG["starforge_artisan"]).toBeDefined();
+    expect(ACHIEVEMENT_CATALOG["temporal_investigator"]).toBeDefined();
+    expect(ACHIEVEMENT_CATALOG["fleet_commander"]).toBeDefined();
+    expect(ACHIEVEMENT_CATALOG["founders_crest"]).toBeDefined();
   });
 
   test("every entry has a label, description, tone, and icon", () => {
@@ -27,5 +32,10 @@ describe("achievement catalog", () => {
 
   test("getAchievement returns undefined for an unknown id", () => {
     expect(getAchievement("no_such_achievement")).toBeUndefined();
+  });
+
+  test("every badge id maps to a unique label", () => {
+    const labels = Object.values(ACHIEVEMENT_CATALOG).map((e) => e.label);
+    expect(new Set(labels).size).toBe(labels.length);
   });
 });

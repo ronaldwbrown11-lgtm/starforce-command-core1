@@ -1,6 +1,6 @@
 import { Link, NavLink, useLocation } from "react-router";
 import { useState } from "react";
-import { Activity, BookOpen, BookOpenText, ClipboardCheck, FileCheck2, GaugeCircle, History, IdCard, LayoutDashboard, LifeBuoy, ListChecks, Map as MapIcon, MapPin, Megaphone, Ship, Menu, Palette, ShieldCheck, Sparkles, Users, X } from "lucide-react";
+import { Activity, BookOpen, BookOpenText, CalendarPlus, ClipboardCheck, FileCheck2, GaugeCircle, History, IdCard, LayoutDashboard, LifeBuoy, ListChecks, Map as MapIcon, MapPin, Megaphone, Rocket, Ship, ShipWheel, Menu, Palette, ShieldCheck, Sparkles, Users, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SiteShell, ParallaxBackground } from "@/components/uf";
 import { FleetStatus } from "@/components/widgets/FleetStatus";
@@ -23,6 +23,9 @@ const NAV = [
   { label: "Blog Posts", href: "/operator/blog", icon: BookOpen },
   { label: "FAQs", href: "/operator/faqs", icon: ListChecks },
   { label: "Broadcasts", href: "/operator/broadcasts", icon: Megaphone },
+  { label: "Events Calendar", href: "/operator/events", icon: CalendarPlus },
+  { label: "Captain's Log", href: "/operator/log", icon: ShipWheel },
+  { label: "Changelog", href: "/operator/changelog", icon: Rocket },
   { label: "Support Inbox", href: "/operator/support", icon: LifeBuoy },
   { label: "Users", href: "/operator/users", icon: Users },
   { label: "Analytics", href: "/operator/analytics", icon: GaugeCircle },

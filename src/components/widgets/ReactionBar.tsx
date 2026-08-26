@@ -13,11 +13,18 @@ const REACTIONS: { kind: ReactionKind; icon: string; label: string }[] = [
 ];
 
 /**
- * Story-level reaction bar (transmit / salute / warn).
- * Reads live counts + the signed-in user's own reactions, and toggles via
- * the existing social.toggleReaction mutation.
+ * Reaction bar (transmit / salute / warn) for stories, lore entries,
+ * forum threads, and mission reports. Reads live counts + the signed-in
+ * user's own reactions, and toggles via social.toggleReaction (generic
+ * on targetType).
  */
-export function ReactionBar({ targetId }: { targetId: string }) {
+export function ReactionBar({
+  targetId,
+  targetType = "story",
+}: {
+  targetId: string;
+  targetType?: "story" | "lore" | "thread" | "report";
+}) {
   const { isAuthenticated } = useAuth();
   const data = useQuery(api.social.storyReactions, { storyId: targetId });
   const react = useMutation(api.social.toggleReaction);
@@ -30,7 +37,7 @@ export function ReactionBar({ targetId }: { targetId: string }) {
     }
     setPending(kind);
     try {
-      await react({ targetId, targetType: "story", kind });
+      await react({ targetId, targetType, kind });
     } catch {
       toast.error("Failed to register reaction.");
     } finally {
@@ -40,7 +47,7 @@ export function ReactionBar({ targetId }: { targetId: string }) {
 
   return (
     <section
-      aria-label="Story reactions"
+      aria-label={`Reactions — ${targetType}`}
       className="uf-panel p-4 flex items-center justify-between flex-wrap gap-3"
       data-uf-widget="reaction-bar"
     >

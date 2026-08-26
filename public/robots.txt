@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /operator
+Disallow: /account
+Disallow: /messages
 
 Sitemap: https://starforcebase1198.com/sitemap.xml

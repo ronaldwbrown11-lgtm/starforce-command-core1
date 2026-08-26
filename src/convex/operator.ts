@@ -5,6 +5,12 @@ import { api } from "./_generated/api";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { opRoleValidator } from "./schema";
+import {
+  awardAchievements,
+  bumpContribution,
+  evaluateAchievements,
+} from "./achievements";
+import { CREDIT_RATES, grantCredits } from "./economy";
 
 // =========================================================================
 // Operator / Moderation / Audit / Sessions / Identity / Analytics
@@ -484,6 +490,15 @@ export const storyApprovalAction = mutation({
           }),
           createdAt: Date.now(),
         });
+        // Achievement + economy hooks — only on the first publication.
+        await bumpContribution(ctx, story.authorId);
+        await evaluateAchievements(ctx, story.authorId);
+        await grantCredits(
+          ctx,
+          story.authorId,
+          CREDIT_RATES.storyPublished,
+          "story.published",
+        );
       }
     }
 
@@ -1576,6 +1591,9 @@ export const submitStory = mutation({
       summary: args.title,
       createdAt: Date.now(),
     });
+    // Achievement hooks.
+    await awardAchievements(ctx, me, ["first_story"]);
+    await evaluateAchievements(ctx, me);
     // Queue the AI canon-compliance scan; the verdict lands on the approval
     // desk a few seconds later. Best-effort — a scan failure never blocks
     // the submission itself.

@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Link, useSearchParams } from "react-router";
 import { SiteShell, PageHero, HoloCard, StatusPill, NeonButton } from "@/components/uf";
+import { ReactionBar } from "@/components/widgets/ReactionBar";
 import { ScaleReveal } from "@/hooks/use-scroll-reveal";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -108,6 +109,10 @@ export default function Forums() {
                 </div>
                 <p className="mt-5 text-sm leading-relaxed whitespace-pre-wrap">{detail.thread.content}</p>
               </HoloCard>
+
+              <div className="mt-6">
+                <ReactionBar targetId={detail.thread._id} targetType="thread" />
+              </div>
 
               <h3 className="text-lg font-semibold mt-8 mb-4">
                 {detail.replies.length} repl{detail.replies.length === 1 ? "y" : "ies"}

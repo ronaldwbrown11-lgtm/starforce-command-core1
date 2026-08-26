@@ -1,4 +1,5 @@
 import { internalMutation, internalQuery, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
 // =========================================================================
@@ -27,6 +28,10 @@ const TABLES_TO_WIPE = [
   "forumThreads",
   "sectorMap",
   "moderationItems",
+  "signals",
+  "calendarEvents",
+  "captainLogs",
+  "changelogEntries",
   "identityVerifications",
   "auditLog",
   "comments",
@@ -241,6 +246,235 @@ export const seedGroups = internalMutation({
         .first();
       if (existing) continue;
       await ctx.db.insert("groups", g);
+    }
+    // Seed community features alongside groups (idempotent on title).
+    await ctx.runMutation(internal.seedHelpers.seedSignals, {});
+    await ctx.runMutation(internal.seedHelpers.seedCalendar, {});
+    await ctx.runMutation(internal.seedHelpers.seedCaptainLogs, {});
+    await ctx.runMutation(internal.seedHelpers.seedChangelog, {});
+  },
+});
+
+// Mini-ARG signal vault (#4): intercepts members can decrypt for rewards.
+const SIGNAL_SPECS = [
+  {
+    title: "First Echo",
+    ciphertext: "gur syrrg erzrzoref",
+    hint: "Run the transmission through the same cipher that turns 'be' into 'or' — thirteen clicks around the wheel.",
+    plaintext: "the fleet remembers",
+    rewardXp: 20,
+    rewardCredits: 15,
+    solvedBy: [],
+    active: true,
+    createdAt: Date.now(),
+  },
+  {
+    title: "Temporal Anomaly",
+    ciphertext: "serudne ecrof artlu",
+    hint: "The rift reads time backwards. Mirror the transmission.",
+    plaintext: "ultra force endures",
+    rewardXp: 25,
+    rewardCredits: 20,
+    solvedBy: [],
+    active: true,
+    createdAt: Date.now(),
+  },
+  {
+    title: "Deep Archive",
+    ciphertext: "gur nepunir jnxrf",
+    hint: "Same wheel as the First Echo — the archivist is consistent.",
+    plaintext: "the archive wakes",
+    rewardXp: 30,
+    rewardCredits: 25,
+    solvedBy: [],
+    active: true,
+    createdAt: Date.now(),
+  },
+];
+
+export const seedSignals = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    for (const s of SIGNAL_SPECS) {
+      const existing = await ctx.db
+        .query("signals")
+        .filter((q) => q.eq(q.field("title"), s.title))
+        .first();
+      if (existing) continue;
+      await ctx.db.insert("signals", s);
+    }
+  },
+});
+
+// Site-wide events calendar (#7) — scheduled relative to seed time.
+export const seedCalendar = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const operator = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("displayName"), "Cmdr. Vega"))
+      .first();
+    if (!operator) return;
+    const now = Date.now();
+    const DAY = 86_400_000;
+    const specs = [
+      {
+        title: "Lore Lab — Weekly Writing Session",
+        description:
+          "Bring a work-in-progress and write shoulder-to-shoulder with the fleet. One hour of focused drafting followed by peer notes.",
+        kind: "lore_lab",
+        scheduledAt: now + 2 * DAY,
+        endsAt: now + 2 * DAY + 3_600_000,
+        location: "Community Hub → Lore Lab",
+        link: "/groups",
+        status: "scheduled",
+      },
+      {
+        title: "Faction Council — Monthly Meeting",
+        description:
+          "Ultra Force, G.I.A., Starforge Union, and the Chrono Monks send representatives. Agenda: the Q4 arc plan and faction missions.",
+        kind: "faction_meeting",
+        scheduledAt: now + 6 * DAY,
+        endsAt: now + 6 * DAY + 7_200_000,
+        location: "Forums → Bridge Council",
+        status: "scheduled",
+      },
+      {
+        title: "Live Q&A with the Creator",
+        description:
+          "Bring your timeline questions, character theories, and plot holes. The Captain answers on the record — archive posted after.",
+        kind: "live_qa",
+        scheduledAt: now + 10 * DAY,
+        endsAt: now + 10 * DAY + 5_400_000,
+        location: "Community Hub → Live Q&A",
+        link: "/community",
+        status: "scheduled",
+      },
+      {
+        title: "Seasonal Arc Launch — 'Echoes of the Rift'",
+        description:
+          "The next story arc goes live at midnight. Countdown event: chapter one, new lore entries, and a fresh Signal Vault drop.",
+        kind: "release",
+        scheduledAt: now + 14 * DAY,
+        location: "Everywhere",
+        status: "scheduled",
+      },
+      {
+        title: "Starforge Yards — Community Ship Design",
+        description:
+          "Collaborative design jam: sketch the next starship class with the shipwrights. Winning blueprint gets canonized.",
+        kind: "community",
+        scheduledAt: now + 20 * DAY,
+        endsAt: now + 20 * DAY + 7_200_000,
+        location: "Groups → Starforge Union Yards",
+        status: "scheduled",
+      },
+    ];
+    for (const s of specs) {
+      const existing = await ctx.db
+        .query("calendarEvents")
+        .filter((q) => q.eq(q.field("title"), s.title))
+        .first();
+      if (existing) continue;
+      await ctx.db.insert("calendarEvents", {
+        ...s,
+        createdBy: operator._id,
+        createdAt: now,
+      });
+    }
+  },
+});
+
+// Captain's Log (#10) — demo entries from the operator account.
+export const seedCaptainLogs = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const operator = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("displayName"), "Cmdr. Vega"))
+      .first();
+    if (!operator) return;
+    const now = Date.now();
+    const DAY = 86_400_000;
+    const specs = [
+      {
+        title: "Log 047 — The rift is talking again",
+        body: "The sector probes picked up a repeating signal pattern this morning. Same cipher family as the vault intercepts, so the Signal Vault should get a new entry before the week is out. Meanwhile: the Lore Lab session had our biggest turnout yet — keep it up.",
+        publishedAt: now - 1 * DAY,
+      },
+      {
+        title: "Log 046 — Blueprints on the bridge",
+        body: "The Starforge Yards crew posted a first-pass hull schematic for the new cruiser class and it is gorgeous. If you want input on the design, join the Yards group — the builder's circle closes the jam Sunday.",
+        publishedAt: now - 3 * DAY,
+      },
+      {
+        title: "Log 045 — Chapter drafts are rolling in",
+        body: "Review desk is swimming in strong drafts this month. Expect approvals to tick up through the week. And yes — I read the comments; the New Terra festival lore is now canon.",
+        publishedAt: now - 6 * DAY,
+      },
+    ];
+    for (const s of specs) {
+      const existing = await ctx.db
+        .query("captainLogs")
+        .filter((q) => q.eq(q.field("title"), s.title))
+        .first();
+      if (existing) continue;
+      await ctx.db.insert("captainLogs", {
+        title: s.title,
+        body: s.body,
+        authorId: operator._id,
+        publishedAt: s.publishedAt,
+        createdAt: now,
+      });
+    }
+  },
+});
+
+// Changelog (#27) — demo release notes from the operator account.
+export const seedChangelog = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const operator = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("displayName"), "Cmdr. Vega"))
+      .first();
+    if (!operator) return;
+    const now = Date.now();
+    const DAY = 86_400_000;
+    const specs = [
+      {
+        title: "Rank, Badges, and the Signal Vault land",
+        version: "0.9.4",
+        body: "• Rank progression with XP across lore, art, discoveries, missions, and comments\n• Lore-themed achievement badges (First Contact, Starforge Artisan, Temporal Investigator, Fleet Commander, Founder's Crest)\n• The Signal Vault — decrypt ciphers for XP and Star Credits\n• Star Credits economy with the Cosmetic Lab (profile frames)",
+        publishedAt: now - 2 * DAY,
+      },
+      {
+        title: "Events calendar and Captain's Log",
+        version: "0.9.5",
+        body: "• /events — weekly Lore Lab, faction meetings, live Q&As, and lore-release countdowns\n• Captain's Log — daily behind-the-scenes updates on the Community page\n• Faction, ship-crew, and homeworld group categories",
+        publishedAt: now - 5 * DAY,
+      },
+      {
+        title: "Leaderboard and notifications polish",
+        version: "0.9.6",
+        body: "• Standalone /leaderboard with podium and full standings\n• Header notification bell with unread badge and mark-all-read\n• Reactions on lore entries, forum threads, and mission reports\n• Continue reading on /stories",
+        publishedAt: now - 8 * DAY,
+      },
+    ];
+    for (const s of specs) {
+      const existing = await ctx.db
+        .query("changelogEntries")
+        .filter((q) => q.eq(q.field("title"), s.title))
+        .first();
+      if (existing) continue;
+      await ctx.db.insert("changelogEntries", {
+        title: s.title,
+        body: s.body,
+        version: s.version,
+        authorId: operator._id,
+        publishedAt: s.publishedAt,
+        createdAt: now,
+      });
     }
   },
 });

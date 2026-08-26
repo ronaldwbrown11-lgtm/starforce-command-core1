@@ -24,13 +24,17 @@ const NAV = [
   { label: "Star Atlas", href: "/map" },
   { label: "Videos", href: "/videos" },
   { label: "Missions", href: "/missions" },
+  { label: "Signal Vault", href: "/vault" },
+  { label: "Events", href: "/events" },
   { label: "Community", href: "/community" },
   { label: "Forums", href: "/forums" },
   { label: "Members", href: "/members" },
+  { label: "Leaderboard", href: "/leaderboard" },
   { label: "Submit", href: "/submit" },
   { label: "Messages", href: "/messages" },
   { label: "Blog", href: "/blog" },
   { label: "FAQs", href: "/faqs" },
+  { label: "Changelog", href: "/changelog" },
   { label: "Resources", href: "/resources" },
   { label: "Membership", href: "/membership" },
   { label: "Support", href: "/support" },
@@ -408,6 +412,8 @@ function Footer() {
             <li><Link to="/map">Star Atlas</Link></li>
             <li><Link to="/videos">Transmissions</Link></li>
             <li><Link to="/missions">Missions</Link></li>
+            <li><Link to="/vault">Signal Vault</Link></li>
+            <li><Link to="/events">Events</Link></li>
             <li><Link to="/resources">Resources</Link></li>
           </ul>
         </div>

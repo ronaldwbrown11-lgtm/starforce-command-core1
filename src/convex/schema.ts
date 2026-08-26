@@ -73,6 +73,8 @@ const schema = defineSchema(
       // Secondary contact address ("message email") — separate from the
       // sign-in email; used for site correspondence.
       contactEmail: v.optional(v.string()),
+      // Opt out of the weekly fleet digest email (#20).
+      emailOptOut: v.optional(v.boolean()),
 
       // Ultra Force extensions
       displayName: v.optional(v.string()),
@@ -88,6 +90,15 @@ const schema = defineSchema(
       mfaEnabled: v.optional(v.boolean()),
       trustDevice: v.optional(v.boolean()),
       achievements: v.optional(v.array(v.string())),
+      // Verified contributions (approved lore, published stories, certified
+      // discoveries, filed mission reports, comments) — drives the Fleet
+      // Commander badge.
+      contributionCount: v.optional(v.number()),
+      // Ultra Force virtual currency (#8): earned at contribution sites,
+      // spent in the Cosmetic Lab on profile frames and other cosmetics.
+      credits: v.optional(v.number()),
+      frame: v.optional(v.string()), // equipped profile frame id
+      frames: v.optional(v.array(v.string())), // owned frame ids
       // First-run pilot orientation (rank / fleet / starter mission picker)
       onboarded: v.optional(v.boolean()),
       // Per-tier usage counters
@@ -708,6 +719,60 @@ const schema = defineSchema(
       .index("by_order", ["order"]),
 
     // Vessels — Star Force fleet registry (ships, stations, vehicles).
+    // Site-wide events calendar (#7): weekly Lore Lab sessions, faction
+    // meetings, seasonal story arcs, live Q&As, and countdowns for major
+    // lore releases. Operator-managed; public /events page renders the
+    // next-event countdown.
+    calendarEvents: defineTable({
+      title: v.string(),
+      description: v.string(),
+      kind: v.string(), // lore_lab / faction_meeting / arc / live_qa / release / community
+      scheduledAt: v.number(),
+      endsAt: v.optional(v.number()),
+      location: v.optional(v.string()), // e.g. "Community Hub → Lore Lab"
+      link: v.optional(v.string()),
+      status: v.string(), // scheduled / live / ended / cancelled
+      createdBy: v.id("users"),
+      createdAt: v.number(),
+    }).index("by_scheduled", ["scheduledAt"]),
+
+    // Changelog (#27): operator-posted release notes and platform updates,
+    // rendered as a public timeline at /changelog.
+    changelogEntries: defineTable({
+      title: v.string(),
+      body: v.string(),
+      version: v.optional(v.string()),
+      authorId: v.id("users"),
+      publishedAt: v.number(),
+      createdAt: v.number(),
+    }).index("by_published", ["publishedAt"]),
+
+    // Captain's Log (#10): the creator's daily behind-the-scenes updates,
+    // surfaced on the Community page.
+    captainLogs: defineTable({
+      title: v.string(),
+      body: v.string(),
+      authorId: v.id("users"),
+      publishedAt: v.number(),
+      createdAt: v.number(),
+    }).index("by_published", ["publishedAt"]),
+
+    // Mini-ARG signal vault (#4): intercepted ciphers members decrypt for
+    // XP and Star Credits. Answers are stored server-side (normalized);
+    // solves are recorded per-user so rewards pay out exactly once.
+    signals: defineTable({
+      title: v.string(),
+      ciphertext: v.string(),
+      hint: v.string(),
+      plaintext: v.string(), // normalized answer (lowercase, trimmed)
+      rewardXp: v.optional(v.number()),
+      rewardCredits: v.optional(v.number()),
+      solvedBy: v.array(v.id("users")),
+      active: v.boolean(),
+      createdBy: v.optional(v.id("users")), // operator who planted the signal
+      createdAt: v.number(),
+    }).index("by_active", ["active"]),
+
     vessels: defineTable({
       designation: v.string(), // e.g. "SFSBT 8001"
       name: v.string(), // display name e.g. "OMEGA MAJESTY"

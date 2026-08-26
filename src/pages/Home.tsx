@@ -537,6 +537,12 @@ export default function Home() {
                 );
               })
             )}
+            <Link
+              to="/leaderboard"
+              className="uf-btn uf-btn--ghost mt-3 w-full"
+            >
+              Full leaderboard
+            </Link>
           </CommunityColumn>
         </div>
       </section>

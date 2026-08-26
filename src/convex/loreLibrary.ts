@@ -3,6 +3,12 @@ import { api } from "./_generated/api";
 import { v, type Infer } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireOperatorCapability } from "./admin";
+import {
+  awardAchievements,
+  bumpContribution,
+  evaluateAchievements,
+} from "./achievements";
+import { CREDIT_RATES, grantCredits } from "./economy";
 
 // =========================================================================
 // Lore Library — bibles (PDF/DOC/TXT), image galleries, and subdomain-
@@ -469,6 +475,20 @@ export const loreApprovalAction = mutation({
           }),
           createdAt: Date.now(),
         });
+        // Achievement + economy hooks — only on the first approval (never
+        // on re-approvals), and never for self-reviewed items.
+        await awardAchievements(ctx, item.authorId, ["lore_contributor"]);
+        if (item.loreType === "image") {
+          await awardAchievements(ctx, item.authorId, ["starforge_artisan"]);
+        }
+        await bumpContribution(ctx, item.authorId);
+        await evaluateAchievements(ctx, item.authorId);
+        await grantCredits(
+          ctx,
+          item.authorId,
+          CREDIT_RATES.loreApproved,
+          "loreLibrary.approved",
+        );
       }
     }
 

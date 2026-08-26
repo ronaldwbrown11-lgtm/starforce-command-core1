@@ -7,9 +7,11 @@ import { ProfileEditor } from "@/components/ProfileEditor";
 import PilotOnboarding from "@/components/PilotOnboarding";
 import { useAuth } from "@/hooks/use-auth";
 import { RankProgress } from "@/components/widgets/RankProgress";
+import { StarCreditsCard } from "@/components/widgets/StarCreditsCard";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { tierLabel, tierPillVariant, type TierId } from "@/lib/tiers";
+import { FRAME_CATALOG } from "@/lib/economy";
 import { TierUsageWidget } from "@/components/usage/TierUsageWidget";
 import { Camera, ChevronDown, LogOut, Send } from "lucide-react";
 
@@ -97,11 +99,18 @@ export default function Account() {
                 <div
                   aria-hidden
                   className="relative h-16 w-16 rounded-full shrink-0 grid place-items-center overflow-hidden"
-                  style={{
-                    background:
-                      "conic-gradient(from 220deg, var(--uf-cyan), var(--uf-violet), var(--uf-magenta), var(--uf-cyan))",
-                    boxShadow: "0 0 18px rgba(0,229,255,0.35)",
-                  }}
+                  style={
+                    user?.frame && FRAME_CATALOG[user.frame]
+                      ? {
+                          background: `conic-gradient(from 220deg, ${FRAME_CATALOG[user.frame].colors[0]}, ${FRAME_CATALOG[user.frame].colors[1]}, ${FRAME_CATALOG[user.frame].colors[2]}, ${FRAME_CATALOG[user.frame].colors[0]})`,
+                          boxShadow: `0 0 18px ${FRAME_CATALOG[user.frame].colors[0]}66`,
+                        }
+                      : {
+                          background:
+                            "conic-gradient(from 220deg, var(--uf-cyan), var(--uf-violet), var(--uf-magenta), var(--uf-cyan))",
+                          boxShadow: "0 0 18px rgba(0,229,255,0.35)",
+                        }
+                  }
                 >
                   {avatarUrl ? (
                     <img
@@ -249,6 +258,11 @@ export default function Account() {
               </NeonButton>
             </HoloCard>
             <RankProgress />
+            <StarCreditsCard
+              credits={user?.credits ?? 0}
+              frame={user?.frame}
+              frames={user?.frames ?? []}
+            />
             <HoloCard>
               <span className="uf-eyebrow">Quick actions</span>
               <ul className="list-none p-0 m-0 mt-3 space-y-2 text-sm">
