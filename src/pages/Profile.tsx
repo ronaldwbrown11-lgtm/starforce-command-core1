@@ -37,10 +37,13 @@ export default function Profile() {
     api.social.userContributions,
     id ? { id: id as Id<"users"> } : "skip",
   );
+  usePageMeta({
+    title: "Pilot Profile — Star Force Base 1198",
+    description: "View a pilots career, stories, reports, and fleet record.",
+    noindex: false,
+  });
 
   if (profile === undefined) {
-  usePageMeta({ title: "Pilot Profile — Star Force Base 1198", description: "View a pilots career, stories, reports, and fleet record.", noindex: false });
-
     return (
       <SiteShell>
         <PageHero

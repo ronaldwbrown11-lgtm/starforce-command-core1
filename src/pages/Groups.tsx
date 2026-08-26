@@ -31,13 +31,18 @@ export default function Groups() {
   const [busyId, setBusyId] = useState<Id<"groups"> | null>(null);
   const [stalled, setStalled] = useState(false);
 
+  usePageMeta({
+    title: "Fleet Groups — Star Force Base 1198",
+    description:
+      "Join patrol groups, specialist guilds, and operational units across the fleet.",
+    noindex: false,
+  });
+
   // If the groups query hasn't resolved within 8s, show an explicit error panel
   // instead of skeletons forever (makes connection failures visible).
   useEffect(() => {
     if (groups === undefined) {
       const t = setTimeout(() => setStalled(true), 8000);
-  usePageMeta({ title: "Fleet Groups — Star Force Base 1198", description: "Join patrol groups, specialist guilds, and operational units across the fleet.", noindex: false });
-
       return () => clearTimeout(t);
     }
     // No reset needed: `stalled` only affects rendering while the query is

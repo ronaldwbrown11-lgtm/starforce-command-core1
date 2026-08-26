@@ -39,14 +39,19 @@ export default function Activity() {
   const [pagesFetched, setPagesFetched] = useState(1);
   const [autoLoad, setAutoLoad] = useState(true);
 
+  usePageMeta({
+    title: "Activity Feed — Star Force Base 1198",
+    description:
+      "Recent fleet activity — published stories, filed reports, new members.",
+    noindex: false,
+  });
+
   // Reduced-motion: turn off auto-loading; user must use Load More.
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     const sync = () => setAutoLoad(!mq.matches);
     sync();
     mq.addEventListener("change", sync);
-  usePageMeta({ title: "Activity Feed — Star Force Base 1198", description: "Recent fleet activity — published stories, filed reports, new members.", noindex: false });
-
     return () => mq.removeEventListener("change", sync);
   }, []);
 

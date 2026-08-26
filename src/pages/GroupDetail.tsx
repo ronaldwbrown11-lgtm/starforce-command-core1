@@ -77,9 +77,13 @@ export default function GroupDetail() {
   const isMod = myRole === "owner" || myRole === "moderator";
   const isOwner = myRole === "owner";
 
-  if (data === undefined) {
-  usePageMeta({ title: "Group — Star Force Base 1198", description: "Fleet group details, members, and activity.", noindex: false });
+  usePageMeta({
+    title: "Group — Star Force Base 1198",
+    description: "Fleet group details, members, and activity.",
+    noindex: false,
+  });
 
+  if (data === undefined) {
     return (
       <SiteShell>
         <PageHero eyebrow="Group" title="Opening channel…" />

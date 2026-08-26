@@ -41,6 +41,13 @@ export default function Forums() {
   const [newContent, setNewContent] = useState("");
   const [creating, setCreating] = useState(false);
 
+  usePageMeta({
+    title: "Forums — Star Force Base 1198",
+    description:
+      "Tactical discussions, lore debates, and fleet coordination threads.",
+    noindex: false,
+  });
+
   const handleReply = async (e: FormEvent) => {
     e.preventDefault();
     if (!detail?.thread || !replyText.trim()) return;
@@ -78,8 +85,6 @@ export default function Forums() {
 
   // ---- Thread detail view ------------------------------------------------
   if (threadSlug) {
-  usePageMeta({ title: "Forums — Star Force Base 1198", description: "Tactical discussions, lore debates, and fleet coordination threads.", noindex: false });
-
     return (
       <SiteShell>
         <PageHero

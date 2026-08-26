@@ -134,14 +134,18 @@ export default function SearchPage() {
     setQuery(urlQuery);
   }, [urlQuery]);
 
+  usePageMeta({
+    title: "Search — Star Force Base 1198",
+    description: "Search across stories, lore, missions, and fleet records.",
+    noindex: false,
+  });
+
   useEffect(() => {
     const t = window.setTimeout(() => {
       const trimmed = input.trim();
       setQuery(trimmed);
       setParams(trimmed ? { q: trimmed } : {}, { replace: true });
     }, 300);
-  usePageMeta({ title: "Search — Star Force Base 1198", description: "Search across stories, lore, missions, and fleet records.", noindex: false });
-
     return () => window.clearTimeout(t);
   }, [input, setParams]);
 
