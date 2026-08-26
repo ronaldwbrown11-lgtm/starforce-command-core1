@@ -1,0 +1,91 @@
+name: Deploy Staging
+
+# Staging environment (Tier 4). Builds the same app against a SEPARATE Convex
+# project and uploads to a staging folder on Hostinger, so you can test freely
+# without touching production.
+#
+# One-time setup (see ADMIN-GUIDE / chat runbook):
+#   1. Convex dashboard -> create a second project (e.g. starforce-chronicle-staging)
+#      -> copy its deployment URL (https://<slug>.convex.cloud)
+#   2. GitHub repo -> Settings -> Secrets and variables -> Actions:
+#        - Variable  STAGING_CONVEX_URL  = that URL
+#        - Secret    FTP_STAGING_PATH    = staging folder on Hostinger,
+#          e.g. "/staging" (the document root of your staging subdomain)
+#   3. Hostinger hPanel: create the staging subdomain (e.g. staging.starforcebase1198.com)
+#   4. In the STAGING Convex project's dashboard, add the same env vars the
+#      production project uses (RESEND_API_KEY, GROQ_API_KEY, EMAIL_FROM, SITE_URL)
+#   5. Run this workflow (Actions tab -> Deploy Staging -> Run workflow), or push
+#      to the `staging` branch.
+#   6. Seed the staging database: Convex dashboard -> Functions -> seed:seedDemo
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy-staging:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build (staging)
+        run: bun run build:ci
+        env:
+          VITE_CONVEX_URL: ${{ vars.STAGING_CONVEX_URL }}
+
+      - name: Refresh staging sitemap
+        env:
+          VITE_CONVEX_URL: ${{ vars.STAGING_CONVEX_URL }}
+        run: |
+          CONVEX_SITE_URL="${VITE_CONVEX_URL/.convex.cloud/.convex.site}"
+          if curl -fsSL --max-time 20 "$CONVEX_SITE_URL/sitemap.xml" -o dist/sitemap.xml; then
+            echo "Staging sitemap fetched from $CONVEX_SITE_URL"
+          else
+            echo "Sitemap fetch failed - keeping built static fallback"
+          fi
+
+      - name: Deploy to Hostinger via FTP (staging folder)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+          lftp -c "
+            set ssl:verify-certificate no;
+            set ftp:ssl-allow yes;
+            open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
+            mirror --reverse --verbose \
+              --exclude-glob .git \
+              --exclude-glob .github \
+              --exclude-glob node_modules \
+              --exclude-glob src \
+              --exclude-glob backups \
+              --exclude-glob armory-app \
+              --exclude-glob isolate \
+              --exclude-glob seeds \
+              --exclude-glob '*.md' \
+              --exclude-glob convex.json \
+              --exclude-glob package.json \
+              --exclude-glob bun.lock \
+              --exclude-glob 'tsconfig*.json' \
+              --exclude-glob vite.config.ts \
+              --exclude-glob 'tailwind.config.*' \
+              --exclude-glob 'postcss.config.*' \
+              --exclude-glob '.env*' \
+              --exclude-glob '.prettier*' \
+              --exclude-glob .gitignore \
+              --exclude-glob components.json \
+              --exclude-glob eslint.config.js \
+              dist/ ${{ secrets.FTP_STAGING_PATH }};
+            quit;
+          "
+
+      - name: Notify
+        run: echo "Staging deployed to ${{ secrets.FTP_HOST }}${{ secrets.FTP_STAGING_PATH }}"

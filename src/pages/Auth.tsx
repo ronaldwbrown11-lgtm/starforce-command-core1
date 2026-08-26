@@ -30,6 +30,7 @@ interface AuthProps {
 function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const { isLoading: authLoading, isAuthenticated, signIn } = useAuth();
   const recordAttempt = useMutation(api.users.recordLoginAttempt);
+  const checkOtpRate = useMutation(api.auth.otpRateLimit.checkOtpRate);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Honor a ?returnTo= param (used by OperatorGuard and friends) so a signed-out
@@ -51,6 +52,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setError(null);
     try {
       const formData = new FormData(event.currentTarget);
+      // Server-side gate: max 3 code requests per 15 min per address.
+      await checkOtpRate({ email: String(formData.get("email") ?? "") });
       await signIn("email-otp", formData);
       setStep({ email: formData.get("email") as string });
       setIsLoading(false);

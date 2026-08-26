@@ -9,6 +9,7 @@ import {
   evaluateAchievements,
 } from "./achievements";
 import { CREDIT_RATES, grantCredits } from "./economy";
+import { enforceRateLimit } from "./rateLimit";
 
 // =========================================================================
 // Lore Library — bibles (PDF/DOC/TXT), image galleries, and subdomain-
@@ -215,6 +216,16 @@ export const submitLore = mutation({
       );
     }
     validateDatabaseUrl(args.databaseUrl);
+
+    // Abuse guard: 10 lore submissions per member per hour.
+    await enforceRateLimit(
+      ctx,
+      "lore_submit",
+      me,
+      10,
+      60 * 60 * 1000,
+      "You've submitted a lot of lore recently — wait an hour before adding more.",
+    );
 
     const id = await ctx.db.insert("loreLibrary", {
       title,

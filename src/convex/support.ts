@@ -3,6 +3,7 @@ import { api } from "./_generated/api";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireOperatorCapability } from "./admin";
+import { enforceRateLimit } from "./rateLimit";
 
 // ---- Support tickets -----------------------------------------------------
 
@@ -20,6 +21,17 @@ export const createTicket = mutation({
     if (!message) throw new Error("Message cannot be empty.");
 
     const userId = await getAuthUserId(ctx);
+
+    // Abuse guard: signed-in members are keyed by user id; guests by email.
+    // 5 tickets per 30 minutes per identity.
+    await enforceRateLimit(
+      ctx,
+      "support_ticket",
+      userId ?? email.toLowerCase(),
+      5,
+      30 * 60 * 1000,
+      "You've filed several tickets recently — wait a few minutes before opening another.",
+    );
 
     const id = await ctx.db.insert("supportTickets", {
       email,

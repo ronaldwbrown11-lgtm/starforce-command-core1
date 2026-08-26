@@ -866,6 +866,16 @@ const schema = defineSchema(
     })
       .index("by_created", ["createdAt"])
       .index("by_user", ["userId"]),
+
+    // Fixed-window rate limiting — one row per (kind, key). Convex
+    // serializes writes per document, so counting is race-safe.
+    rateLimits: defineTable({
+      kind: v.string(), // e.g. "support_ticket" | "lore_submit" | "otp_send"
+      key: v.string(), // user id, email, or device id
+      windowStart: v.number(),
+      count: v.number(),
+    })
+      .index("by_kind_key", ["kind", "key"]),
   },
   {
     schemaValidation: false,
