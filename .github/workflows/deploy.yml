@@ -1,0 +1,62 @@
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build:ci
+        env:
+          VITE_CONVEX_URL: ${{ vars.VITE_CONVEX_URL }}
+
+      - name: Deploy to Hostinger via FTP
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+          lftp -c "
+            set ssl:verify-certificate no;
+            set ftp:ssl-allow yes;
+            open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
+            mirror --reverse --verbose \
+              --exclude-glob .git \
+              --exclude-glob .github \
+              --exclude-glob node_modules \
+              --exclude-glob src \
+              --exclude-glob backups \
+              --exclude-glob armory-app \
+              --exclude-glob isolate \
+              --exclude-glob seeds \
+              --exclude-glob '*.md' \
+              --exclude-glob convex.json \
+              --exclude-glob package.json \
+              --exclude-glob bun.lock \
+              --exclude-glob 'tsconfig*.json' \
+              --exclude-glob vite.config.ts \
+              --exclude-glob 'tailwind.config.*' \
+              --exclude-glob 'postcss.config.*' \
+              --exclude-glob '.env*' \
+              --exclude-glob '.prettier*' \
+              --exclude-glob .gitignore \
+              --exclude-glob components.json \
+              --exclude-glob eslint.config.js \
+              dist/ /;
+            quit;
+          "
+
+      - name: Notify
+        run: echo "Deployed at ${{ secrets.FTP_HOST }}"

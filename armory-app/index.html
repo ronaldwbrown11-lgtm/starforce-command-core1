@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>Star Force Weapons Database - Full Arsenal Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        terminal: { bg: '#050a14', panel: '#0a1628', row1: '#0a1628', row2: '#0d1f3c', border: '#0e2a4a' },
+                        cyan: { DEFAULT: '#00e5ff', dim: '#00a5b8', glow: '#00e5ff', dark: '#004d5a' },
+                        amber: { DEFAULT: '#ffd54f', dark: '#b8960a' },
+                        plasma: { DEFAULT: '#ff6b35', dark: '#a83a10' },
+                        sfgreen: { DEFAULT: '#00ff88', dark: '#00994d' },
+                    },
+                    fontFamily: { mono: ['"Share Tech Mono"', 'Courier New', 'monospace'] },
+                },
+            },
+        };
+    </script>
+    <style>
+        * { font-family: 'Share Tech Mono', 'Courier New', monospace; box-sizing: border-box; }
+        html, body { height: 100vh; overflow: hidden; margin: 0; padding: 0; }
+        body { background: #050a14; color: #c0d8e8; }
+        body::after {
+            content: ''; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+            background: repeating-linear-gradient(0deg, rgba(0,229,255,0.015) 0px, rgba(0,229,255,0.015) 1px, transparent 1px, transparent 3px);
+        }
+        .starfield { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+        .star {
+            position: absolute; border-radius: 50%; background: #fff;
+            animation: twinkle var(--dur) ease-in-out infinite alternate;
+        }
+        @keyframes twinkle { 0% { opacity: 0.15; } 100% { opacity: 0.8; } }
+        .glow-card {
+            border: 1px solid rgba(0,229,255,0.3);
+            box-shadow: 0 0 12px rgba(0,229,255,0.08), inset 0 0 12px rgba(0,229,255,0.03);
+            background: rgba(10,22,40,0.85); border-radius: 4px;
+        }
+        .tab-btn { transition: all 0.25s; border-bottom: 2px solid transparent; cursor: pointer; }
+        .tab-btn.active { color: #00e5ff; border-bottom-color: #00e5ff; text-shadow: 0 0 8px rgba(0,229,255,0.5); }
+        .text-glow { text-shadow: 0 0 10px rgba(0,229,255,0.5), 0 0 30px rgba(0,229,255,0.2); }
+        .text-glow-amber { text-shadow: 0 0 8px rgba(255,213,79,0.4); }
+        
+        .sidebar-weapon {
+            cursor: pointer; transition: all 0.25s; border-left: 3px solid transparent;
+            background: rgba(10,22,40,0.6);
+        }
+        .sidebar-weapon:hover { background: rgba(0,229,255,0.05); border-left-color: rgba(0,229,255,0.3); }
+        .sidebar-weapon.selected {
+            background: rgba(0,229,255,0.08); border-left-color: #00e5ff;
+            box-shadow: -3px 0 12px rgba(0,229,255,0.15);
+        }
+        .sidebar-weapon .delete-btn { opacity: 0; transition: opacity 0.2s; }
+        .sidebar-weapon:hover .delete-btn { opacity: 1; }
+
+        .modal-overlay {
+            position: fixed; inset: 0; z-index: 9998; background: rgba(5,10,20,0.92);
+            display: flex; align-items: flex-start; justify-content: center;
+            overflow-y: auto; padding: 2rem 1rem;
+        }
+        .modal-content {
+            background: #0a1628; border: 1px solid rgba(0,229,255,0.3);
+            box-shadow: 0 0 40px rgba(0,229,255,0.1); border-radius: 4px;
+            max-width: 680px; width: 100%;
+        }
+        .form-input {
+            background: #050a14; border: 1px solid rgba(0,229,255,0.25); color: #c0d8e8;
+            font-family: 'Share Tech Mono', monospace; font-size: 0.75rem;
+            padding: 0.5rem 0.75rem; border-radius: 3px; width: 100%;
+        }
+        .form-input:focus { outline: none; border-color: #00e5ff; box-shadow: 0 0 8px rgba(0,229,255,0.15); }
+        .form-label { color: rgba(0,229,255,0.5); font-size: 0.65rem; letter-spacing: 0.1em; margin-bottom: 0.25rem; display: block; }
+        
+        .app-container { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .weapon-layout { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+        .weapon-sidebar {
+            width: 320px; min-width: 320px; background: rgba(10,22,40,0.95);
+            border-right: 1px solid rgba(0,229,255,0.15);
+            display: flex; flex-direction: column; height: 100%; overflow: hidden;
+        }
+        .sidebar-scroll-area { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0.5rem; }
+        .weapon-main { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+        .main-content-scroll { flex: 1; overflow-y: auto; padding: 1.5rem 1.5rem; }
+
+        @media (max-width: 767px) {
+            .weapon-sidebar {
+                position: fixed; left: 0; top: 0; bottom: 0; z-index: 999;
+                transform: translateX(-100%); transition: transform 0.3s ease;
+                width: 300px; min-width: 300px; height: 100vh;
+            }
+            .weapon-sidebar.open { transform: translateX(0); }
+            .sidebar-backdrop {
+                position: fixed; inset: 0; z-index: 998; background: rgba(0,0,0,0.6);
+                display: none;
+            }
+            .sidebar-backdrop.open { display: block; }
+        }
+        .schematics-header {
+            font-size: 11px; letter-spacing: 3px; color: #ffd54f;
+            border-bottom: 1px solid rgba(255,213,79,0.3);
+            margin-bottom: 12px; padding-bottom: 6px;
+        }
+        .schematic-panel {
+            background: rgba(5,15,30,0.9); border: 1px solid rgba(0,229,255,0.3);
+            border-radius: 4px; padding: 12px; display: flex; flex-direction: column;
+        }
+        .category-header {
+            font-size: 10px; letter-spacing: 2px; color: #ffd54f;
+            background: rgba(255, 213, 79, 0.08); padding: 6px 10px;
+            margin-top: 8px; margin-bottom: 4px; border-left: 2px solid #ffd54f; font-weight: bold;
+        }
+    </style>
+</head>
+<body class="font-mono">
+    <div class="starfield" id="starfield-bg"></div>
+
+    <div id="main-app" class="relative z-10 app-container">
+        <header class="border-b border-cyan/20 py-3 px-4 md:px-6 flex-shrink-0 bg-terminal-bg">
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <button id="sidebar-toggle-btn" class="md:hidden p-2 text-cyan border border-cyan/30 rounded min-h-[44px] min-w-[44px] flex items-center justify-center">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
+                    </button>
+                    <div>
+                        <h1 class="text-lg md:text-2xl text-cyan text-glow tracking-widest font-bold">
+                            ⚡ STAR FORCE — ARSENAL DATABASE
+                        </h1>
+                        <p class="text-amber text-[10px] tracking-widest mt-0.5 text-glow-amber">
+                            RESTRICTED TIER 3 ACCESS — FULL REPORT SEEDED (23 RECORDS)
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 text-xs flex-wrap justify-end">
+                    <button id="reseed-db-btn" class="px-2.5 py-1 text-[10px] border border-plasma/50 text-plasma rounded hover:bg-plasma/10 flex items-center gap-1 cursor-pointer" title="Reset and reseed database to full report defaults">
+                        <i data-lucide="rotate-ccw" class="w-3 h-3"></i> RESEED DB
+                    </button>
+                    <button id="backup-db-btn" class="px-2.5 py-1 text-[10px] border border-sfgreen/40 text-sfgreen rounded hover:bg-sfgreen/10 flex items-center gap-1 cursor-pointer" title="Backup all records to a JSON file">
+                        <i data-lucide="download" class="w-3 h-3"></i> BACKUP
+                    </button>
+                    <label class="px-2.5 py-1 text-[10px] border border-amber/40 text-amber rounded hover:bg-amber/10 flex items-center gap-1 cursor-pointer">
+                        <i data-lucide="upload" class="w-3 h-3"></i> RESTORE
+                        <input type="file" id="import-db-file" class="hidden" accept=".json" />
+                    </label>
+                    <span class="text-cyan/70 hidden sm:inline" id="stardate-display">SD 2847.6</span>
+                </div>
+            </div>
+        </header>
+
+        <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+        <div class="weapon-layout">
+            <aside class="weapon-sidebar" id="weapon-sidebar">
+                <div class="p-4 border-b border-cyan/25 flex-shrink-0">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="database" class="w-4 h-4 text-cyan"></i>
+                            <h2 class="text-cyan text-sm tracking-widest text-glow font-bold">RECORDS TABLE</h2>
+                        </div>
+                        <button id="sidebar-close-btn" class="md:hidden p-1 text-cyan/50 hover:text-cyan">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    <p class="text-amber text-[9px] tracking-widest mt-1 text-glow-amber">FULL ARSENAL REPORT IMPORTED</p>
+                    <div id="weapon-count" class="text-[10px] text-cyan/40 tracking-wider mt-2">23 RECORDS REGISTERED</div>
+                </div>
+
+                <div class="sidebar-scroll-area space-y-1" id="weapon-list"></div>
+
+                <div class="p-3 border-t border-cyan/15 flex-shrink-0 bg-terminal-panel">
+                    <button id="add-weapon-btn" class="w-full px-4 py-2.5 text-xs tracking-wider border border-cyan/40 text-cyan rounded hover:bg-cyan/10 transition-all min-h-[44px] flex items-center justify-center gap-2 cursor-pointer" style="box-shadow: 0 0 10px rgba(0,229,255,0.08);">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        REGISTER NEW RECORD
+                    </button>
+                </div>
+            </aside>
+
+            <div class="weapon-main">
+                <nav class="border-b border-cyan/10 px-4 md:px-6 pt-3 overflow-x-auto flex items-center justify-between flex-shrink-0 bg-terminal-bg">
+                    <div class="flex gap-1">
+                        <button class="tab-btn active px-3 py-2 text-xs tracking-wider whitespace-nowrap" data-tab="registry">SPECIFICATION CARD</button>
+                        <button class="tab-btn px-3 py-2 text-xs tracking-wider whitespace-nowrap" data-tab="performance">BALLISTIC METRICS</button>
+                        <button class="tab-btn px-3 py-2 text-xs tracking-wider whitespace-nowrap" data-tab="compatibility">PLATFORM COMPATIBILITY</button>
+                        <button class="tab-btn px-3 py-2 text-xs tracking-wider whitespace-nowrap" data-tab="schematics">FILES & SCHEMATICS</button>
+                    </div>
+                    <div class="hidden sm:flex items-center gap-2 pb-2">
+                        <button id="export-pdf-btn" class="px-2.5 py-1 text-[10px] border border-cyan/40 text-cyan rounded hover:bg-cyan/10 flex items-center gap-1 cursor-pointer">
+                            <i data-lucide="file-text" class="w-3 h-3"></i> EXPORT REPORT (.PDF)
+                        </button>
+                        <button id="export-doc-btn" class="px-2.5 py-1 text-[10px] border border-amber/40 text-amber rounded hover:bg-amber/10 flex items-center gap-1 cursor-pointer">
+                            <i data-lucide="file-code" class="w-3 h-3"></i> EXPORT DOCUMENT (.DOC)
+                        </button>
+                    </div>
+                </nav>
+
+                <main class="main-content-scroll" id="tab-content-area"></main>
+            </div>
+        </div>
+
+        <footer class="border-t border-cyan/15 py-3 px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between text-xs flex-shrink-0 bg-terminal-bg gap-2">
+            <p class="text-[10px] text-cyan/40 tracking-widest">STAR FORCE TECHNICAL REGISTRY — FULL ARSENAL SEED & EXPORTS ACTIVE</p>
+            <div id="api-status-log" class="text-[10px] text-sfgreen">System Ready: 23 Records Loaded from Report Source...</div>
+        </footer>
+    </div>
+
+    <div id="add-weapon-modal" class="hidden">
+        <div class="modal-overlay" id="modal-overlay">
+            <div class="modal-content">
+                <div class="p-5 border-b border-cyan/20">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="database" class="w-5 h-5 text-cyan"></i>
+                            <h2 id="modal-title" class="text-cyan text-sm tracking-widest text-glow">REGISTER NEW RECORD</h2>
+                        </div>
+                        <span class="text-amber text-[9px] tracking-widest text-glow-amber">MULTIPART FORM DATA</span>
+                    </div>
+                </div>
+                <div class="p-5 max-h-[70vh] overflow-y-auto space-y-4">
+                    <input type="hidden" id="form-record-id" />
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">RECORD TITLE / DESIGNATION *</label>
+                            <input type="text" id="form-designation" class="form-input" placeholder="e.g. Alpha Blueprint" />
+                        </div>
+                        <div>
+                            <label class="form-label">TAXONOMY CATEGORY</label>
+                            <select id="form-category" class="form-input">
+                                <option value="I. Automatic Pistols & Sidearms">I. Automatic Pistols & Sidearms[cite: 4]</option>
+                                <option value="II. Rifles & Carbines">II. Rifles & Carbines[cite: 4]</option>
+                                <option value="III. Grenades & Explosives">III. Grenades & Explosives[cite: 4]</option>
+                                <option value="IV. Blades & Close-Quarters Weapons">IV. Blades & Close-Quarters Weapons[cite: 4]</option>
+                                <option value="V. Teleporter-Fed Small Arms">V. Teleporter-Fed Small Arms[cite: 4]</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">MANUFACTURER / BUILDER</label>
+                            <input type="text" id="form-builder" class="form-input" placeholder="e.g. Aegis Dynamics" />
+                        </div>
+                        <div>
+                            <label class="form-label">SERIAL / SPEC ID</label>
+                            <input type="text" id="form-registry" class="form-input" placeholder="e.g. SF-P101" />
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">STATUS</label>
+                            <select id="form-status" class="form-input">
+                                <option value="Active">ACTIVE DEPLOYMENT</option>
+                                <option value="Testing">FIELD TESTING</option>
+                                <option value="Archived">ARCHIVED / OBSOLETE</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">POWER FEED / AMMUNITION</label>
+                            <input type="text" id="form-fleet" class="form-input" placeholder="e.g. Micro-magnetic induction cartridge cell" />
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">EFFECTIVE RANGE</label>
+                            <input type="text" id="form-range" class="form-input" placeholder="e.g. 50 meters" />
+                        </div>
+                        <div>
+                            <label class="form-label">RATE OF FIRE / CYCLE</label>
+                            <input type="text" id="form-rof" class="form-input" placeholder="e.g. 900 rpm" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label">DAMAGE & CHARACTERISTICS / PAYLOAD</label>
+                        <textarea id="form-primary-spec" class="form-input" rows="3" placeholder="Detailed characteristics..."></textarea>
+                    </div>
+
+                    <div class="border-t border-cyan/20 pt-4 space-y-3">
+                        <div class="schematics-header">RELATIONAL FILES & ATTACHMENTS</div>
+                        <div>
+                            <label class="form-label">REPLACE / ADD PREVIEW IMAGE</label>
+                            <input type="file" id="form-primary-image-file" class="form-input text-[10px]" accept="image/*" />
+                            <span class="text-[9px] text-cyan/50 mt-1 block">Uploading a new image will replace the current visual asset for this weapon record.</span>
+                        </div>
+                        <div>
+                            <label class="form-label">ADD ADDITIONAL SCHEMATICS</label>
+                            <input type="file" id="form-schematics-files" class="form-input text-[10px]" multiple accept=".pdf,image/*" />
+                        </div>
+                    </div>
+                </div>
+                <div class="p-5 border-t border-cyan/15 flex gap-3 justify-end">
+                    <button id="modal-abort-btn" class="px-5 py-2.5 text-xs tracking-wider border border-red-500/40 text-red-400 rounded hover:bg-red-500/10 transition-colors min-h-[44px] cursor-pointer">ABORT</button>
+                    <button id="modal-register-btn" class="px-5 py-2.5 text-xs tracking-wider border border-cyan/50 text-cyan rounded hover:bg-cyan/10 transition-colors min-h-[44px] cursor-pointer">SAVE RECORD</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        var sf = document.getElementById('starfield-bg');
+        if (!sf) return;
+        for (var i = 0; i < 50; i++) {
+            var s = document.createElement('div');
+            s.className = 'star';
+            s.style.left = Math.random() * 100 + '%';
+            s.style.top = Math.random() * 100 + '%';
+            var size = Math.random() * 2 + 0.5;
+            s.style.width = size + 'px';
+            s.style.height = size + 'px';
+            s.style.setProperty('--dur', (Math.random() * 3 + 2) + 's');
+            s.style.animationDelay = Math.random() * 4 + 's';
+            sf.appendChild(s);
+        }
+    })();
+
+    document.getElementById('stardate-display').textContent = 'SD 2847.6';
+
+    // SVG placeholder asset generator for weapon visual representation
+    function getWeaponSvgPlaceholder(title, subtitle) {
+        return 'data:image/svg+xml;utf8,' + encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300" viewBox="0 0 600 300">' +
+            '<defs>' +
+            '<linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">' +
+            '<stop offset="0%" stop-color="#050a14"/>' +
+            '<stop offset="100%" stop-color="#0a1628"/>' +
+            '</linearGradient>' +
+            '<linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="0%">' +
+            '<stop offset="0%" stop-color="#00e5ff" stop-opacity="0.8"/>' +
+            '<stop offset="100%" stop-color="#ffd54f" stop-opacity="0.8"/>' +
+            '</linearGradient>' +
+            '</defs>' +
+            '<rect width="600" height="300" fill="url(#bg)"/>' +
+            '<rect x="20" y="20" width="560" height="260" rx="4" fill="none" stroke="#0e2a4a" stroke-width="2"/>' +
+            '<path d="M 40 60 L 560 60" stroke="#0e2a4a" stroke-dasharray="4 4"/>' +
+            '<text x="40" y="48" fill="#00e5ff" font-family="monospace" font-size="14" font-weight="bold" letter-spacing="2">STAR FORCE TACTICAL SCHEMATIC</text>' +
+            '<text x="560" y="48" fill="#ffd54f" font-family="monospace" font-size="12" text-anchor="end">SYS-VER 3.0</text>' +
+            // Technical Weapon Mock Graphics
+            '<path d="M 120 180 L 220 120 L 420 120 L 480 160 L 440 210 L 160 210 Z" fill="rgba(0,229,255,0.05)" stroke="#00e5ff" stroke-width="1.5"/>' +
+            '<circle cx="200" cy="165" r="18" fill="none" stroke="#ffd54f" stroke-width="1.5"/>' +
+            '<path d="M 240 140 L 380 140 L 360 190 L 260 190 Z" fill="rgba(255,213,79,0.1)" stroke="#ffd54f" stroke-width="1"/>' +
+            '<text x="60" y="245" fill="#00e5ff" font-family="monospace" font-size="16" font-weight="bold">' + escapeXML(title) + '</text>' +
+            '<text x="60" y="265" fill="#88aacc" font-family="monospace" font-size="11">' + escapeXML(subtitle) + '</text>' +
+            '</svg>'
+        );
+    }
+
+    function escapeXML(str) {
+        return String(str || '').replace(/[&<>'"]/g, function(tag) {
+            var chars = { '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&apos;', '"': '&quot;' };
+            return chars[tag] || tag;
+        });
+    }
+
+    var defaultRecords = [
+        // I. Automatic Pistols & Sidearms
+        {
+            id: 'rec-p101',
+            designation: "SF-P101 'Spark' Plasma Machine Pistol",
+            category: 'I. Automatic Pistols & Sidearms',
+            builder: 'Aegis Dynamics / Star Force Ordnance Division',
+            registryNumber: 'SF-P101',
+            status: 'Active',
+            fleet: 'Micro-magnetic induction cartridge cell',
+            range: '50 meters (Max: 120 meters)',
+            rof: '900 rpm',
+            primarySpec: 'High thermal and kinetic concussive force; capable of melting through standard military-grade composite plating and flesh on contact.',
+            created_at: '2026-08-11T08:00:00Z',
+            images: [{ id: 'img-p101', file_path: getWeaponSvgPlaceholder("SF-P101 'Spark'", "Aegis Dynamics - Plasma Sidearm"), original_name: 'sf_p101_schematic.svg' }],
+            schematics: [{ id: 'sch-p101', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_p101_specs.pdf' }]
+        },
+        {
+            id: 'rec-t102',
+            designation: "SF-T102 'Blink' Tachyon Sidearm",
+            category: 'I. Automatic Pistols & Sidearms',
+            builder: 'Chronos Aerospace & Defense',
+            registryNumber: 'SF-T102',
+            status: 'Active',
+            fleet: 'Vacuum-sealed tachyon capacitor magazine',
+            range: '75 meters (Max: 200 meters)',
+            rof: '800 rpm',
+            primarySpec: 'Bypasses conventional physical armor via subatomic phase-shifting, depositing clean micro-thermal energy spikes directly inside targets.',
+            created_at: '2026-08-11T08:05:00Z',
+            images: [{ id: 'img-t102', file_path: getWeaponSvgPlaceholder("SF-T102 'Blink'", "Chronos Aerospace - Tachyon Sidearm"), original_name: 'sf_t102_schematic.svg' }],
+            schematics: [{ id: 'sch-t102', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_t102_specs.pdf' }]
+        },
+        {
+            id: 'rec-n103',
+            designation: "SF-N103 'Skitter' Nanite Burst Pistol",
+            category: 'I. Automatic Pistols & Sidearms',
+            builder: 'Omega Bio-Tech / Star Force Covert Arsenal',
+            registryNumber: 'SF-N103',
+            status: 'Active',
+            fleet: '30-round micro-dart polymer magazine',
+            range: '40 meters (Max: 100 meters)',
+            rof: '1,000 rpm',
+            primarySpec: 'Progressive cellular and mechanical breakdown; destroys internal circuitry or biological tissue within seconds of penetration.',
+            created_at: '2026-08-11T08:10:00Z',
+            images: [{ id: 'img-n103', file_path: getWeaponSvgPlaceholder("SF-N103 'Skitter'", "Omega Bio-Tech - Nanite Burst Pistol"), original_name: 'sf_n103_schematic.svg' }],
+            schematics: [{ id: 'sch-n103', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_n103_specs.pdf' }]
+        },
+        {
+            id: 'rec-l104',
+            designation: "SF-L104 'Flash-Point' Photonic Auto-Pistol",
+            category: 'I. Automatic Pistols & Sidearms',
+            builder: 'Helios Light-Works',
+            registryNumber: 'SF-L104',
+            status: 'Active',
+            fleet: 'Direct-draw integrated solar-scavenging internal battery core',
+            range: '100 meters (Max: 250 meters)',
+            rof: '950 rpm',
+            primarySpec: 'Molecular-thin ultraviolet laser cutting force combined with intense optical-sensor blinding feedback.',
+            created_at: '2026-08-11T08:15:00Z',
+            images: [{ id: 'img-l104', file_path: getWeaponSvgPlaceholder("SF-L104 'Flash-Point'", "Helios Light-Works - Photonic Auto-Pistol"), original_name: 'sf_l104_schematic.svg' }],
+            schematics: [{ id: 'sch-l104', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_l104_specs.pdf' }]
+        },
+        {
+            id: 'rec-g105',
+            designation: "SF-G105 'Anchor' Graviton Pocket Driver",
+            category: 'I. Automatic Pistols & Sidearms',
+            builder: 'Titan Heavy Industries',
+            registryNumber: 'SF-G105',
+            status: 'Active',
+            fleet: 'Tungsten-needle clip housed within a magnetic acceleration block',
+            range: '60 meters (Max: 150 meters)',
+            rof: '750 rpm',
+            primarySpec: 'Multiplied kinetic momentum; impacts carry the crushing weight of a heavy projectile scaled up by temporary micro-gravity wells.',
+            created_at: '2026-08-11T08:20:00Z',
+            images: [{ id: 'img-g105', file_path: getWeaponSvgPlaceholder("SF-G105 'Anchor'", "Titan Heavy Industries - Graviton Driver"), original_name: 'sf_g105_schematic.svg' }],
+            schematics: [{ id: 'sch-g105', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_g105_specs.pdf' }]
+        },
+        // II. Rifles & Carbines
+        {
+            id: 'rec-p201',
+            designation: "SF-P201 'Sunstroke' Plasma Assault Rifle",
+            category: 'II. Rifles & Carbines',
+            builder: 'Aegis Dynamics',
+            registryNumber: 'SF-P201',
+            status: 'Active',
+            fleet: 'Belt-linked magnetic-bottle plasma flasks',
+            range: '500 meters (Max: 1,200 meters)',
+            rof: '650 rpm',
+            primarySpec: 'Severe thermal-incendiary destruction; equivalent to heavy armor-piercing high-explosive ordnance, melting through reinforced concrete and alloy bulkheads.',
+            created_at: '2026-08-11T08:25:00Z',
+            images: [{ id: 'img-p201', file_path: getWeaponSvgPlaceholder("SF-P201 'Sunstroke'", "Aegis Dynamics - Plasma Assault Rifle"), original_name: 'sf_p201_schematic.svg' }],
+            schematics: [{ id: 'sch-p201', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_p201_specs.pdf' }]
+        },
+        {
+            id: 'rec-t202',
+            designation: "SF-T202 'Paradox' Tachyon Designated Marksman Rifle",
+            category: 'II. Rifles & Carbines',
+            builder: 'Chronos Aerospace & Defense',
+            registryNumber: 'SF-T202',
+            status: 'Active',
+            fleet: 'High-capacity tachyon acceleration matrix clip',
+            range: '1,200 meters (Max: 2,500 meters)',
+            rof: 'Semi-automatic (120 rpm)',
+            primarySpec: 'Zero drop, instantaneous causality hit registration; cleanly pierces heavy shielding and advanced composite body armor at distance.',
+            created_at: '2026-08-11T08:30:00Z',
+            images: [{ id: 'img-t202', file_path: getWeaponSvgPlaceholder("SF-T202 'Paradox'", "Chronos Aerospace - Tachyon DMR"), original_name: 'sf_t202_schematic.svg' }],
+            schematics: [{ id: 'sch-t202', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_t202_specs.pdf' }]
+        },
+        {
+            id: 'rec-n203',
+            designation: "SF-N203 'Swarm-Line' Nanotech Battle Rifle",
+            category: 'II. Rifles & Carbines',
+            builder: 'Omega Bio-Tech',
+            registryNumber: 'SF-N203',
+            status: 'Active',
+            fleet: '45-round specialized hollow-slug magazine',
+            range: '450 meters (Max: 1,000 meters)',
+            rof: '700 rpm',
+            primarySpec: 'Chemical and structural dissolution; rapidly strips outer composite layers and exposes inner structural vulnerabilities.',
+            created_at: '2026-08-11T08:35:00Z',
+            images: [{ id: 'img-n203', file_path: getWeaponSvgPlaceholder("SF-N203 'Swarm-Line'", "Omega Bio-Tech - Nanotech Battle Rifle"), original_name: 'sf_n203_schematic.svg' }],
+            schematics: [{ id: 'sch-n203', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_n203_specs.pdf' }]
+        },
+        {
+            id: 'rec-l204',
+            designation: "SF-L204 'Solar-Array' Photonic Carbine",
+            category: 'II. Rifles & Carbines',
+            builder: 'Helios Light-Works',
+            registryNumber: 'SF-L204',
+            status: 'Active',
+            fleet: 'Core-integrated thermal capacitor with ambient light recharging',
+            range: '400 meters (Max: 900 meters)',
+            rof: 'Variable stream (up to 1,100 pulses/min)',
+            primarySpec: 'Clean thermal cauterization and high-frequency energy slicing with zero physical ammunition residue.',
+            created_at: '2026-08-11T08:40:00Z',
+            images: [{ id: 'img-l204', file_path: getWeaponSvgPlaceholder("SF-L204 'Solar-Array'", "Helios Light-Works - Photonic Carbine"), original_name: 'sf_l204_schematic.svg' }],
+            schematics: [{ id: 'sch-l204', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_l204_specs.pdf' }]
+        },
+        {
+            id: 'rec-g205',
+            designation: "SF-G205 'Crush-Field' Graviton Battle Rifle",
+            category: 'II. Rifles & Carbines',
+            builder: 'Titan Heavy Industries',
+            registryNumber: 'SF-G205',
+            status: 'Active',
+            fleet: '30-round graviton-wrapped heavy slug magazine',
+            range: '600 meters (Max: 1,400 meters)',
+            rof: '550 rpm',
+            primarySpec: 'High kinetic crush impact; deforms target armor from the exterior inward via localized high-G spike fields upon shell contact.',
+            created_at: '2026-08-11T08:45:00Z',
+            images: [{ id: 'img-g205', file_path: getWeaponSvgPlaceholder("SF-G205 'Crush-Field'", "Titan Heavy Industries - Graviton Rifle"), original_name: 'sf_g205_schematic.svg' }],
+            schematics: [{ id: 'sch-g205', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_g205_specs.pdf' }]
+        },
+        // III. Grenades & Explosives
+        {
+            id: 'rec-a301',
+            designation: "SF-A301 'Singularity-Zero' Antimatter Grenade",
+            category: 'III. Grenades & Explosives',
+            builder: 'Void-Tech Laboratories',
+            registryNumber: 'SF-A301',
+            status: 'Active',
+            fleet: 'Programmable proximity/timed digital trigger',
+            range: '30 meters (Max: 15m vaporization / 50m shockwave)',
+            rof: 'N/A',
+            primarySpec: 'Miniature nuclear-grade thermal and explosive annihilation radius; completely vaporizes everything within ground zero.',
+            created_at: '2026-08-11T08:50:00Z',
+            images: [{ id: 'img-a301', file_path: getWeaponSvgPlaceholder("SF-A301 'Singularity-Zero'", "Void-Tech - Antimatter Grenade"), original_name: 'sf_a301_schematic.svg' }],
+            schematics: [{ id: 'sch-a301', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_a301_specs.pdf' }]
+        },
+        {
+            id: 'rec-p302',
+            designation: "SF-P302 'Thermal-Bloom' Plasma Grenade",
+            category: 'III. Grenades & Explosives',
+            builder: 'Aegis Dynamics',
+            registryNumber: 'SF-P302',
+            status: 'Active',
+            fleet: 'Impact-adhesive surface trigger with 3-second delay timer',
+            range: '35 meters (Max: 8-meter liquid-plasma melt zone)',
+            rof: 'N/A',
+            primarySpec: 'Instant high-temperature plasma dispersion; liquefies vehicle armor and bunker doors.',
+            created_at: '2026-08-11T08:55:00Z',
+            images: [{ id: 'img-p302', file_path: getWeaponSvgPlaceholder("SF-P302 'Thermal-Bloom'", "Aegis Dynamics - Plasma Grenade"), original_name: 'sf_p302_schematic.svg' }],
+            schematics: [{ id: 'sch-p302', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_p302_specs.pdf' }]
+        },
+        {
+            id: 'rec-g303',
+            designation: "SF-G303 'Crush-Sphere' Graviton Implosion Grenade",
+            category: 'III. Grenades & Explosives',
+            builder: 'Titan Heavy Industries',
+            registryNumber: 'SF-G303',
+            status: 'Active',
+            fleet: 'Magnetic proximity or manual thumb-toggle activation',
+            range: '25 meters (Max: 10-meter crushing field)',
+            rof: 'N/A',
+            primarySpec: 'Sudden 500G localized gravitational spike; collapses internal structures and crushes personnel inward.',
+            created_at: '2026-08-11T09:00:00Z',
+            images: [{ id: 'img-g303', file_path: getWeaponSvgPlaceholder("SF-G303 'Crush-Sphere'", "Titan Heavy Industries - Implosion Grenade"), original_name: 'sf_g303_schematic.svg' }],
+            schematics: [{ id: 'sch-g303', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_g303_specs.pdf' }]
+        },
+        {
+            id: 'rec-n304',
+            designation: "SF-N304 'Grey-Cloud' Nanite Dispersion Mine",
+            category: 'III. Grenades & Explosives',
+            builder: 'Omega Bio-Tech',
+            registryNumber: 'SF-N304',
+            status: 'Active',
+            fleet: 'Passive motion and acoustic sensor trigger',
+            range: 'Up to 100 meters (Max: 12-meter dispersion fog cloud)',
+            rof: 'N/A',
+            primarySpec: 'Total molecular degradation; devours exposed machinery, electrical systems, and biological matter.',
+            created_at: '2026-08-11T09:05:00Z',
+            images: [{ id: 'img-n304', file_path: getWeaponSvgPlaceholder("SF-N304 'Grey-Cloud'", "Omega Bio-Tech - Nanite Mine"), original_name: 'sf_n304_schematic.svg' }],
+            schematics: [{ id: 'sch-n304', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_n304_specs.pdf' }]
+        },
+        {
+            id: 'rec-l305',
+            designation: "SF-L305 'Flash-Blind' Photonic Stun Grenade",
+            category: 'III. Grenades & Explosives',
+            builder: 'Helios Light-Works',
+            registryNumber: 'SF-L305',
+            status: 'Active',
+            fleet: '1.5-second airburst timer',
+            range: '40 meters (Max: 25-meter line-of-sight flash zone)',
+            rof: 'N/A',
+            primarySpec: 'Permanent blinding of optical receptors and sensor suites via high-intensity coherent ultraviolet strobe arrays.',
+            created_at: '2026-08-11T09:10:00Z',
+            images: [{ id: 'img-l305', file_path: getWeaponSvgPlaceholder("SF-L305 'Flash-Blind'", "Helios Light-Works - Stun Grenade"), original_name: 'sf_l305_schematic.svg' }],
+            schematics: [{ id: 'sch-l305', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_l305_specs.pdf' }]
+        },
+        // IV. Blades & Close-Quarters Weapons
+        {
+            id: 'rec-l401',
+            designation: "SF-L401 'Sun-Blade' Photonic Combat Knife",
+            category: 'IV. Blades & Close-Quarters Weapons',
+            builder: 'Helios Light-Works',
+            registryNumber: 'SF-L401',
+            status: 'Active',
+            fleet: 'Hilt-integrated micro-battery cell',
+            range: 'Melee (15-45cm extension)',
+            rof: 'N/A',
+            primarySpec: 'Molecular-edge thermal cutting; slips through heavy composite combat riggings and hard armor shells with zero physical drag.',
+            created_at: '2026-08-11T09:15:00Z',
+            images: [{ id: 'img-l401', file_path: getWeaponSvgPlaceholder("SF-L401 'Sun-Blade'", "Helios Light-Works - Photonic Knife"), original_name: 'sf_l401_schematic.svg' }],
+            schematics: [{ id: 'sch-l401', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_l401_specs.pdf' }]
+        },
+        {
+            id: 'rec-p402',
+            designation: "SF-P402 'Thermal-Edge' Plasma Machete",
+            category: 'IV. Blades & Close-Quarters Weapons',
+            builder: 'Aegis Dynamics',
+            registryNumber: 'SF-P402',
+            status: 'Active',
+            fleet: 'Magnetic induction handle core',
+            range: 'Melee (60 cm length)',
+            rof: 'N/A',
+            primarySpec: 'White-hot plasma thermal shearing; designed to cut through dense jungle foliage and armored vehicle seals simultaneously.',
+            created_at: '2026-08-11T09:20:00Z',
+            images: [{ id: 'img-p402', file_path: getWeaponSvgPlaceholder("SF-P402 'Thermal-Edge'", "Aegis Dynamics - Plasma Machete"), original_name: 'sf_p402_schematic.svg' }],
+            schematics: [{ id: 'sch-p402', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_p402_specs.pdf' }]
+        },
+        {
+            id: 'rec-n403',
+            designation: "SF-N403 'Molecular-Tooth' Vibro-Dagger",
+            category: 'IV. Blades & Close-Quarters Weapons',
+            builder: 'Omega Bio-Tech',
+            registryNumber: 'SF-N403',
+            status: 'Active',
+            fleet: 'Internal kinetic-charging micro-cell',
+            range: 'Melee (20 cm length)',
+            rof: 'N/A',
+            primarySpec: 'Molecular vibration shearing; glides seamlessly between cellular matrix bonds for silent, frictionless penetrations.',
+            created_at: '2026-08-11T09:25:00Z',
+            images: [{ id: 'img-n403', file_path: getWeaponSvgPlaceholder("SF-N403 'Molecular-Tooth'", "Omega Bio-Tech - Vibro-Dagger"), original_name: 'sf_n403_schematic.svg' }],
+            schematics: [{ id: 'sch-n403', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_n403_specs.pdf' }]
+        },
+        {
+            id: 'rec-g404',
+            designation: "SF-G404 'Mass-Weight' Graviton Combat Axe",
+            category: 'IV. Blades & Close-Quarters Weapons',
+            builder: 'Titan Heavy Industries',
+            registryNumber: 'SF-G404',
+            status: 'Active',
+            fleet: 'Shaft-embedded graviton pulse generator cell',
+            range: 'Melee (90 cm length)',
+            rof: 'N/A',
+            primarySpec: 'Multiplied kinetic impact force; spikes striking weight up to several tons upon surface contact to breach vaults.',
+            created_at: '2026-08-11T09:30:00Z',
+            images: [{ id: 'img-g404', file_path: getWeaponSvgPlaceholder("SF-G404 'Mass-Weight'", "Titan Heavy Industries - Graviton Axe"), original_name: 'sf_g404_schematic.svg' }],
+            schematics: [{ id: 'sch-g404', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_g404_specs.pdf' }]
+        },
+        {
+            id: 'rec-t405',
+            designation: "SF-T405 'Phase-Edge' Tachyon Combat Knife",
+            category: 'IV. Blades & Close-Quarters Weapons',
+            builder: 'Chronos Aerospace & Defense',
+            registryNumber: 'SF-T405',
+            status: 'Active',
+            fleet: 'Micro-tachyon stabilization emitter in grip',
+            range: 'Melee (25 cm length)',
+            rof: 'N/A',
+            primarySpec: 'Quantum-stable edge bypasses outer garments and standard armor cleanly before materializing solid inside target.',
+            created_at: '2026-08-11T09:35:00Z',
+            images: [{ id: 'img-t405', file_path: getWeaponSvgPlaceholder("SF-T405 'Phase-Edge'", "Chronos Aerospace - Tachyon Knife"), original_name: 'sf_t405_schematic.svg' }],
+            schematics: [{ id: 'sch-t405', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_t405_specs.pdf' }]
+        },
+        // V. Teleporter-Fed Small Arms
+        {
+            id: 'rec-x601',
+            designation: "SF-X601 'Portal-Strike' Teleporter-Fed Pistol",
+            category: 'V. Teleporter-Fed Small Arms',
+            builder: 'Quantum Leap Kinetics / Star Force Ordnance Division',
+            registryNumber: 'SF-X601',
+            status: 'Active',
+            fleet: 'Sub-spatial umbilical link to local matter-compiler / portal hub',
+            range: '100 meters (Direct) / Inter-sector relay',
+            rof: '850 rpm',
+            primarySpec: 'Bypasses barricades entirely by materializing ammunition rounds directly past physical cover into the target\'s immediate airspace.',
+            created_at: '2026-08-11T09:40:00Z',
+            images: [{ id: 'img-x601', file_path: getWeaponSvgPlaceholder("SF-X601 'Portal-Strike'", "Quantum Leap Kinetics - Teleporter Pistol"), original_name: 'sf_x601_schematic.svg' }],
+            schematics: [{ id: 'sch-x601', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_x601_specs.pdf' }]
+        },
+        {
+            id: 'rec-x602',
+            designation: "SF-X602 'Gate-Keeper' Teleporter Assault Rifle",
+            category: 'V. Teleporter-Fed Small Arms',
+            builder: 'Quantum Leap Kinetics',
+            registryNumber: 'SF-X602',
+            status: 'Active',
+            fleet: 'Direct quantum entanglement portal feeder tied to secure supply drops',
+            range: '600 meters (Max: 1,500 meters)',
+            rof: '700 rpm',
+            primarySpec: 'Heavy kinetic and thermal shock; fires projectiles fed directly from a secured armory portal node miles away, ensuring infinite magazine capacity during active combat.',
+            created_at: '2026-08-11T09:45:00Z',
+            images: [{ id: 'img-x602', file_path: getWeaponSvgPlaceholder("SF-X602 'Gate-Keeper'", "Quantum Leap Kinetics - Teleporter Rifle"), original_name: 'sf_x602_schematic.svg' }],
+            schematics: [{ id: 'sch-x602', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_x602_specs.pdf' }]
+        },
+        {
+            id: 'rec-x603',
+            designation: "SF-X603 'Void-Feed' Sub-Compact Machine Pistol",
+            category: 'V. Teleporter-Fed Small Arms',
+            builder: 'Chronos Aerospace & Quantum Labs',
+            registryNumber: 'SF-X603',
+            status: 'Active',
+            fleet: 'Integrated pocket singularity portal node',
+            range: '45 meters (Max: 110 meters)',
+            rof: '1,100 rpm',
+            primarySpec: 'Rapid multi-vector micro-projectiles materialized instantaneously inside armor seams or weak points.',
+            created_at: '2026-08-11T09:50:00Z',
+            images: [{ id: 'img-x603', file_path: getWeaponSvgPlaceholder("SF-X603 'Void-Feed'", "Chronos Aerospace - Sub-Compact PDW"), original_name: 'sf_x603_schematic.svg' }],
+            schematics: [{ id: 'sch-x603', file_path: 'data:application/pdf;base64,JVBERi0xLjcK...', original_name: 'sf_x603_specs.pdf' }]
+        }
+    ];
+
+    var recordsData = defaultRecords;
+    try {
+        var storedDB = localStorage.getItem('sf_relational_weapons_db_v3');
+        if (storedDB) {
+            var parsed = JSON.parse(storedDB);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                recordsData = parsed;
+            }
+        } else {
+            localStorage.setItem('sf_relational_weapons_db_v3', JSON.stringify(defaultRecords));
+        }
+    } catch (err) {
+        console.warn('Storage read error, falling back to defaults:', err);
+    }
+
+    // Merge in records from the Hostinger database and push any local-only
+    // records up to it, so the MySQL table is the single source of truth.
+    try {
+        fetch('weapons.php', { headers: { 'Accept': 'application/json' } })
+            .then(function (res) { return res.ok ? res.json() : null; })
+            .then(function (data) {
+                if (!data) return;
+                var raw = Array.isArray(data) ? data : (data.records || []);
+                if (!Array.isArray(raw) || raw.length === 0) return;
+                var localIds = {}, serverIds = {}, merged = recordsData.slice();
+                recordsData.forEach(function (r) { localIds[r.id] = true; });
+                raw.forEach(function (r) {
+                    serverIds[r.id] = true;
+                    if (!localIds[r.id]) {
+                        merged.push({
+                            id: r.id,
+                            designation: r.designation,
+                            category: r.category,
+                            builder: r.builder,
+                            registryNumber: r.registry_number || r.registryNumber,
+                            status: r.status,
+                            fleet: r.fleet,
+                            range: r.effective_range || r.range,
+                            rof: r.rate_of_fire || r.rof,
+                            primarySpec: r.primary_spec || r.primarySpec,
+                            created_at: r.created_at,
+                            images: [],
+                            schematics: []
+                        });
+                    }
+                });
+                if (merged.length !== recordsData.length) {
+                    recordsData = merged;
+                    saveDatabase();
+                    renderSidebar();
+                    renderMainContent();
+                }
+                recordsData.forEach(function (r) {
+                    if (!serverIds[r.id]) syncRecordToServer(r, false);
+                });
+            }).catch(function () {});
+    } catch (err) {}
+
+    var currentRecordId = recordsData[0] ? recordsData[0].id : (defaultRecords[0].id);
+    var activeTab = 'registry';
+    var isEditing = false;
+
+    function saveDatabase() {
+        try {
+            localStorage.setItem('sf_relational_weapons_db_v3', JSON.stringify(recordsData));
+        } catch (err) {
+            console.error('Storage write error:', err);
+        }
+    }
+
+    // ---- Hostinger MySQL sync (weapons-sync.php) ----
+    // Set ARMORY_SYNC_KEY to the same value as $SYNC_KEY in weapons-sync.php.
+    var ARMORY_SYNC_URL = 'weapons-sync.php';
+    var ARMORY_SYNC_KEY = '1641';
+
+    function serverPayload(r) {
+        return {
+            id: r.id,
+            designation: r.designation || '',
+            category: r.category || '',
+            builder: r.builder || '',
+            registry_number: r.registryNumber || r.registry_number || '',
+            status: r.status || 'Active',
+            fleet: r.fleet || '',
+            effective_range: r.range || r.effective_range || '',
+            rate_of_fire: r.rof || r.rate_of_fire || '',
+            primary_spec: r.primarySpec || r.primary_spec || '',
+            created_at: r.created_at || new Date().toISOString()
+        };
+    }
+
+    function syncRecordToServer(record, isUpdate) {
+        try {
+            var payload = serverPayload(record);
+            payload.key = ARMORY_SYNC_KEY;
+            fetch(ARMORY_SYNC_URL, {
+                method: isUpdate ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Sync-Key': ARMORY_SYNC_KEY },
+                body: JSON.stringify(payload)
+            }).then(function (res) {
+                logApiAction((isUpdate ? 'PUT /api/records/' : 'POST /api/records/') + record.id,
+                    res.ok ? 'Synced to database' : 'Sync failed (HTTP ' + res.status + ')');
+            }).catch(function () {
+                logApiAction((isUpdate ? 'PUT /api/records/' : 'POST /api/records/') + record.id,
+                    'Sync failed — saved locally only');
+            });
+        } catch (err) {
+            console.warn('Server sync error:', err);
+        }
+    }
+
+    function deleteRecordFromServer(id) {
+        try {
+            fetch(ARMORY_SYNC_URL + '?id=' + encodeURIComponent(id) + '&key=' + encodeURIComponent(ARMORY_SYNC_KEY), {
+                method: 'DELETE',
+                headers: { 'X-Sync-Key': ARMORY_SYNC_KEY }
+            }).then(function (res) {
+                logApiAction('DELETE /api/records/' + id,
+                    res.ok ? 'Deleted from database' : 'Delete failed (HTTP ' + res.status + ')');
+            }).catch(function () {
+                logApiAction('DELETE /api/records/' + id, 'Delete failed — removed locally only');
+            });
+        } catch (err) {
+            console.warn('Server delete error:', err);
+        }
+    }
+
+    function reseedDatabase() {
+        if (confirm('Are you sure you want to reseed the database? All custom modifications will be reset to the 23 default records from the Arsenal report.')) {
+            recordsData = JSON.parse(JSON.stringify(defaultRecords));
+            saveDatabase();
+            currentRecordId = recordsData[0].id;
+            renderSidebar();
+            renderMainContent();
+            logApiAction('POST /api/database/reseed', 'Database Reseeded with 23 Records');
+            alert('Database successfully reseeded with all 23 tactical records.');
+        }
+    }
+
+    function backupDatabaseJSON() {
+        var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(recordsData, null, 2));
+        var dlAnchor = document.createElement('a');
+        dlAnchor.setAttribute("href", dataStr);
+        dlAnchor.setAttribute("download", "star_force_arsenal_backup.json");
+        document.body.appendChild(dlAnchor);
+        dlAnchor.click();
+        dlAnchor.remove();
+        logApiAction('GET /api/database/backup', 'JSON Backup Exported');
+    }
+
+    function restoreDatabaseJSON(event) {
+        var file = event.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                var imported = JSON.parse(e.target.result);
+                if (Array.isArray(imported) && imported.length > 0) {
+                    recordsData = imported;
+                    saveDatabase();
+                    currentRecordId = recordsData[0].id;
+                    renderSidebar();
+                    renderMainContent();
+                    logApiAction('POST /api/database/restore', 'JSON Database Restored');
+                    alert('Database successfully restored (' + recordsData.length + ' records loaded).');
+                } else {
+                    alert('Invalid database file structure.');
+                }
+            } catch (err) {
+                alert('Failed to parse JSON file: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function logApiAction(action, endpoint) {
+        var logBox = document.getElementById('api-status-log');
+        if (!logBox) return;
+        var timeStr = new Date().toLocaleTimeString();
+        logBox.textContent = '[' + timeStr + '] SUCCESS: ' + action + ' -> ' + endpoint;
+    }
+
+    function renderSidebar() {
+        var listContainer = document.getElementById('weapon-list');
+        var countEl = document.getElementById('weapon-count');
+        if (!listContainer) return;
+        if (countEl) countEl.textContent = recordsData.length + ' RECORDS REGISTERED';
+        listContainer.innerHTML = '';
+
+        var categories = {};
+        recordsData.forEach(function(r) {
+            var cat = r.category || 'I. Automatic Pistols & Sidearms';
+            if (!categories[cat]) categories[cat] = [];
+            categories[cat].push(r);
+        });
+
+        Object.keys(categories).sort().forEach(function(cat) {
+            var catHeader = document.createElement('div');
+            catHeader.className = 'category-header truncate';
+            catHeader.textContent = cat;
+            listContainer.appendChild(catHeader);
+
+            categories[cat].forEach(function(r) {
+                var isSelected = (r.id === currentRecordId);
+                var div = document.createElement('div');
+                div.className = 'sidebar-weapon p-2.5 ml-2 rounded flex items-center justify-between ' + (isSelected ? 'selected' : '');
+                div.onclick = function() {
+                    currentRecordId = r.id;
+                    renderSidebar();
+                    renderMainContent();
+                    if (window.innerWidth < 768) toggleMobileSidebar(false);
+                };
+
+                div.innerHTML = `
+                    <div class="min-w-0 flex-1 pr-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-cyan inline-block"></span>
+                            <span class="text-cyan text-xs font-bold truncate tracking-wider">${escapeHTML(r.designation)}</span>
+                        </div>
+                        <div class="text-[10px] text-cyan/50 truncate mt-0.5 pl-3.5">${(r.images || []).length} Images | ${(r.schematics || []).length} Schematics</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[9px] px-1.5 py-0.5 rounded border border-cyan/30 text-cyan">${escapeHTML(r.status)}</span>
+                        ${recordsData.length > 1 ? '<button class="delete-btn text-red-400/60 hover:text-red-400 p-1 cursor-pointer" title="Delete" onclick="event.stopPropagation(); deleteRecord(\'' + r.id + '\')"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>' : ''}
+                    </div>
+                `;
+                listContainer.appendChild(div);
+            });
+        });
+        if (window.lucide && typeof lucide.createIcons === 'function') {
+            lucide.createIcons();
+        }
+    }
+
+    function renderMainContent() {
+        var r = recordsData.find(function(item) { return item.id === currentRecordId; });
+        var contentArea = document.getElementById('tab-content-area');
+        if (!contentArea) return;
+        if (!r) {
+            contentArea.innerHTML = '<div class="text-cyan/50 text-center py-12">NO RECORD SELECTED</div>';
+            return;
+        }
+
+        var html = '';
+        if (activeTab === 'registry') {
+            var primaryImgUrl = (r.images && r.images[0]) ? r.images[0].file_path : getWeaponSvgPlaceholder(r.designation, r.builder);
+            html = `
+                <div class="space-y-6">
+                    <div class="glow-card p-6 relative overflow-hidden">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-cyan/25 pb-4 mb-4">
+                            <div>
+                                <span class="text-amber text-[10px] tracking-widest text-glow-amber">${escapeHTML(r.registryNumber || 'REC-XXX')} // ${escapeHTML(r.category || '')}</span>
+                                <h2 class="text-xl md:text-2xl text-cyan font-bold tracking-wider text-glow mt-1">${escapeHTML(r.designation)}</h2>
+                                <p class="text-cyan/60 text-xs mt-0.5">ID: ${escapeHTML(r.id)}</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="openEditModal('${r.id}')" class="px-3 py-1.5 text-xs border border-cyan/40 text-cyan rounded hover:bg-cyan/10 cursor-pointer">EDIT RECORD</button>
+                                <span class="px-3 py-1 text-xs rounded border border-cyan/30 bg-cyan/10 text-cyan">${escapeHTML(r.status)}</span>
+                            </div>
+                        </div>
+
+                        <!-- Visual Asset Display inside Specification Card -->
+                        <div class="mb-6 p-3 bg-terminal-panel rounded border border-cyan/20">
+                            <span class="text-amber text-[10px] block mb-2 tracking-widest">TACTICAL VISUAL ASSET PREVIEW</span>
+                            <div class="rounded overflow-hidden bg-black/40 flex items-center justify-center border border-cyan/15 max-h-[260px]">
+                                <img src="${primaryImgUrl}" alt="${escapeHTML(r.designation)}" style="max-height:240px; width:100%; object-fit:contain;" />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                            <div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">MANUFACTURER</span><span class="text-cyan font-bold mt-0.5 block">${escapeHTML(r.builder || 'N/A')}</span></div>
+                            <div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">EFFECTIVE RANGE</span><span class="text-cyan font-bold mt-0.5 block">${escapeHTML(r.range || 'N/A')}</span></div>
+                            <div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">RATE OF FIRE</span><span class="text-cyan font-bold mt-0.5 block">${escapeHTML(r.rof || 'N/A')}</span></div>
+                            <div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">ATTACHED IMAGES</span><span class="text-sfgreen font-bold mt-0.5 block">${(r.images || []).length} files linked</span></div>
+                            <div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">ATTACHED SCHEMATICS</span><span class="text-amber font-bold mt-0.5 block">${(r.schematics || []).length} files linked</span></div>
+                            <div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">POWER FEED / AMMO</span><span class="text-cyan font-bold mt-0.5 block">${escapeHTML(r.fleet || 'Standard')}</span></div>
+                        </div>
+                        <div class="mt-6 space-y-4 text-xs">
+                            <div class="p-4 bg-terminal-panel/80 rounded border border-cyan/15"><h3 class="text-amber text-[11px] mb-2">DAMAGE & CHARACTERISTICS / PAYLOAD</h3><p class="text-cyan/90">${escapeHTML(r.primarySpec || 'No specifications provided.')}</p></div>
+                        </div>
+                    </div>
+                </div>`;
+        } else if (activeTab === 'performance') {
+            html = `
+                <div class="glow-card p-6">
+                    <h3 class="text-cyan text-sm font-bold tracking-widest text-glow mb-4">BALLISTIC & RELATIONAL METRICS (${escapeHTML(r.designation)})</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+                        <div class="space-y-4 text-xs">
+                            <div class="p-4 bg-terminal-panel/80 rounded border border-cyan/15 flex justify-between"><span>Database Storage Integrity</span><span class="text-sfgreen font-bold">100% (Relational UUID)</span></div>
+                            <div class="p-4 bg-terminal-panel/80 rounded border border-cyan/15 flex justify-between"><span>File Sync Status</span><span class="text-cyan font-bold">S3 / Local Storage Synced</span></div>
+                        </div>
+                        <div class="p-4 bg-terminal-panel/80 rounded border border-cyan/15 text-center"><canvas id="weaponPerformanceChart" class="max-h-[240px] w-full"></canvas></div>
+                    </div>
+                </div>`;
+        } else if (activeTab === 'compatibility') {
+            html = `
+                <div class="glow-card p-6">
+                    <h3 class="text-cyan text-sm font-bold tracking-widest text-glow mb-4">PLATFORM COMPATIBILITY & SECTORS (${escapeHTML(r.designation)})</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                        <div class="p-4 bg-terminal-panel/80 rounded border border-cyan/20"><div class="text-amber font-bold mb-1">STAR FORCE VANGUARD</div><div class="mt-3 text-sfgreen text-[10px]">● AUTHORIZED</div></div>
+                        <div class="p-4 bg-terminal-panel/80 rounded border border-cyan/20"><div class="text-amber font-bold mb-1">SECTOR 7 OUTPOST</div><div class="mt-3 text-sfgreen text-[10px]">● SYNCED</div></div>
+                    </div>
+                </div>`;
+        } else if (activeTab === 'schematics') {
+            html = `
+                <div class="space-y-6">
+                    <div class="glow-card p-6">
+                        <h3 class="text-amber text-xs mb-3 font-bold tracking-widest">VISUAL ASSET GALLERY (${(r.images || []).length} IMAGES)</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            ${(r.images || []).map(function(img, idx) {
+                                return '<div class="p-3 bg-terminal-panel rounded border border-cyan/20 space-y-2">' +
+                                    '<div class="text-[10px] text-cyan/70 font-bold">IMAGE ' + (idx + 1) + ': ' + escapeHTML(img.original_name) + '</div>' +
+                                    '<div class="rounded overflow-hidden bg-black/60 h-[180px] flex items-center justify-center border border-cyan/10">' +
+                                    '<img src="' + img.file_path + '" alt="Asset" style="max-height:170px; width:100%; object-fit:contain;" />' +
+                                    '</div>' +
+                                    '</div>';
+                            }).join('')}
+                        </div>
+                    </div>
+                    <div class="glow-card p-6">
+                        <h3 class="text-amber text-xs mb-3 font-bold tracking-widest">ATTACHED SCHEMATICS & FILES (${(r.schematics || []).length})</h3>
+                        <div class="space-y-2">
+                            ${(r.schematics || []).map(function(sch) {
+                                return '<div class="p-3 bg-terminal-panel rounded flex items-center justify-between text-xs border border-cyan/20">' +
+                                    '<span class="text-cyan">📄 ' + escapeHTML(sch.original_name) + ' (ID: ' + sch.id + ')</span>' +
+                                    '<a href="' + sch.file_path + '" download="' + escapeHTML(sch.original_name) + '" class="px-3 py-1 border border-cyan/40 text-cyan rounded hover:bg-cyan/10 cursor-pointer">DOWNLOAD</a>' +
+                                '</div>';
+                            }).join('')}
+                            ${(!r.schematics || r.schematics.length === 0) ? '<div class="text-cyan/50 text-xs">No schematics attached to this record.</div>' : ''}
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        contentArea.innerHTML = html;
+        if (activeTab === 'performance') setTimeout(initPerformanceChart, 50);
+        if (window.lucide && typeof lucide.createIcons === 'function') {
+            lucide.createIcons();
+        }
+    }
+
+    function initPerformanceChart() {
+        var ctx = document.getElementById('weaponPerformanceChart');
+        if (!ctx || typeof Chart === 'undefined') return;
+        try {
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Schema Compliance', 'File Linking', 'Query Speed', 'Payload Yield', 'API Response', 'Storage Sync'],
+                    datasets: [{ data: [99, 96, 99, 95, 98, 97], backgroundColor: 'rgba(0, 229, 255, 0.15)', borderColor: '#00e5ff', borderWidth: 1.5 }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { r: { grid: { color: 'rgba(0, 229, 255, 0.15)' }, ticks: { display: false } } } }
+            });
+        } catch (e) {
+            console.error('Chart init error:', e);
+        }
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.onclick = function() {
+            document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            activeTab = btn.getAttribute('data-tab');
+            renderMainContent();
+        };
+    });
+
+    function toggleMobileSidebar(open) {
+        var sidebar = document.getElementById('weapon-sidebar');
+        var backdrop = document.getElementById('sidebar-backdrop');
+        if (!sidebar || !backdrop) return;
+        if (open) { sidebar.classList.add('open'); backdrop.classList.add('open'); }
+        else { sidebar.classList.remove('open'); backdrop.classList.remove('open'); }
+    }
+    
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var closeBtn = document.getElementById('sidebar-close-btn');
+    var backdropEl = document.getElementById('sidebar-backdrop');
+    if (toggleBtn) toggleBtn.onclick = function() { toggleMobileSidebar(true); };
+    if (closeBtn) closeBtn.onclick = function() { toggleMobileSidebar(false); };
+    if (backdropEl) backdropEl.onclick = function() { toggleMobileSidebar(false); };
+
+    var modal = document.getElementById('add-weapon-modal');
+    var addBtn = document.getElementById('add-weapon-btn');
+    var modalAbort = document.getElementById('modal-abort-btn');
+    var modalOverlay = document.getElementById('modal-overlay');
+    var modalRegister = document.getElementById('modal-register-btn');
+    var reseedBtn = document.getElementById('reseed-db-btn');
+    var backupBtn = document.getElementById('backup-db-btn');
+    var importFile = document.getElementById('import-db-file');
+    var exportPdfBtn = document.getElementById('export-pdf-btn');
+    var exportDocBtn = document.getElementById('export-doc-btn');
+
+    if (reseedBtn) reseedBtn.onclick = reseedDatabase;
+    if (backupBtn) backupBtn.onclick = backupDatabaseJSON;
+    if (importFile) importFile.onchange = restoreDatabaseJSON;
+    if (exportPdfBtn) exportPdfBtn.onclick = function() { exportDocument('pdf'); };
+    if (exportDocBtn) exportDocBtn.onclick = function() { exportDocument('doc'); };
+
+    if (addBtn) {
+        addBtn.onclick = function() {
+            isEditing = false;
+            document.getElementById('modal-title').textContent = 'REGISTER NEW RECORD';
+            document.getElementById('form-record-id').value = '';
+            document.getElementById('form-designation').value = '';
+            document.getElementById('form-builder').value = '';
+            document.getElementById('form-registry').value = '';
+            document.getElementById('form-fleet').value = '';
+            document.getElementById('form-range').value = '';
+            document.getElementById('form-rof').value = '';
+            document.getElementById('form-primary-spec').value = '';
+            if (modal) modal.classList.remove('hidden');
+        };
+    }
+
+    window.openEditModal = function(id) {
+        var r = recordsData.find(function(item) { return item.id === (id || currentRecordId); });
+        if (!r) return;
+        isEditing = true;
+        document.getElementById('modal-title').textContent = 'EDIT RECORD (' + r.id + ')';
+        document.getElementById('form-record-id').value = r.id;
+        document.getElementById('form-designation').value = r.designation || '';
+        document.getElementById('form-category').value = r.category || 'I. Automatic Pistols & Sidearms';
+        document.getElementById('form-builder').value = r.builder || '';
+        document.getElementById('form-registry').value = r.registryNumber || '';
+        document.getElementById('form-status').value = r.status || 'Active';
+        document.getElementById('form-fleet').value = r.fleet || '';
+        document.getElementById('form-range').value = r.range || '';
+        document.getElementById('form-rof').value = r.rof || '';
+        document.getElementById('form-primary-spec').value = r.primarySpec || '';
+        if (modal) modal.classList.remove('hidden');
+    };
+
+    if (modalAbort) modalAbort.onclick = function() { if (modal) modal.classList.add('hidden'); };
+    if (modalOverlay) modalOverlay.onclick = function(e) { if (e === modalOverlay && modal) modal.classList.add('hidden'); };
+
+    if (modalRegister) {
+        modalRegister.onclick = function() {
+            var designationInput = document.getElementById('form-designation');
+            if (!designationInput) return;
+            var designation = designationInput.value.trim();
+            if (!designation) { alert('RECORD TITLE / DESIGNATION IS REQUIRED.'); return; }
+
+            var recordPayload = {
+                designation: designation,
+                category: document.getElementById('form-category').value,
+                builder: document.getElementById('form-builder').value.trim(),
+                registryNumber: document.getElementById('form-registry').value.trim(),
+                status: document.getElementById('form-status').value,
+                fleet: document.getElementById('form-fleet').value.trim(),
+                range: document.getElementById('form-range').value.trim(),
+                rof: document.getElementById('form-rof').value.trim(),
+                primarySpec: document.getElementById('form-primary-spec').value.trim()
+            };
+
+            var primaryImageInput = document.getElementById('form-primary-image-file');
+            var schematicsInput = document.getElementById('form-schematics-files');
+            
+            var newImages = [];
+            var newSchematics = [];
+
+            if (primaryImageInput && primaryImageInput.files && primaryImageInput.files[0]) {
+                var fileObj = primaryImageInput.files[0];
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var base64Data = e.target.result;
+                    finalizeSave(base64Data, fileObj.name);
+                };
+                reader.readAsDataURL(fileObj);
+                return;
+            }
+
+            finalizeSave(null, null);
+
+            function finalizeSave(replacedImageBase64, replacedImageName) {
+                if (isEditing) {
+                    var editId = document.getElementById('form-record-id').value;
+                    var idx = recordsData.findIndex(function(r) { return r.id === editId; });
+                    if (idx !== -1) {
+                        Object.assign(recordsData[idx], recordPayload);
+                        if (replacedImageBase64) {
+                            // Replace or prepend the primary image
+                            recordsData[idx].images = [{
+                                id: 'img-' + Date.now(),
+                                file_path: replacedImageBase64,
+                                original_name: replacedImageName
+                            }].concat((recordsData[idx].images || []).slice(1));
+                        }
+                        if (schematicsInput && schematicsInput.files) {
+                            for (var i = 0; i < schematicsInput.files.length; i++) {
+                                var f = schematicsInput.files[i];
+                                newSchematics.push({
+                                    id: 'sch-' + Date.now() + '-' + i,
+                                    file_path: 'data:application/pdf;base64,JVBERi0xLjcK...',
+                                    original_name: f.name
+                                });
+                            }
+                        }
+                        if (newSchematics.length) recordsData[idx].schematics = (recordsData[idx].schematics || []).concat(newSchematics);
+                        saveDatabase();
+                        syncRecordToServer(recordsData[idx], true);
+                        logApiAction('PUT /api/records/' + editId, 'Record Updated & Image Replaced');
+                    }
+                    currentRecordId = editId;
+                } else {
+                    var newId = 'rec-' + Date.now();
+                    var imgList = replacedImageBase64 ? [{
+                        id: 'img-' + Date.now(),
+                        file_path: replacedImageBase64,
+                        original_name: replacedImageName
+                    }] : [{
+                        id: 'img-def',
+                        file_path: getWeaponSvgPlaceholder(designation, recordPayload.builder),
+                        original_name: 'default_schematic.svg'
+                    }];
+
+                    if (schematicsInput && schematicsInput.files) {
+                        for (var j = 0; j < schematicsInput.files.length; j++) {
+                            var fj = schematicsInput.files[j];
+                            newSchematics.push({
+                                id: 'sch-' + Date.now() + '-' + j,
+                                file_path: 'data:application/pdf;base64,JVBERi0xLjcK...',
+                                original_name: fj.name
+                            });
+                        }
+                    }
+
+                    var newRecord = Object.assign({
+                        id: newId,
+                        created_at: new Date().toISOString(),
+                        images: imgList,
+                        schematics: newSchematics
+                    }, recordPayload);
+                    recordsData.push(newRecord);
+                    syncRecordToServer(newRecord, false);
+                    saveDatabase();
+                    logApiAction('POST /api/records', newId);
+                    currentRecordId = newId;
+                }
+
+                if (modal) modal.classList.add('hidden');
+                renderSidebar();
+                renderMainContent();
+            }
+        };
+    }
+
+    window.deleteRecord = function(id) {
+        if (recordsData.length <= 1) { alert('Cannot delete the last remaining record.'); return; }
+        recordsData = recordsData.filter(function(r) { return r.id !== id; });
+        saveDatabase();
+        deleteRecordFromServer(id);
+        logApiAction('DELETE /api/records/:id', id);
+        if (currentRecordId === id) currentRecordId = recordsData[0].id;
+        renderSidebar();
+        renderMainContent();
+    };
+
+    function exportDocument(type) {
+        var r = recordsData.find(function(item) { return item.id === currentRecordId; });
+        if (!r) { alert('No active record selected for export.'); return; }
+
+        try {
+            var primaryImgUrl = (r.images && r.images[0]) ? r.images[0].file_path : '';
+            if (type === 'pdf') {
+                var printWindow = window.open('', '_blank');
+                if (!printWindow) {
+                    alert('Popup blocked. Please allow popups for PDF generation.');
+                    return;
+                }
+                var htmlContent = '<!DOCTYPE html><html><head><title>' + escapeHTML(r.registryNumber || 'Record') + ' - Technical Report</title>' +
+                    '<style>body { font-family: monospace; padding: 40px; color: #000; background: #fff; } ' +
+                    'h1 { color: #004d5a; border-bottom: 2px solid #004d5a; padding-bottom: 10px; } ' +
+                    '.meta { margin: 20px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } ' +
+                    '.section { margin-top: 20px; padding: 15px; border: 1px solid #ccc; background: #f9f9f9; }</style>' +
+                    '</head><body><h1>STAR FORCE TECHNICAL REGISTRY</h1>' +
+                    '<h2>' + escapeHTML(r.designation) + '</h2>' +
+                    (primaryImgUrl ? '<div style="margin:20px 0; text-align:center;"><img src="' + primaryImgUrl + '" style="max-height:200px; max-width:100%; object-fit:contain;" /></div>' : '') +
+                    '<div class="meta">' +
+                    '<div><strong>Category:</strong> ' + escapeHTML(r.category) + '</div>' +
+                    '<div><strong>Registry ID:</strong> ' + escapeHTML(r.registryNumber || 'N/A') + '</div>' +
+                    '<div><strong>Manufacturer:</strong> ' + escapeHTML(r.builder || 'N/A') + '</div>' +
+                    '<div><strong>Status:</strong> ' + escapeHTML(r.status) + '</div>' +
+                    '<div><strong>Power Feed:</strong> ' + escapeHTML(r.fleet || 'Standard') + '</div>' +
+                    '<div><strong>Effective Range:</strong> ' + escapeHTML(r.range || 'N/A') + '</div>' +
+                    '<div><strong>Rate of Fire:</strong> ' + escapeHTML(r.rof || 'N/A') + '</div>' +
+                    '<div><strong>Linked Files:</strong> ' + (r.images || []).length + ' Images, ' + (r.schematics || []).length + ' Schematics</div>' +
+                    '</div>' +
+                    '<div class="section"><h3>DAMAGE & CHARACTERISTICS / PAYLOAD</h3><p>' + escapeHTML(r.primarySpec || 'None') + '</p></div>' +
+                    '<script>window.onload = function() { window.print(); };<\/script></body></html>';
+                printWindow.document.write(htmlContent);
+                printWindow.document.close();
+                logApiAction('GET /api/export/pdf', r.id);
+            } else if (type === 'doc') {
+                var docContent = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
+                    '<head><meta charset="utf-8"><title>' + escapeHTML(r.designation) + '</title></head>' +
+                    '<body style="font-family:\'Courier New\', monospace; padding:20px;">' +
+                    '<h1 style="color:#004d5a; border-bottom:1px solid #004d5a;">STAR FORCE ORDNANCE DOCUMENT</h1>' +
+                    '<h2 style="color:#333;">' + escapeHTML(r.designation) + '</h2>' +
+                    (primaryImgUrl ? '<p><img src="' + primaryImgUrl + '" style="max-height:180px;" /></p>' : '') +
+                    '<p><strong>Registry ID:</strong> ' + escapeHTML(r.registryNumber || 'N/A') + '</p>' +
+                    '<p><strong>Category:</strong> ' + escapeHTML(r.category) + '</p>' +
+                    '<p><strong>Manufacturer:</strong> ' + escapeHTML(r.builder || 'N/A') + '</p>' +
+                    '<p><strong>Status:</strong> ' + escapeHTML(r.status) + '</p>' +
+                    '<p><strong>Power Feed:</strong> ' + escapeHTML(r.fleet || 'Standard') + '</p>' +
+                    '<p><strong>Effective Range:</strong> ' + escapeHTML(r.range || 'N/A') + '</p>' +
+                    '<p><strong>Rate of Fire:</strong> ' + escapeHTML(r.rof || 'N/A') + 'D</p>' +
+                    '<hr/><h3>DAMAGE & CHARACTERISTICS / PAYLOAD:</h3>' +
+                    '<p>' + escapeHTML(r.primarySpec || 'None') + '</p>' +
+                    '</body></html>';
+                var blob = new Blob(['\ufeff' + docContent], { type: 'application/msword' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = (r.registryNumber || 'record') + '_technical_spec.doc';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                logApiAction('GET /api/export/doc', r.id);
+            }
+        } catch (err) {
+            alert('Export failed: ' + err.message);
+        }
+    }
+
+    function escapeHTML(str) {
+        return String(str || '').replace(/[&<>'"]/g, function(tag) {
+            var chars = { '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' };
+            return chars[tag] || tag;
+        });
+    }
+
+    window.addEventListener('DOMContentLoaded', function() {
+        renderSidebar();
+        renderMainContent();
+    });
+    </script>
+</body>
+</html>

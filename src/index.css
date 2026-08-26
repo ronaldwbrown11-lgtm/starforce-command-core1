@@ -1,0 +1,1170 @@
+/* ===========================================================================
+   TAILWIND / SHADCN DEFAULTS — DO NOT CHANGE (required by Vite + shadcn)
+   =========================================================================== */
+@import "tailwindcss";
+@import "tw-animate-css";
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* Ultra Force color namespace — powers text-uf-*, bg-uf-*, border-uf-*
+     utilities by aliasing the runtime --uf-* design tokens. */
+  --color-uf-void: var(--uf-void);
+  --color-uf-navy: var(--uf-navy);
+  --color-uf-gunmetal: var(--uf-gunmetal);
+  --color-uf-charcoal: var(--uf-charcoal);
+  --color-uf-panel: var(--uf-panel);
+  --color-uf-cyan: var(--uf-cyan);
+  --color-uf-blue: var(--uf-blue);
+  --color-uf-violet: var(--uf-violet);
+  --color-uf-magenta: var(--uf-magenta);
+  --color-uf-gold: var(--uf-gold);
+  --color-uf-amber: var(--uf-amber);
+  --color-uf-green: var(--uf-green);
+  --color-uf-red: var(--uf-red);
+  --color-uf-text: var(--uf-text);
+  --color-uf-muted: var(--uf-text-muted);
+  --color-uf-border: var(--uf-border);
+  --color-uf-border-strong: var(--uf-border-strong);
+  --color-uf-border-subtle: var(--uf-border-subtle);
+  --color-uf-status-info: var(--uf-status-info);
+  --color-uf-status-success: var(--uf-status-success);
+  --color-uf-status-warning: var(--uf-status-warning);
+  --color-uf-status-danger: var(--uf-status-danger);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* ===========================================================================
+   ULTRA FORCE / FREEBAUD PREMIUM — SCI-FI DESIGN SYSTEM
+   Aerospace-inspired cyber-military aesthetic
+   =========================================================================== */
+:root {
+  /* ---- Core palette ---- */
+  --uf-void: #050816;
+  --uf-navy: #0b1220;
+  --uf-gunmetal: #0A0A0C;
+  --uf-charcoal: #111214;
+  --uf-panel: #101827;
+  --uf-panel-glass: rgba(16, 24, 39, 0.72);
+  --uf-panel-elev: rgba(20, 30, 50, 0.6);
+
+  /* ---- Tactical neon accents ---- */
+  --uf-cyan: #00E5FF;
+  --uf-cyan-dim: rgba(0, 229, 255, 0.08);
+  --uf-blue: #1E88E5;
+  --uf-violet: #8B5CF6;
+  --uf-magenta: #FF3DF2;
+  --uf-gold: #E6A817;
+  --uf-amber: #FFB300;
+  --uf-green: #2DFF88;
+  --uf-red: #FF4D6D;
+
+  /* ---- Text ---- */
+  --uf-text: #F5F9FF;
+  --uf-text-muted: #A9BBDD;
+
+  /* ---- Borders & glow ---- */
+  --uf-border: rgba(0, 229, 255, 0.28);
+  --uf-border-strong: rgba(0, 229, 255, 0.55);
+  --uf-border-subtle: rgba(0, 229, 255, 0.12);
+
+  /* ---- Shadows & glows ---- */
+  --uf-shadow-panel: 0 24px 60px rgba(0, 0, 0, 0.55);
+  --uf-shadow-card: 0 12px 36px rgba(0, 0, 0, 0.5);
+  --uf-shadow-elevated: 0 32px 80px rgba(0, 0, 0, 0.65);
+  --uf-glow-cyan: 0 0 24px rgba(0, 229, 255, 0.35);
+  --uf-glow-cyan-soft: 0 0 12px rgba(0, 229, 255, 0.20);
+  --uf-glow-violet: 0 0 24px rgba(139, 92, 246, 0.4);
+  --uf-glow-magenta: 0 0 24px rgba(255, 61, 242, 0.4);
+  --uf-glow-amber: 0 0 24px rgba(255, 179, 0, 0.35);
+  --uf-glow-danger: 0 0 24px rgba(255, 77, 109, 0.45);
+  --uf-glow-success: 0 0 24px rgba(45, 255, 136, 0.35);
+
+  /* ---- Motion ---- */
+  --uf-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --uf-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --uf-ease-snap: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --uf-dur-fast: 120ms;
+  --uf-dur-base: 250ms;
+  --uf-dur-slow: 400ms;
+  --uf-dur-xslow: 700ms;
+
+  /* ---- Status colors ---- */
+  --uf-status-info: #1E88E5;
+  --uf-status-success: #2DFF88;
+  --uf-status-warning: #E6A817;
+  --uf-status-danger: #FF4D6D;
+
+  /* ---- Layout ---- */
+  --uf-rail-left: 240px;
+  --uf-status-bar: 56px;
+  --uf-rail-right: 360px;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  button:not([disabled]),
+  [role="button"]:not([disabled]) {
+    cursor: pointer;
+  }
+}
+
+/* ===========================================================================
+   ULTRA FORCE THEME — applied via class="uf-theme" on body
+   =========================================================================== */
+.uf-theme {
+  background:
+    radial-gradient(1200px 800px at 10% -10%, rgba(0, 229, 255, 0.10), transparent 60%),
+    radial-gradient(900px 600px at 90% 10%, rgba(139, 92, 246, 0.08), transparent 60%),
+    var(--uf-gunmetal);
+  color: var(--uf-text);
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  min-height: 100vh;
+}
+
+/* ---------------------------------------------------------------------------
+   SCI-FI TYPOGRAPHY SYSTEM
+   --------------------------------------------------------------------------- */
+.uf-theme h1,
+.uf-theme h2,
+.uf-theme h3,
+.uf-theme h4,
+.uf-theme h5,
+.uf-theme h6 {
+  font-family:
+    "Rajdhani",
+    "Orbitron",
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.uf-theme h1 { font-size: clamp(2.8rem, 6vw, 5rem); }
+.uf-theme h2 { font-size: clamp(1.6rem, 3vw, 2.6rem); }
+.uf-theme h3 { font-size: clamp(1.2rem, 2vw, 1.8rem); }
+.uf-theme h4 { font-size: 1.25rem; }
+
+/* Digital HUD-style numbers */
+.uf-hud {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.875rem;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Neon-style uppercase accent */
+.uf-eyebrow {
+  font-family: "Rajdhani", "Orbitron", system-ui, sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--uf-cyan);
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
+}
+
+.uf-eyebrow--amber {
+  color: var(--uf-amber);
+  text-shadow: 0 0 12px rgba(255, 179, 0, 0.3);
+}
+
+.uf-eyebrow--violet {
+  color: var(--uf-violet);
+  text-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
+}
+
+.uf-eyebrow--gold {
+  color: var(--uf-gold);
+  text-shadow: 0 0 12px rgba(230, 168, 23, 0.3);
+}
+
+/* ---------------------------------------------------------------------------
+   LAYOUT HELPERS
+   --------------------------------------------------------------------------- */
+.uf-container {
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: clamp(16px, 4vw, 32px);
+}
+
+.uf-section {
+  padding-block: clamp(48px, 8vw, 112px);
+}
+
+.uf-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+.uf-grid--2 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.uf-grid--3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.uf-grid--4 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+/* ===========================================================================
+   GLASS MORPHISM — CARD / PANEL SYSTEM
+   Aerospace-inspired frosted glass with neon edge highlights
+   =========================================================================== */
+
+/* ----- Primary glass panel (large containers) ----- */
+.uf-panel {
+  position: relative;
+  background: var(--uf-panel-glass);
+  border: 1px solid var(--uf-border);
+  border-radius: 16px;
+  box-shadow:
+    var(--uf-shadow-panel),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+  transition:
+    box-shadow var(--uf-dur-base) var(--uf-ease-out),
+    border-color var(--uf-dur-base) var(--uf-ease-out);
+}
+
+.uf-panel:hover {
+  border-color: var(--uf-border-strong);
+  box-shadow:
+    var(--uf-glow-cyan-soft),
+    var(--uf-shadow-panel),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* ----- Sci-fi HoloCard (content cards) ----- */
+.uf-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    145deg,
+    rgba(16, 24, 39, 0.5),
+    rgba(11, 18, 32, 0.35)
+  );
+  border: 1px solid var(--uf-border-subtle);
+  border-radius: 14px;
+  padding: 1.5rem;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
+  transition:
+    box-shadow var(--uf-dur-base) var(--uf-ease-out),
+    transform var(--uf-dur-fast) var(--uf-ease-out),
+    border-color var(--uf-dur-base) var(--uf-ease-out);
+}
+
+/* Neon edge gradient overlay (hidden by default) */
+.uf-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    transparent 30%,
+    rgba(0, 229, 255, 0.15) 50%,
+    rgba(139, 92, 246, 0.12) 70%,
+    transparent
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity var(--uf-dur-slow) var(--uf-ease-out);
+  pointer-events: none;
+}
+
+/* Ambient light sweep (hidden by default) */
+.uf-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 20%,
+    rgba(0, 229, 255, 0.06) 50%,
+    rgba(139, 92, 246, 0.04) 80%,
+    transparent
+  );
+  opacity: 0;
+  transition: opacity var(--uf-dur-slow) var(--uf-ease-out);
+  pointer-events: none;
+}
+
+.uf-card:hover::before,
+.uf-card:focus-within::before {
+  opacity: 1;
+}
+.uf-card:hover::after,
+.uf-card:focus-within::after {
+  opacity: 1;
+}
+
+.uf-card:hover {
+  border-color: var(--uf-border);
+  transform: translateY(-3px);
+  box-shadow:
+    0 0 32px rgba(0, 229, 255, 0.15),
+    0 12px 36px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+/* ----- Neon border glow variant ----- */
+.uf-card--glow {
+  border-color: var(--uf-border);
+  box-shadow:
+    0 0 24px rgba(0, 229, 255, 0.10),
+    0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.uf-card--glow:hover {
+  box-shadow:
+    0 0 40px rgba(0, 229, 255, 0.25),
+    0 12px 36px rgba(0, 0, 0, 0.5);
+}
+
+/* ===========================================================================
+   NEON BUTTON SYSTEM
+   =========================================================================== */
+.uf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: "Rajdhani", "Orbitron", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--uf-border-strong);
+  background: linear-gradient(
+    180deg,
+    rgba(0, 229, 255, 0.12),
+    rgba(0, 229, 255, 0.04)
+  );
+  color: var(--uf-text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    box-shadow var(--uf-dur-base) var(--uf-ease-out),
+    transform var(--uf-dur-fast) var(--uf-ease-out),
+    background var(--uf-dur-base) var(--uf-ease-out),
+    border-color var(--uf-dur-base) var(--uf-ease-out),
+    color var(--uf-dur-base) var(--uf-ease-out);
+  min-height: 44px;
+}
+
+.uf-btn--sm {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+}
+
+.uf-btn:hover {
+  box-shadow: var(--uf-glow-cyan);
+  border-color: var(--uf-cyan);
+}
+.uf-btn:active {
+  transform: translateY(1px);
+}
+.uf-btn:focus-visible {
+  outline: 2px solid var(--uf-cyan);
+  outline-offset: 3px;
+}
+.uf-btn[disabled],
+.uf-btn[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Variants */
+.uf-btn--primary {
+  background: linear-gradient(180deg, var(--uf-cyan), #0099CC);
+  color: #001018;
+  border-color: transparent;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.uf-btn--primary:hover {
+  box-shadow: 0 0 32px rgba(0, 229, 255, 0.5);
+}
+
+.uf-btn--violet {
+  background: linear-gradient(180deg, var(--uf-violet), #5B3ACB);
+  color: #fff;
+  border-color: transparent;
+}
+.uf-btn--violet:hover {
+  box-shadow: var(--uf-glow-violet);
+}
+
+.uf-btn--gold {
+  background: linear-gradient(180deg, #F3C849, var(--uf-gold));
+  color: #1A1300;
+  border-color: transparent;
+}
+
+.uf-btn--amber {
+  background: linear-gradient(180deg, var(--uf-amber), #E68A00);
+  color: #1A0F00;
+  border-color: transparent;
+}
+
+.uf-btn--danger {
+  background: linear-gradient(180deg, #C0284A, var(--uf-red));
+  color: #fff;
+  border: 1px solid rgba(255, 77, 109, 0.6);
+}
+.uf-btn--danger:hover {
+  box-shadow: var(--uf-glow-danger);
+}
+
+.uf-btn--ghost {
+  background: transparent;
+  border-color: var(--uf-border);
+  color: var(--uf-text-muted);
+}
+.uf-btn--ghost:hover {
+  background: rgba(0, 229, 255, 0.06);
+  color: var(--uf-text);
+  border-color: var(--uf-border-strong);
+}
+
+/* ===========================================================================
+   STATUS PILL
+   =========================================================================== */
+.uf-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2px 0.75rem;
+  border-radius: 999px;
+  font-family: "Rajdhani", "Orbitron", system-ui, sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--uf-border);
+  color: var(--uf-text-muted);
+  transition:
+    background var(--uf-dur-fast) var(--uf-ease-out),
+    border-color var(--uf-dur-fast) var(--uf-ease-out);
+}
+
+.uf-pill::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  flex-shrink: 0;
+}
+
+.uf-pill--info { color: var(--uf-status-info); }
+.uf-pill--success { color: var(--uf-status-success); }
+.uf-pill--warning { color: var(--uf-status-warning); }
+.uf-pill--danger { color: var(--uf-status-danger); }
+.uf-pill--violet { color: var(--uf-violet); }
+.uf-pill--gold { color: var(--uf-gold); }
+.uf-pill--cyan { color: var(--uf-cyan); }
+.uf-pill--amber { color: var(--uf-amber); }
+
+/* ===========================================================================
+   SKELETON LOADING PLACEHOLDER
+   =========================================================================== */
+.uf-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(0, 229, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: uf-shimmer 1.6s linear infinite;
+  border-radius: 6px;
+  min-height: 12px;
+}
+
+@keyframes uf-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ===========================================================================
+   EMPTY STATE / ERROR STATE
+   =========================================================================== */
+.uf-empty {
+  text-align: center;
+  padding: 3rem;
+  color: var(--uf-text-muted);
+  border: 1px dashed var(--uf-border);
+  border-radius: 14px;
+  background: rgba(16, 24, 39, 0.4);
+}
+
+.uf-error {
+  border: 1px solid rgba(255, 77, 109, 0.45);
+  background: rgba(255, 77, 109, 0.08);
+  color: var(--uf-text);
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.uf-sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ===========================================================================
+   STARFIELD + PARALLAX
+   =========================================================================== */
+.uf-starfield {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.uf-parallax {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(closest-side at 20% 30%, rgba(0, 229, 255, 0.18), transparent 70%),
+    radial-gradient(closest-side at 80% 60%, rgba(139, 92, 246, 0.16), transparent 70%),
+    radial-gradient(closest-side at 50% 90%, rgba(255, 61, 242, 0.10), transparent 70%);
+  filter: blur(60px);
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+
+/* ===========================================================================
+   CINEMATIC LIGHTING EFFECTS
+   =========================================================================== */
+
+/* Lens flare overlay (top-left accent light) */
+.uf-lens-flare {
+  position: absolute;
+  top: -20%;
+  left: -10%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(ellipse at center, rgba(0, 229, 255, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  filter: blur(40px);
+}
+
+/* Rim light accent (bottom-right) */
+.uf-rim-light {
+  position: absolute;
+  bottom: -10%;
+  right: -5%;
+  width: 40%;
+  height: 40%;
+  background: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+  filter: blur(50px);
+}
+
+/* Vignette overlay */
+.uf-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(5, 8, 22, 0.6) 100%);
+  pointer-events: none;
+}
+
+/* Scanline overlay (subtle) */
+.uf-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 255, 255, 0.015) 2px,
+    rgba(255, 255, 255, 0.015) 4px
+  );
+  pointer-events: none;
+}
+
+/* ===========================================================================
+   DOSSIER TEXTURE — personnel file card (Lore Library)
+   Layered security-hatch + ruled-sheet texture over a dark steel sheet,
+   finished with HUD corner brackets like a registry file.
+   =========================================================================== */
+
+.uf-dossier {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid var(--uf-border);
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 100% at 12% 0%, rgba(0, 229, 255, 0.10), transparent 46%),
+    radial-gradient(120% 120% at 92% 108%, rgba(139, 92, 246, 0.12), transparent 52%),
+    linear-gradient(165deg, rgba(22, 30, 50, 0.94), rgba(8, 13, 24, 0.96));
+  box-shadow:
+    0 14px 44px rgba(0, 0, 0, 0.52),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Fine diagonal security hatch + ruled-sheet grid */
+.uf-dossier::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    repeating-linear-gradient(
+      115deg,
+      rgba(0, 229, 255, 0.045) 0 1px,
+      transparent 1px 7px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 31px,
+      rgba(255, 255, 255, 0.03) 31px 32px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 63px,
+      rgba(255, 255, 255, 0.02) 63px 64px
+    );
+}
+
+/* HUD corner brackets — registry mark overlay */
+.uf-dossier::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--uf-cyan), var(--uf-cyan)) top left / 22px 1px,
+    linear-gradient(var(--uf-cyan), var(--uf-cyan)) top left / 1px 22px,
+    linear-gradient(var(--uf-cyan), var(--uf-cyan)) top right / 22px 1px,
+    linear-gradient(var(--uf-cyan), var(--uf-cyan)) top right / 1px 22px,
+    linear-gradient(var(--uf-cyan), var(--uf-cyan)) bottom left / 22px 1px,
+    linear-gradient(var(--uf-cyan), var(--uf-cyan)) bottom left / 1px 22px,
+    linear-gradient(var(--uf-cyan), var(--uf-cyan)) bottom right / 22px 1px,
+    linear-gradient(var(--uf-cyan), var(--uf-cyan)) bottom right / 1px 22px;
+  background-repeat: no-repeat;
+  opacity: 0.55;
+}
+
+/* ===========================================================================
+   SCROLL-TRIGGERED REVEAL ANIMATIONS
+   =========================================================================== */
+
+/* Base reveal state (invisible, offset) */
+.uf-reveal {
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity var(--uf-dur-xslow) var(--uf-ease-out),
+    transform var(--uf-dur-xslow) var(--uf-ease-out);
+}
+
+.uf-reveal--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Fade in from left */
+.uf-reveal-left {
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  transform: translateX(-24px);
+  transition:
+    opacity var(--uf-dur-xslow) var(--uf-ease-out),
+    transform var(--uf-dur-xslow) var(--uf-ease-out);
+}
+.uf-reveal-left--visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Scale in */
+.uf-reveal-scale {
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  transform: scale(0.92);
+  transition:
+    opacity var(--uf-dur-xslow) var(--uf-ease-out),
+    transform var(--uf-dur-xslow) var(--uf-ease-out);
+}
+.uf-reveal-scale--visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Force-visibility for the JS hook (useScrollReveal adds `uf-reveal--visible`
+   to every variant). This combined rule has higher specificity than each
+   variant's hidden base state, so it wins regardless of source order.
+   Without it, `.uf-reveal-scale` (declared later, same specificity) kept
+   overriding the visible class — cards stayed at opacity 0 forever even
+   though the hook had revealed them. */
+.uf-reveal.uf-reveal--visible,
+.uf-reveal-left.uf-reveal--visible,
+.uf-reveal-scale.uf-reveal--visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Staggered delays for grid items */
+.uf-reveal-stagger-1 { transition-delay: 80ms; }
+.uf-reveal-stagger-2 { transition-delay: 160ms; }
+.uf-reveal-stagger-3 { transition-delay: 240ms; }
+.uf-reveal-stagger-4 { transition-delay: 320ms; }
+.uf-reveal-stagger-5 { transition-delay: 400ms; }
+.uf-reveal-stagger-6 { transition-delay: 480ms; }
+
+/* ===========================================================================
+   OPERATOR CONSOLE LAYOUT
+   =========================================================================== */
+.uf-opc {
+  display: grid;
+  grid-template-rows: var(--uf-status-bar) 1fr;
+  grid-template-columns: var(--uf-rail-left) 1fr var(--uf-rail-right);
+  min-height: calc(100vh - 56px);
+}
+
+.uf-opc__rail {
+  grid-column: 1;
+  grid-row: 2;
+  background: linear-gradient(
+    180deg,
+    rgba(11, 18, 32, 0.55),
+    rgba(5, 8, 22, 0.45)
+  );
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+  border-right: 1px solid var(--uf-border);
+  padding: 1rem;
+}
+
+.uf-opc__status {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--uf-border);
+  background: linear-gradient(
+    180deg,
+    rgba(16, 24, 39, 0.6),
+    rgba(11, 18, 32, 0.45)
+  );
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+.uf-opc__main {
+  grid-column: 2;
+  grid-row: 2;
+  padding: 1.5rem;
+  min-width: 0;
+  background: rgba(5, 8, 22, 0.25);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.uf-opc__notif {
+  grid-column: 3;
+  grid-row: 2;
+  border-left: 1px solid var(--uf-border);
+  padding: 1rem;
+  background: linear-gradient(
+    180deg,
+    rgba(16, 24, 39, 0.5),
+    rgba(5, 8, 22, 0.4)
+  );
+  -webkit-backdrop-filter: blur(16px) saturate(130%);
+  backdrop-filter: blur(16px) saturate(130%);
+}
+
+@media (max-width: 1023px) {
+  .uf-opc {
+    grid-template-columns: 1fr;
+  }
+  .uf-opc__rail,
+  .uf-opc__notif {
+    display: none;
+  }
+}
+
+/* ===========================================================================
+   SKINNED TABS
+   =========================================================================== */
+.uf-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--uf-border);
+}
+
+.uf-tab {
+  padding: 0.75rem 1rem;
+  background: transparent;
+  color: var(--uf-text-muted);
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-family: "Rajdhani", "Orbitron", system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  transition:
+    color var(--uf-dur-fast) var(--uf-ease-out),
+    border-color var(--uf-dur-fast) var(--uf-ease-out);
+}
+
+.uf-tab:hover {
+  color: var(--uf-text);
+}
+
+.uf-tab[aria-selected="true"] {
+  color: var(--uf-cyan);
+  border-bottom-color: var(--uf-cyan);
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
+}
+
+/* ===========================================================================
+   PROGRESS BARS
+   =========================================================================== */
+.uf-progress {
+  height: 10px;
+  background: rgba(0, 229, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.uf-progress__bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--uf-cyan), var(--uf-blue));
+  box-shadow: var(--uf-glow-cyan);
+  transition: width var(--uf-dur-base) var(--uf-ease-out);
+  border-radius: 999px;
+}
+
+/* ===========================================================================
+   DATA GRID
+   =========================================================================== */
+.uf-data-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.uf-data-grid th,
+.uf-data-grid td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--uf-border-subtle);
+  text-align: left;
+  vertical-align: top;
+}
+
+.uf-data-grid th {
+  font-family: "Rajdhani", "Orbitron", system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--uf-cyan);
+  font-size: 0.7rem;
+}
+
+.uf-data-grid th[aria-sort="ascending"]::after { content: " ▲"; }
+.uf-data-grid th[aria-sort="descending"]::after { content: " ▼"; }
+
+/* ===========================================================================
+   TOAST HOST
+   =========================================================================== */
+.uf-toast-host {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 360px;
+}
+
+/* ===========================================================================
+   DIVIDER
+   =========================================================================== */
+.uf-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--uf-border) 20%,
+    var(--uf-border) 80%,
+    transparent
+  );
+  margin-block: 1.5rem;
+}
+
+/* ===========================================================================
+   GLOW TEXT UTILITY
+   =========================================================================== */
+.uf-glow-text {
+  text-shadow:
+    0 0 12px rgba(0, 229, 255, 0.5),
+    0 0 30px rgba(0, 229, 255, 0.2);
+}
+
+.uf-glow-text--amber {
+  text-shadow:
+    0 0 12px rgba(255, 179, 0, 0.5),
+    0 0 30px rgba(255, 179, 0, 0.2);
+}
+
+.uf-glow-text--violet {
+  text-shadow:
+    0 0 12px rgba(139, 92, 246, 0.5),
+    0 0 30px rgba(139, 92, 246, 0.2);
+}
+
+/* ===========================================================================
+   KEYFRAMES
+   =========================================================================== */
+@keyframes uf-pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(0, 229, 255, 0.5);
+  }
+}
+
+.uf-pulse {
+  animation: uf-pulse-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes uf-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.uf-fade-in {
+  animation: uf-fade-in-up 0.6s var(--uf-ease-out) both;
+}
+
+/* ===========================================================================
+   FOCUS VISIBILITY
+   =========================================================================== */
+.uf-theme :focus-visible {
+  outline: 2px solid var(--uf-cyan);
+  outline-offset: 2px;
+}
+
+/* ===========================================================================
+   LIVE STRIP
+   =========================================================================== */
+.strip-live {
+  background:
+    linear-gradient(180deg, rgba(0, 229, 255, 0.06), rgba(5, 8, 22, 0.85)),
+    var(--uf-navy);
+}
+
+/* ===========================================================================
+   POPOVER ENTRY
+   =========================================================================== */
+.popover-enter {
+  animation: popover-in var(--uf-dur-base) var(--uf-ease-out);
+  transform-origin: top right;
+}
+
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ===========================================================================
+   REDUCED MOTION
+   =========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .uf-parallax {
+    transform: none !important;
+  }
+  .uf-reveal,
+  .uf-reveal-left,
+  .uf-reveal-scale {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ===========================================================================
+   SKIP LINK (visible on focus)
+   =========================================================================== */
+.uf-skip-link {
+  position: absolute;
+  left: 0.5rem;
+  top: -40px;
+  z-index: 1100;
+  background: var(--uf-cyan);
+  color: #001018;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-family: "Rajdhani", "Orbitron", system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+  transition: top var(--uf-dur-base) var(--uf-ease-out);
+}
+.uf-skip-link:focus {
+  top: 0.5rem;
+  outline: 2px solid #001018;
+  outline-offset: 2px;
+}

@@ -1,0 +1,12 @@
+<?php
+// Rename this file to config.php on nighthawk.starforcebase1198.com.
+// Fill in the existing main database credentials privately in Hostinger.
+return [
+  'db_host' => 'localhost',
+  'db_name' => 'YOUR_EXISTING_DATABASE_NAME',
+  'db_user' => 'YOUR_EXISTING_DATABASE_USER',
+  'db_pass' => 'YOUR_EXISTING_DATABASE_PASSWORD',
+  // Set a long random value. The main app's operator bridge must send it as
+  // X-Operator-Key for pending/review/write operations.
+  'operator_key' => 'REPLACE_WITH_LONG_RANDOM_OPERATOR_BRIDGE_KEY',
+];
