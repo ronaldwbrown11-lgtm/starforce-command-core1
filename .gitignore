@@ -18,6 +18,9 @@ dist-ssr
 isolate
 backups
 
+# One-off source download archive for the manual-push workflow
+public/starforce-source-latest.tar.gz
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
