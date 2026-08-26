@@ -223,6 +223,8 @@ export const updateProfile = mutation({
     bio: v.optional(v.string()),
     rank: v.optional(v.string()),
     fleet: v.optional(v.string()),
+    // Paid-tier perk (#32): custom display flair.
+    flair: v.optional(v.string()),
     avatarStorageId: v.optional(v.union(v.id("_storage"), v.null())),
   },
   handler: async (ctx, args) => {
@@ -240,12 +242,25 @@ export const updateProfile = mutation({
       bio?: string;
       rank?: string;
       fleet?: string;
+      flair?: string;
       avatarStorageId?: Id<"_storage">;
       onboarded?: boolean;
     } = {};
 
     // Editing your identity counts as completing the first-run orientation.
     patch.onboarded = true;
+
+    // Flair is a paid-tier perk (#32) — enforce server-side so the gate
+    // can't be bypassed from the client.
+    if (args.flair !== undefined) {
+      if ((user.tier ?? "free") === "free") {
+        throw new Error(
+          "Custom flair is a paid-member perk — upgrade to claim yours.",
+        );
+      }
+      const flair = args.flair.trim().slice(0, 40);
+      patch.flair = flair || undefined;
+    }
 
     if (args.displayName !== undefined) {
       const name = args.displayName.trim();
@@ -500,5 +515,26 @@ export const recordLoginAttempt = mutation({
       time: Date.now(),
     });
     return { ok: true };
+  },
+});
+
+/**
+ * Paid-tier perk (#32): set (or clear) the custom display flair shown next
+ * to the member's name on profiles, story bylines, and comments.
+ * Free members get the default rank-based treatment.
+ */
+export const updateMyFlair = mutation({
+  args: { flair: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Sign in to set a flair.");
+    const me = await ctx.db.get(userId);
+    if (!me) throw new Error("Account not found.");
+    if ((me.tier ?? "free") === "free") {
+      throw new Error("Custom flair is a paid-member perk — upgrade to claim yours.");
+    }
+    const flair = args.flair.trim().slice(0, 40);
+    await ctx.db.patch(userId, { flair: flair || undefined });
+    return { ok: true, flair };
   },
 });

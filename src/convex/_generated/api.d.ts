@@ -10,6 +10,8 @@
 
 import type * as achievements from "../achievements.js";
 import type * as admin from "../admin.js";
+import type * as aiAssistant from "../aiAssistant.js";
+import type * as aiAssistantHelpers from "../aiAssistantHelpers.js";
 import type * as assets from "../assets.js";
 import type * as auth from "../auth.js";
 import type * as auth_emailOtp from "../auth/emailOtp.js";
@@ -61,6 +63,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   achievements: typeof achievements;
   admin: typeof admin;
+  aiAssistant: typeof aiAssistant;
+  aiAssistantHelpers: typeof aiAssistantHelpers;
   assets: typeof assets;
   auth: typeof auth;
   "auth/emailOtp": typeof auth_emailOtp;

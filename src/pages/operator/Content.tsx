@@ -46,7 +46,7 @@ const RESOURCE_TYPES = [
   "onboarding",
   "policy",
 ] as const;
-const TRANSMISSION_TYPES = ["briefing", "mission", "lore-deepdive"] as const;
+const TRANSMISSION_TYPES = ["briefing", "mission", "lore-deepdive", "podcast"] as const;
 
 export default function OperatorContent() {
   const [tab, setTab] = useState<Tab>("lore");
@@ -542,6 +542,7 @@ function TransmissionEditorModal({
     slug: initial?.slug ?? "",
     description: initial?.description ?? "",
     videoUrl: initial?.videoUrl ?? "",
+    audioUrl: initial?.audioUrl ?? "",
     transmissionType: initial?.transmissionType ?? "",
     durationSeconds: initial?.durationSeconds ?? "",
   });
@@ -552,6 +553,7 @@ function TransmissionEditorModal({
       slug: initial?.slug ?? "",
       description: initial?.description ?? "",
       videoUrl: initial?.videoUrl ?? "",
+      audioUrl: initial?.audioUrl ?? "",
       transmissionType: initial?.transmissionType ?? "",
       durationSeconds: initial?.durationSeconds ?? "",
     });
@@ -573,6 +575,7 @@ function TransmissionEditorModal({
         slug: form.slug,
         description: form.description,
         videoUrl: form.videoUrl || undefined,
+        audioUrl: form.audioUrl || undefined,
         transmissionType: form.transmissionType || undefined,
         durationSeconds: form.durationSeconds
           ? Number(form.durationSeconds)
@@ -633,6 +636,12 @@ function TransmissionEditorModal({
           value={form.videoUrl}
           onChange={(v) => setForm((f) => ({ ...f, videoUrl: v }))}
           placeholder="https://…"
+        />
+        <FieldRow
+          label="Audio URL (optional — podcast episode: direct mp3/ogg/m4a link)"
+          value={form.audioUrl}
+          onChange={(v) => setForm((f) => ({ ...f, audioUrl: v }))}
+          placeholder="https://…/episode.mp3"
         />
         <div className="grid gap-3 sm:grid-cols-2">
           <SelectRow

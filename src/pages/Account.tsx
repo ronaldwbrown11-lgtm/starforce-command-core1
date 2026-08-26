@@ -167,8 +167,10 @@ export default function Account() {
                       rank: user?.rank,
                       fleet: user?.fleet,
                       bio: user?.bio,
+                      flair: user?.flair,
                       avatarStorageId: user?.avatarStorageId,
                     }}
+                    paidMember={(user?.tier ?? "free") !== "free"}
                     submitLabel="Save identity"
                     onSaved={() => setEditingIdentity(false)}
                     onCancel={() => setEditingIdentity(false)}

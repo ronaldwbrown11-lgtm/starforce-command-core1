@@ -223,6 +223,8 @@ export const upsertTransmission = mutation({
     slug: v.string(),
     description: v.string(),
     videoUrl: v.optional(v.string()),
+    // Podcast / audio-only episode (#29) — direct audio URL.
+    audioUrl: v.optional(v.string()),
     transmissionType: v.optional(v.string()),
     durationSeconds: v.optional(v.number()),
   },
@@ -245,6 +247,7 @@ export const upsertTransmission = mutation({
         slug,
         description,
         videoUrl: args.videoUrl,
+        audioUrl: args.audioUrl,
         transmissionType: args.transmissionType,
         durationSeconds: args.durationSeconds,
       });
@@ -255,6 +258,7 @@ export const upsertTransmission = mutation({
         slug,
         description,
         videoUrl: args.videoUrl,
+        audioUrl: args.audioUrl,
         transmissionType: args.transmissionType,
         durationSeconds: args.durationSeconds,
         createdAt: Date.now(),

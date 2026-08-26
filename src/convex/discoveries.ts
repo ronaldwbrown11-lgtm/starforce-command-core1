@@ -34,10 +34,12 @@ function clamp(v: number, min: number, max: number) {
   return Math.min(max, Math.max(min, v));
 }
 
-// Public: approved systems only, newest first, with the discoverer's name.
+// Public: approved systems only, newest first, with the discoverer's name,
+// endorsement count, and whether the viewer already endorsed it (#30).
 export const listDiscoveries = query({
   args: {},
   handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
     const rows = await ctx.db
       .query("discoveries")
       .withIndex("by_status", (q) => q.eq("status", "approved"))
@@ -46,6 +48,13 @@ export const listDiscoveries = query({
     return Promise.all(
       rows.map(async (d) => {
         const author = d.authorId ? await ctx.db.get(d.authorId) : null;
+        const votes = await ctx.db
+          .query("discoveryVotes")
+          .withIndex("by_discovery", (q) => q.eq("discoveryId", d._id))
+          .collect();
+        const myVote = userId
+          ? votes.some((v) => v.userId === userId)
+          : false;
         return {
           _id: d._id,
           title: d.title,
@@ -55,6 +64,8 @@ export const listDiscoveries = query({
           sector: d.sector ?? null,
           faction: d.faction ?? null,
           createdAt: d.createdAt,
+          voteCount: votes.length,
+          myVote,
           author: author
             ? {
                 displayName: author.displayName ?? author.name ?? "Anonymous",
@@ -64,6 +75,115 @@ export const listDiscoveries = query({
         };
       }),
     );
+  },
+});
+
+// Member: endorse (or withdraw endorsement from) a charted system (#30).
+// Toggling is idempotent — voting twice removes the vote.
+export const voteDiscovery = mutation({
+  args: { id: v.id("discoveries") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Sign in to endorse a system.");
+    const discovery = await ctx.db.get(args.id);
+    if (!discovery || discovery.status !== "approved") {
+      throw new Error("That system isn't charted.");
+    }
+    const existing = await ctx.db
+      .query("discoveryVotes")
+      .withIndex("by_user_discovery", (q) =>
+        q.eq("userId", userId).eq("discoveryId", args.id),
+      )
+      .first();
+    if (existing) {
+      await ctx.db.delete(existing._id);
+      return { ok: true, voted: false };
+    }
+    await ctx.db.insert("discoveryVotes", {
+      discoveryId: args.id,
+      userId,
+      createdAt: Date.now(),
+    });
+    return { ok: true, voted: true };
+  },
+});
+
+// Public: current faction claims on the Star Atlas sectors (#30).
+export const listSectorClaims = query({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("sectorClaims").collect();
+    return Promise.all(
+      rows.map(async (r) => {
+        const claimant = r.claimedBy ? await ctx.db.get(r.claimedBy) : null;
+        return {
+          sector: r.sector,
+          faction: r.faction,
+          createdAt: r.createdAt,
+          claimant: claimant
+            ? {
+                displayName: claimant.displayName ?? claimant.name ?? "Anonymous",
+                rank: claimant.rank ?? "Recruit",
+              }
+            : null,
+        };
+      }),
+    );
+  },
+});
+
+// Member: claim a sector of the chart for a faction (#30). A later claim by
+// a different faction replaces the previous holder; same-faction re-claims
+// are a no-op. Claims are public and listed on the Star Atlas page.
+export const claimSector = mutation({
+  args: { sector: v.string(), faction: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Sign in to claim a sector.");
+    const sector = args.sector.trim().slice(0, 80);
+    const faction = args.faction.trim().slice(0, 60);
+    if (!sector) throw new Error("Pick a sector to claim.");
+    if (!faction) throw new Error("Pick the faction making the claim.");
+
+    const existing = await ctx.db
+      .query("sectorClaims")
+      .withIndex("by_sector", (q) => q.eq("sector", sector))
+      .first();
+    const now = Date.now();
+    if (existing) {
+      if (existing.faction === faction) return { ok: true, replaced: false };
+      await ctx.db.patch(existing._id, {
+        faction,
+        claimedBy: userId,
+        createdAt: now,
+      });
+      await ctx.db.insert("activityFeed", {
+        actorId: userId,
+        verb: "claimed",
+        targetType: "sector",
+        targetId: sector,
+        url: "/maps",
+        summary: `${faction} claimed ${sector}`, // faction names are trusted labels
+        createdAt: now,
+      });
+      return { ok: true, replaced: true };
+    }
+    await ctx.db.insert("sectorClaims", {
+      sector,
+      faction,
+      claimedBy: userId,
+      createdAt: now,
+    });
+    await ctx.db.insert("activityFeed", {
+      actorId: userId,
+      verb: "claimed",
+      targetType: "sector",
+      targetId: sector,
+      url: "/maps",
+      summary: `${faction} claimed ${sector}`,
+      createdAt: now,
+    });
+    return { ok: true, replaced: false };
   },
 });
 

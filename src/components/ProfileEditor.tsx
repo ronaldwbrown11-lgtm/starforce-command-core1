@@ -5,6 +5,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { NeonButton } from "@/components/uf";
 import { toast } from "sonner";
 import { Camera, Loader2 } from "lucide-react";
+import { Link } from "react-router";
 
 const AVATAR_MAX_BYTES = 4 * 1024 * 1024;
 const AVATAR_MIME = ["image/jpeg", "image/png", "image/webp", "image/avif"];
@@ -14,6 +15,7 @@ export type ProfileEditorFields = {
   rank?: string | null;
   fleet?: string | null;
   bio?: string | null;
+  flair?: string | null;
   avatarStorageId?: Id<"_storage"> | null;
 };
 
@@ -27,11 +29,14 @@ export function ProfileEditor({
   submitLabel = "Save profile",
   onSaved,
   onCancel,
+  paidMember = false,
 }: {
   initial: ProfileEditorFields;
   submitLabel?: string;
   onSaved?: () => void;
   onCancel?: () => void;
+  // Whether the editing member is on a paid tier — unlocks the flair field.
+  paidMember?: boolean;
 }) {
   const updateProfile = useMutation(api.users.updateProfile);
   const generateUserUploadUrl = useMutation(api.users.generateUserUploadUrl);
@@ -40,6 +45,7 @@ export function ProfileEditor({
   const [rankDraft, setRankDraft] = useState(initial.rank ?? "");
   const [fleetDraft, setFleetDraft] = useState(initial.fleet ?? "");
   const [bioDraft, setBioDraft] = useState(initial.bio ?? "");
+  const [flairDraft, setFlairDraft] = useState(initial.flair ?? "");
   const [saving, setSaving] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -57,6 +63,7 @@ export function ProfileEditor({
         rank: rankDraft.trim() || undefined,
         fleet: fleetDraft.trim() || undefined,
         bio: bioDraft.trim() || undefined,
+        ...(paidMember ? { flair: flairDraft.trim() || undefined } : {}),
       });
       toast.success("Dossier updated — the fleet sees it now.");
       onSaved?.();
@@ -138,6 +145,25 @@ export function ProfileEditor({
           placeholder="e.g. 7th Expeditionary"
           className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
         />
+      </label>
+      <label className="text-xs uppercase tracking-[0.16em] text-uf-muted flex flex-col gap-1">
+        Flair
+        {paidMember ? (
+          <input
+            value={flairDraft}
+            onChange={(e) => setFlairDraft(e.target.value)}
+            maxLength={40}
+            placeholder="e.g. Keeper of the Starforge"
+            className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
+          />
+        ) : (
+          <span className="text-[0.7rem] normal-case tracking-normal text-uf-muted flex items-center gap-1 flex-wrap">
+            Custom flair is a paid-member perk.{" "}
+            <Link to="/membership" className="text-uf-cyan underline">
+              Upgrade to claim yours
+            </Link>
+          </span>
+        )}
       </label>
       <label className="text-xs uppercase tracking-[0.16em] text-uf-muted flex flex-col gap-1">
         Bio

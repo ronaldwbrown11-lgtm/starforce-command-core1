@@ -2,11 +2,14 @@ import { useParams, Link } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useRef } from "react";
+import { toast } from "sonner";
+import { Code2 } from "lucide-react";
 import { SiteShell, PageHero, StatusPill } from "@/components/uf";
 import { StoryProgressTracker } from "@/components/widgets/StoryProgressTracker";
 import { ReactionBar } from "@/components/widgets/ReactionBar";
 import { MiniBadgeRow } from "@/components/widgets/MiniBadgeRow";
 import { LiveComments } from "@/components/widgets/LiveComments";
+import { Flair } from "@/components/widgets/Flair";
 import { usePageMeta } from "@/hooks/use-page-meta";
 
 export default function StoryDetail() {
@@ -64,6 +67,7 @@ export default function StoryDetail() {
             <span className="text-sm font-semibold text-uf-cyan">
               {story.author.displayName}
             </span>
+            {story.author.flair ? <Flair label={story.author.flair} /> : null}
             <span className="uf-pill !text-[10px] !px-2 !py-0.5">
               {story.author.rank}
             </span>
@@ -114,6 +118,23 @@ export default function StoryDetail() {
         </article>
         <div className="mt-6">
           <ReactionBar targetId={story._id} />
+        </div>
+        <div className="mt-4 flex items-center gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={async () => {
+              const code = `<iframe src="https://starforcebase1198.com/embed/story/${story.slug}" width="100%" height="380" style="border:none;border-radius:12px" title="${story.title.replace(/"/g, "&quot;")}" loading="lazy"></iframe>`;
+              try {
+                await navigator.clipboard.writeText(code);
+                toast.success("Embed code copied — paste it on any site.");
+              } catch {
+                toast.error("Couldn't copy — your browser blocked clipboard access.");
+              }
+            }}
+            className="uf-btn uf-btn--ghost text-xs"
+          >
+            <Code2 className="h-4 w-4" aria-hidden /> Embed this story
+          </button>
         </div>
         <div className="mt-8">
           <LiveComments

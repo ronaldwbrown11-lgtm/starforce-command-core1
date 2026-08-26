@@ -85,6 +85,7 @@ export const generateSitemap = httpAction(async (ctx) => {
   entries.push(urlEntry(SITE + "/groups", now, "0.6", "weekly"));
   entries.push(urlEntry(SITE + "/members", now, "0.6", "weekly"));
   entries.push(urlEntry(SITE + "/leaderboard", now, "0.5", "weekly"));
+  entries.push(urlEntry(SITE + "/tools/assistant", now, "0.4", "weekly"));
   entries.push(urlEntry(SITE + "/membership", now, "0.8", "monthly"));
   entries.push(urlEntry(SITE + "/videos", now, "0.7", "weekly"));
   entries.push(urlEntry(SITE + "/maps", now, "0.7", "weekly"));

@@ -13,6 +13,7 @@ import {
 import { ProfileEditor } from "@/components/ProfileEditor";
 import { AchievementBadges } from "@/components/widgets/AchievementBadges";
 import { FleetAffiliation } from "@/components/widgets/FleetAffiliation";
+import { Flair } from "@/components/widgets/Flair";
 import { useAuth } from "@/hooks/use-auth";
 import { tierLabel, tierPillVariant } from "@/lib/tiers";
 import { FRAME_CATALOG } from "@/lib/economy";
@@ -158,9 +159,12 @@ export default function Profile() {
                 )}
               </div>
               <div className="min-w-0">
-                <h2 className="text-xl font-semibold truncate">
-                  {profileName}
-                </h2>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl font-semibold truncate">
+                    {profileName}
+                  </h2>
+                  {profile.flair ? <Flair label={profile.flair} /> : null}
+                </div>
                 {profile.fleet ? (
                   <p className="text-uf-muted text-xs">{profile.fleet}</p>
                 ) : null}
@@ -192,8 +196,10 @@ export default function Profile() {
                     rank: profile.rank,
                     fleet: profile.fleet,
                     bio: profile.bio,
+                    flair: profile.flair,
                     avatarStorageId: profile.avatarStorageId,
                   }}
+                  paidMember={(me?.tier ?? "free") !== "free"}
                   submitLabel="Save dossier"
                   onSaved={() => setEditingProfile(false)}
                   onCancel={() => setEditingProfile(false)}
@@ -223,6 +229,14 @@ export default function Profile() {
             <ul className="text-sm mt-3 space-y-2 list-none p-0 m-0">
               <li>
                 <strong>{(profile.xp ?? 0).toLocaleString()}</strong> XP
+              </li>
+              <li>
+                <strong>{profile.contributionCount ?? 0}</strong> verified
+                contribution{(profile.contributionCount ?? 0) === 1 ? "" : "s"}
+              </li>
+              <li>
+                <strong>{(profile.credits ?? 0).toLocaleString()}</strong> Star
+                Credits
               </li>
               <li>
                 <strong>{achievementIds.length}</strong> achievement

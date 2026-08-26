@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, LayoutDashboard, LogOut, Menu, Search, Shield, User, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { LOCALES, useI18n } from "@/lib/i18n";
 import { NeonButton } from "./NeonButton";
 import { HeaderNotifications } from "@/components/notifications/HeaderNotifications";
 import { ParallaxBackground } from "./ParallaxBackground";
@@ -18,26 +19,27 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const NAV = [
-  { label: "Stories", href: "/stories" },
-  { label: "Lore", href: "/lore" },
-  { label: "Maps", href: "/maps" },
-  { label: "Star Atlas", href: "/map" },
-  { label: "Videos", href: "/videos" },
-  { label: "Missions", href: "/missions" },
-  { label: "Signal Vault", href: "/vault" },
-  { label: "Events", href: "/events" },
-  { label: "Community", href: "/community" },
-  { label: "Forums", href: "/forums" },
-  { label: "Members", href: "/members" },
-  { label: "Leaderboard", href: "/leaderboard" },
-  { label: "Submit", href: "/submit" },
-  { label: "Messages", href: "/messages" },
-  { label: "Blog", href: "/blog" },
-  { label: "FAQs", href: "/faqs" },
-  { label: "Changelog", href: "/changelog" },
-  { label: "Resources", href: "/resources" },
-  { label: "Membership", href: "/membership" },
-  { label: "Support", href: "/support" },
+  { labelKey: "nav.stories", href: "/stories" },
+  { labelKey: "nav.lore", href: "/lore" },
+  { labelKey: "nav.maps", href: "/maps" },
+  { labelKey: "nav.starAtlas", href: "/map" },
+  { labelKey: "nav.videos", href: "/videos" },
+  { labelKey: "nav.missions", href: "/missions" },
+  { labelKey: "nav.aiAssistant", href: "/tools/assistant" },
+  { labelKey: "nav.vault", href: "/vault" },
+  { labelKey: "nav.events", href: "/events" },
+  { labelKey: "nav.community", href: "/community" },
+  { labelKey: "nav.forums", href: "/forums" },
+  { labelKey: "nav.members", href: "/members" },
+  { labelKey: "nav.leaderboard", href: "/leaderboard" },
+  { labelKey: "nav.submit", href: "/submit" },
+  { labelKey: "nav.messages", href: "/messages" },
+  { labelKey: "nav.blog", href: "/blog" },
+  { labelKey: "nav.faqs", href: "/faqs" },
+  { labelKey: "nav.changelog", href: "/changelog" },
+  { labelKey: "nav.resources", href: "/resources" },
+  { labelKey: "nav.membership", href: "/membership" },
+  { labelKey: "nav.support", href: "/support" },
 ];
 
 export function SiteShell({
@@ -53,6 +55,7 @@ export function SiteShell({
   cinematic?: boolean;
 }) {
   const { pathname } = useLocation();
+  const { t, locale, setLocale } = useI18n();
   const appearance = useQuery(api.siteAppearance.getAppearance);
 
   // Operator-configured page background: exact route wins, then the section
@@ -142,6 +145,7 @@ const OP_ROLES = [
 ] as const;
 
 function Header() {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [signingOut, setSigningOut] = useState(false);
@@ -209,7 +213,7 @@ function Header() {
                 )
               }
             >
-              {item.label}
+              {t(item.labelKey)}
             </NavLink>
           ))}
         </nav>
@@ -337,7 +341,7 @@ function Header() {
                   )
                 }
               >
-                {item.label}
+                {t(item.labelKey)}
               </NavLink>
             ))}
             <NavLink
@@ -386,6 +390,7 @@ function Header() {
 }
 
 function Footer() {
+  const { t, locale, setLocale } = useI18n();
   return (
     <footer
       role="contentinfo"
@@ -435,6 +440,28 @@ function Footer() {
             <li><Link to="/privacy">Privacy Policy</Link></li>
             <li><Link to="/terms">Terms of Service</Link></li>
           </ul>
+          <div className="mt-4">
+            <p className="text-xs uppercase tracking-[0.16em] text-uf-muted mb-2">
+              {t("common.language")}
+            </p>
+            <div className="flex gap-1.5" role="group" aria-label="Language">
+              {LOCALES.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setLocale(l)}
+                  aria-pressed={locale === l}
+                  className={`rounded-full border px-2.5 py-1 text-xs uppercase transition-colors ${
+                    locale === l
+                      ? "border-[rgba(0,229,255,0.5)] bg-[rgba(0,229,255,0.1)] text-uf-text"
+                      : "border-[color:var(--uf-border)] text-uf-muted hover:text-uf-text"
+                  }`}
+                >
+                  {l === "en" ? "EN" : "ES"}
+                </button>
+              ))}
+            </div>
+          </div>
           <p className="mt-3">© Star Force Base 1198</p>
         </div>
       </div>

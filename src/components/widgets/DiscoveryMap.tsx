@@ -46,6 +46,8 @@ type Discovery = {
   sector: string | null;
   faction: string | null;
   createdAt: number;
+  voteCount: number;
+  myVote: boolean;
   author: { displayName: string; rank: string } | null;
 };
 
@@ -66,6 +68,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   const discoveries = useQuery(api.discoveries.listDiscoveries);
   const missions = useQuery(api.content.listMissions, {});
   const propose = useMutation(api.discoveries.proposeDiscovery);
+  const vote = useMutation(api.discoveries.voteDiscovery);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const [proposeOpen, setProposeOpen] = useState(false);
@@ -87,6 +90,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   const [faction, setFaction] = useState("");
   const [missionId, setMissionId] = useState("");
   const [busy, setBusy] = useState(false);
+  const [voting, setVoting] = useState(false);
 
   const activeMissions = useMemo(
     () => (missions ?? []).filter((m) => m.missionStatus === "active"),
@@ -578,6 +582,42 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
             {detail && isNew(detail) && (
               <StatusPill variant="success">Recently charted</StatusPill>
             )}
+            <div className="mt-1 flex items-center gap-3 flex-wrap">
+              <button
+                type="button"
+                disabled={voting || !isAuthenticated}
+                onClick={async () => {
+                  if (!detail || voting) return;
+                  setVoting(true);
+                  try {
+                    const res = await vote({ id: detail._id as any });
+                    setDetail({
+                      ...detail,
+                      voteCount: detail.voteCount + (res.voted ? 1 : -1),
+                      myVote: res.voted,
+                    });
+                    toast.success(res.voted ? "Endorsement logged." : "Endorsement withdrawn.");
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Couldn't vote.");
+                  } finally {
+                    setVoting(false);
+                  }
+                }}
+                className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                  detail?.myVote
+                    ? "border-[rgba(0,229,255,0.6)] bg-[rgba(0,229,255,0.12)] text-uf-cyan"
+                    : "border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] text-uf-muted hover:text-uf-text"
+                }`}
+              >
+                {detail?.myVote ? "✦ Endorsed" : "✦ Endorse this survey"}
+                <span className="ml-1.5 opacity-80">({detail?.voteCount ?? 0})</span>
+              </button>
+              {!isAuthenticated && (
+                <Link to="/auth?returnTo=/maps" className="text-xs text-uf-cyan underline">
+                  Sign in to endorse
+                </Link>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

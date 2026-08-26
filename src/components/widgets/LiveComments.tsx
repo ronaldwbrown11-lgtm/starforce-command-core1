@@ -5,6 +5,7 @@ import { HoloCard } from "../uf/Panel";
 import { StatusPill } from "../uf/StatusPill";
 import { NeonButton } from "../uf/NeonButton";
 import { MiniBadgeRow } from "./MiniBadgeRow";
+import { Flair } from "./Flair";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
@@ -126,6 +127,7 @@ export function LiveComments({
                       <span className="text-xs font-semibold tracking-wide text-uf-cyan">
                         {c.author.displayName}
                       </span>
+                      {c.author.flair ? <Flair label={c.author.flair} /> : null}
                       <span className="uf-pill !text-[10px] !px-2 !py-0.5">
                         {c.author.rank}
                       </span>

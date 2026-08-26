@@ -1,6 +1,7 @@
 import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
 import { InstrumentationProvider } from "@/instrumentation.tsx";
+import { I18nProvider } from "@/lib/i18n";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import { StrictMode, useEffect } from "react";
@@ -35,6 +36,8 @@ import SignalVault from "./pages/SignalVault.tsx";
 import Events from "./pages/Events.tsx";
 import Leaderboard from "./pages/Leaderboard.tsx";
 import Changelog from "./pages/Changelog.tsx";
+import ToolsAssistant from "./pages/ToolsAssistant.tsx";
+import EmbedStory from "./pages/EmbedStory.tsx";
 import Community from "./pages/Community.tsx";
 import Forums from "./pages/Forums.tsx";
 import Resources from "./pages/Resources.tsx";
@@ -115,8 +118,9 @@ function RouteSyncer() {
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <InstrumentationProvider>
-      <ConvexAuthProvider client={convex}>
-        <BrowserRouter>
+      <I18nProvider>
+        <ConvexAuthProvider client={convex}>
+          <BrowserRouter>
           <RouteSyncer />
           <AppErrorBoundary>
             <Routes>
@@ -138,6 +142,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/events" element={<Events />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/changelog" element={<Changelog />} />
+              <Route path="/tools/assistant" element={<ToolsAssistant />} />
+              <Route path="/embed/story/:slug" element={<EmbedStory />} />
               <Route path="/community" element={<Community />} />
               <Route path="/forums" element={<Forums />} />
               <Route path="/resources" element={<Resources />} />
@@ -194,6 +200,7 @@ createRoot(document.getElementById("root")!).render(
           <Toaster />
         </BrowserRouter>
       </ConvexAuthProvider>
+      </I18nProvider>
     </InstrumentationProvider>
   </StrictMode>,
 );

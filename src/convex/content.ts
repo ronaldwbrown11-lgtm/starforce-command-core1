@@ -126,6 +126,7 @@ export const storyBySlug = query({
               author.email?.split("@")[0] ??
               "Unnamed recruit",
             rank: author.rank ?? "Recruit",
+            flair: author.flair ?? null,
             achievements: author.achievements ?? [],
           }
         : null,

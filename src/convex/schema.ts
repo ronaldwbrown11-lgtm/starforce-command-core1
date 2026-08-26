@@ -97,6 +97,9 @@ const schema = defineSchema(
       // Ultra Force virtual currency (#8): earned at contribution sites,
       // spent in the Cosmetic Lab on profile frames and other cosmetics.
       credits: v.optional(v.number()),
+      // Custom display flair — paid-tier perk (#32). Rendered next to the
+      // display name on profiles, story bylines, and comments.
+      flair: v.optional(v.string()),
       frame: v.optional(v.string()), // equipped profile frame id
       frames: v.optional(v.array(v.string())), // owned frame ids
       // First-run pilot orientation (rank / fleet / starter mission picker)
@@ -301,8 +304,12 @@ const schema = defineSchema(
       slug: v.string(),
       description: v.string(),
       videoUrl: v.optional(v.string()),
+      // Podcast / audio-only transmission (#29): direct audio URL (mp3/ogg/
+      // m4a) or a hosted podcast feed entry. Renders on the Videos page's
+      // Audio tab when set.
+      audioUrl: v.optional(v.string()),
       thumbnailUrl: v.optional(v.string()),
-      transmissionType: v.optional(v.string()), // briefing / mission / lore-deepdive
+      transmissionType: v.optional(v.string()), // briefing / mission / lore-deepdive / podcast
       durationSeconds: v.optional(v.number()),
       relatedStories: v.optional(v.array(v.id("stories"))),
       relatedLore: v.optional(v.array(v.id("loreEntries"))),
@@ -652,6 +659,33 @@ const schema = defineSchema(
       .index("by_status", ["status"])
       .index("by_author", ["authorId"])
       .index("by_created", ["createdAt"]),
+
+    // Member endorsements of charted systems (#30) — one row per
+    // (discovery, member) pair; unique so toggling never double-counts.
+    discoveryVotes: defineTable({
+      discoveryId: v.id("discoveries"),
+      userId: v.id("users"),
+      createdAt: v.number(),
+    })
+      .index("by_discovery", ["discoveryId"])
+      .index("by_user", ["userId"])
+      .index("by_user_discovery", ["userId", "discoveryId"]),
+
+    // Faction claims on the Star Atlas (#30) — one claim per sector name;
+    // a later claim by another faction replaces the previous holder.
+    sectorClaims: defineTable({
+      sector: v.string(),
+      faction: v.string(),
+      claimedBy: v.id("users"),
+      createdAt: v.number(),
+    }).index("by_sector", ["sector"]),
+
+    // Lore Assistant usage log (#28) — one row per generation, used for
+    // the daily per-tier allowance (free 3, paid 25+).
+    aiAssistantLogs: defineTable({
+      userId: v.id("users"),
+      createdAt: v.number(),
+    }).index("by_user_day", ["userId", "createdAt"]),
 
     // Site appearance — operator-controlled background imagery.
     // Single row keyed by `key === "main"` (singleton).
