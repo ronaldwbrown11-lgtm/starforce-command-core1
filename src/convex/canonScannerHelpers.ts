@@ -13,8 +13,11 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const BASE_URL =
   process.env.CANON_SCANNER_BASE_URL ?? "https://api.groq.com/openai/v1";
+// Groq decommissioned llama-3.3-70b-versatile on 2026-08-16 (free/dev
+// tiers). Per Groq's deprecation notice, the recommended replacement is
+// openai/gpt-oss-120b (qwen/qwen3.6-27b is the lighter alternative).
 export const MODEL =
-  process.env.CANON_SCANNER_MODEL ?? "llama-3.3-70b-versatile";
+  process.env.CANON_SCANNER_MODEL ?? "openai/gpt-oss-120b";
 
 const VERDICTS = ["canon", "conflict", "needs_review"] as const;
 type Verdict = (typeof VERDICTS)[number];
