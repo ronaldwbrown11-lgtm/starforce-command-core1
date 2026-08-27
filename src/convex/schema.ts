@@ -888,6 +888,15 @@ const schema = defineSchema(
       count: v.number(),
     })
       .index("by_kind_key", ["kind", "key"]),
+
+    // Operator-managed social / community links shown in the site footer.
+    socialLinks: defineTable({
+      label: v.string(), // display name, e.g. "Twitter"
+      url: v.string(), // full URL, e.g. "https://x.com/starforce"
+      icon: v.string(), // lucide icon name, e.g. "twitter"
+      order: v.number(), // sort order (lower = first)
+      enabled: v.boolean(), // toggle without deleting
+    }),
   },
   {
     schemaValidation: false,

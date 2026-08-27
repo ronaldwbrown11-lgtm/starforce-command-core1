@@ -1,6 +1,7 @@
 import { Link, NavLink, useLocation, useNavigate } from "react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, ChevronDown, Compass, LayoutDashboard, LifeBuoy, LogOut, Menu, Search, Shield, Sparkles, Star, User, Users, X } from "lucide-react";
+import { BookOpen, ChevronDown, Compass, LayoutDashboard, LifeBuoy, LogOut, Menu, Search, Shield, Sparkles, Star, User, Users, X, ExternalLink } from "lucide-react";
+import * as Icons from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { LOCALES, useI18n } from "@/lib/i18n";
@@ -530,6 +531,7 @@ function Header() {
 
 function Footer() {
   const { t, locale, setLocale } = useI18n();
+  const socialLinks = useQuery(api.socialLinks.list);
   return (
     <footer
       role="contentinfo"
@@ -601,6 +603,31 @@ function Footer() {
               ))}
             </div>
           </div>
+          {socialLinks && socialLinks.length > 0 && (
+            <div className="mt-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-uf-muted mb-2">Follow Us</p>
+              <div className="flex gap-2">
+                {socialLinks.map((link) => {
+                  const IconComp = (Icons as Record<string, React.ComponentType<{ className?: string }>>)[
+                    link.icon.charAt(0).toUpperCase() + link.icon.slice(1)
+                  ];
+                  return (
+                    <a
+                      key={link._id}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={link.label}
+                      title={link.label}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-cyan-800/40 text-gray-300 hover:text-white hover:bg-[rgba(0,229,255,0.12)] transition-colors"
+                    >
+                      {IconComp ? <IconComp className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />}
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <p className="mt-3">© Star Force Base 1198</p>
         </div>
       </div>

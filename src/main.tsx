@@ -86,6 +86,7 @@ import OpDatabaseFrontend from "./pages/operator/DatabaseFrontend.tsx";
 import OpSectorMap from "./pages/operator/SectorMap.tsx";
 import OpDiscoveries from "./pages/operator/Discoveries.tsx";
 import OpAppearance from "./pages/operator/Appearance.tsx";
+import OpSocialLinks from "./pages/operator/SocialLinks.tsx";
 import OpEvents from "./pages/operator/EventsManage.tsx";
 import OpLog from "./pages/operator/LogManage.tsx";
 import OpChangelog from "./pages/operator/ChangelogManage.tsx";
@@ -191,6 +192,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/operator/sector-map" element={<OperatorGuard><OpSectorMap /></OperatorGuard>} />
               <Route path="/operator/discoveries" element={<OperatorGuard><OpDiscoveries /></OperatorGuard>} />
               <Route path="/operator/appearance" element={<OperatorGuard><OpAppearance /></OperatorGuard>} />
+              <Route path="/operator/social-links" element={<OperatorGuard><OpSocialLinks /></OperatorGuard>} />
               <Route path="/operator/events" element={<OperatorGuard><OpEvents /></OperatorGuard>} />
               <Route path="/operator/log" element={<OperatorGuard><OpLog /></OperatorGuard>} />
               <Route path="/operator/changelog" element={<OperatorGuard><OpChangelog /></OperatorGuard>} />
