@@ -104,7 +104,26 @@ export default function Lore() {
           ))}
         </div>
 
-        <div className="uf-grid uf-grid--3 gap-6 mb-8">
+
+        {tab === "bibles" ? <BibleGrid items={bibles} loading={library === undefined} /> : null}
+        {tab === "images" ? <ImageGrid items={images} loading={library === undefined} /> : null}
+        {tab === "databases" ? <DatabasePanel items={databases} loading={library === undefined} /> : null}
+        {tab === "entries" ? (
+          <EntriesGrid
+            entries={entries}
+            factions={factions}
+            sectors={sectors}
+            faction={faction}
+            sector={sector}
+            classification={classification}
+            entryType={entryType}
+            setFaction={setFaction}
+            setSector={setSector}
+            setClassification={setClassification}          setEntryType={setEntryType}
+        />
+        ) : null}
+
+        <div className="uf-grid uf-grid--3 gap-6 mt-10">
           <HoloCard className="col-span-2">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div>
@@ -137,25 +156,6 @@ export default function Lore() {
             <GalaxyMapMini />
           </HoloCard>
         </div>
-
-        {tab === "bibles" ? <BibleGrid items={bibles} loading={library === undefined} /> : null}
-        {tab === "images" ? <ImageGrid items={images} loading={library === undefined} /> : null}
-        {tab === "databases" ? <DatabasePanel items={databases} loading={library === undefined} /> : null}
-        {tab === "entries" ? (
-          <EntriesGrid
-            entries={entries}
-            factions={factions}
-            sectors={sectors}
-            faction={faction}
-            sector={sector}
-            classification={classification}
-            entryType={entryType}
-            setFaction={setFaction}
-            setSector={setSector}
-            setClassification={setClassification}
-            setEntryType={setEntryType}
-          />
-        ) : null}
       </section>
     </SiteShell>
   );
