@@ -29,42 +29,42 @@ export function ShareButtons({ title, path }: ShareButtonsProps) {
   };
 
   return (
-    <div className="flex items-center gap-2" style={{ background: "rgba(10,15,30,0.6)", borderRadius: 8, padding: "6px 10px", border: "1px solid rgba(0,229,255,0.15)" }}>
-      <Share2 className="h-4 w-4 text-cyan-400 mr-1 shrink-0" />
+    <div className="flex items-center gap-3" style={{ background: "rgba(10,15,30,0.6)", borderRadius: 10, padding: "10px 14px", border: "1px solid rgba(0,229,255,0.15)" }}>
+      <Share2 className="h-7 w-7 text-cyan-400 mr-1 shrink-0" />
       <a
         href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedText}`}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Share on X / Twitter"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-200 hover:text-white hover:bg-[rgba(0,229,255,0.15)] transition-colors"
+        className="inline-flex h-[88px] w-[88px] items-center justify-center rounded-lg text-gray-200 hover:text-white hover:bg-[rgba(0,229,255,0.15)] transition-colors"
       >
-        <Twitter className="h-5 w-5" />
+        <Twitter className="h-10 w-10" />
       </a>
       <a
         href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Share on Facebook"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-200 hover:text-white hover:bg-[rgba(0,229,255,0.15)] transition-colors"
+        className="inline-flex h-[88px] w-[88px] items-center justify-center rounded-lg text-gray-200 hover:text-white hover:bg-[rgba(0,229,255,0.15)] transition-colors"
       >
-        <Facebook className="h-5 w-5" />
+        <Facebook className="h-10 w-10" />
       </a>
       <a
         href={`https://reddit.com/submit?url=${encodedUrl}&title=${encodedText}`}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Share on Reddit"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-200 hover:text-white hover:bg-[rgba(0,229,255,0.15)] transition-colors"
+        className="inline-flex h-[88px] w-[88px] items-center justify-center rounded-lg text-gray-200 hover:text-white hover:bg-[rgba(0,229,255,0.15)] transition-colors"
       >
-        <span className="text-sm font-bold">R</span>
+        <span className="text-3xl font-bold">R</span>
       </a>
       <button
         type="button"
         onClick={copyLink}
         aria-label={copied ? "Link copied" : "Copy link"}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-200 hover:text-white hover:bg-[rgba(0,229,255,0.15)] transition-colors"
+        className="inline-flex h-[88px] w-[88px] items-center justify-center rounded-lg text-gray-200 hover:text-white hover:bg-[rgba(0,229,255,0.15)] transition-colors"
       >
-        {copied ? <Check className="h-5 w-5 text-green-400" /> : <LinkIcon className="h-5 w-5" />}
+        {copied ? <Check className="h-10 w-10 text-green-400" /> : <LinkIcon className="h-10 w-10" />}
       </button>
     </div>
   );

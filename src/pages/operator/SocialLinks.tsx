@@ -4,7 +4,7 @@ import { api } from "@/convex/_generated/api";
 import { OperatorShell } from "@/components/operator/OperatorShell";
 import { HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { toast } from "sonner";
-import { GripVertical, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, GripVertical, Plus, Trash2 } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
 
 const ICON_OPTIONS = [
@@ -60,6 +60,12 @@ export default function SocialLinksPage() {
   return (
     <OperatorShell>
       <div className="p-6 max-w-3xl">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <a href="/" className="inline-flex min-h-[88px] items-center gap-3 rounded-md border border-cyan-700/50 bg-cyan-950/40 px-8 text-lg font-bold text-cyan-100 transition-colors hover:bg-cyan-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
+            <ExternalLink className="h-4 w-4" aria-hidden />
+            Return to public site
+          </a>
+        </div>
         <h1 className="text-2xl font-bold tracking-tight mb-2">Social Links</h1>
         <p className="text-uf-muted text-sm mb-6">
           Manage the social/community links shown in the site footer. Toggle visibility without deleting.
@@ -99,8 +105,8 @@ export default function SocialLinksPage() {
                 ))}
               </select>
             </label>
-            <NeonButton variant="primary" onClick={handleCreate}>
-              <Plus className="h-4 w-4 mr-1" /> Add
+            <NeonButton variant="primary" onClick={handleCreate} className="h-20 w-20 min-h-20 min-w-20 rounded-full p-0 text-[0px]" aria-label="Add social link" title="Add social link">
+              <Plus className="h-9 w-9" aria-hidden /><span className="sr-only">Add link</span>
             </NeonButton>
           </div>
         </HoloCard>
