@@ -24,16 +24,67 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') { http_response_code(204);
 function fr_out(mixed $value, int $status = 200): never { http_response_code($status); echo json_encode($value, JSON_UNESCAPED_SLASHES); exit; }
 function fr_body(): array { $d = json_decode(file_get_contents('php://input'), true); return is_array($d) ? $d : []; }
 function fr_text(array $a, string $k, int $max = 100000): ?string { return array_key_exists($k, $a) && $a[$k] !== null ? mb_substr(trim((string)$a[$k]), 0, $max) : null; }
-function fr_id(mixed $v): ?int { $id = filter_var($v, FILTER_VALIDATE_INT); return $id !== false && $id > 0 ? (int)$id : null; }
 function fr_operator(): void { if (empty($_SESSION['fleet_operator'])) fr_out(['error' => 'Operator authentication required'], 401); }
 function fr_csrf(): void { $e = (string)($_SESSION['fleet_csrf'] ?? ''); $a = (string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''); if ($e === '' || !hash_equals($e, $a)) fr_out(['error' => 'Invalid security token'], 403); }
 
 try {
   $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8mb4", $db_user, $db_pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
-  $pdo->exec("CREATE TABLE IF NOT EXISTS service_histories (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, vessel_id BIGINT UNSIGNED NOT NULL, event_date DATE NULL, event_type VARCHAR(80) NOT NULL DEFAULT 'service', title VARCHAR(255) NOT NULL, details TEXT NULL, location VARCHAR(255) NULL, source_reference VARCHAR(255) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(id), KEY idx_service_vessel(vessel_id), CONSTRAINT fk_service_vessel FOREIGN KEY(vessel_id) REFERENCES vessels(id) ON UPDATE CASCADE ON DELETE RESTRICT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-  $pdo->exec("CREATE TABLE IF NOT EXISTS armament_sheets (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, vessel_id BIGINT UNSIGNED NOT NULL, title VARCHAR(255) NOT NULL, primary_armament TEXT NULL, secondary_armament TEXT NULL, defensive_systems TEXT NULL, ammunition_notes TEXT NULL, classification VARCHAR(80) NOT NULL DEFAULT 'standard', created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(id), UNIQUE KEY uq_armament_vessel_title(vessel_id,title), KEY idx_armament_vessel(vessel_id), CONSTRAINT fk_armament_vessel FOREIGN KEY(vessel_id) REFERENCES vessels(id) ON UPDATE CASCADE ON DELETE RESTRICT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-  $pdo->exec("CREATE TABLE IF NOT EXISTS black_box_files (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, vessel_id BIGINT UNSIGNED NOT NULL, file_code VARCHAR(120) NOT NULL, title VARCHAR(255) NOT NULL, incident_date DATE NULL, classification VARCHAR(80) NOT NULL DEFAULT 'operator-only', summary TEXT NULL, payload MEDIUMTEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(id), UNIQUE KEY uq_black_box_vessel_code(vessel_id,file_code), KEY idx_black_box_vessel(vessel_id), CONSTRAINT fk_black_box_vessel FOREIGN KEY(vessel_id) REFERENCES vessels(id) ON UPDATE CASCADE ON DELETE RESTRICT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-} catch (Throwable $e) { fr_out(['error' => 'Database connection failed'], 500); }
+
+  // Detect the actual vessels primary key column name
+  $cols = $pdo->query("SHOW COLUMNS FROM vessels")->fetchAll(PDO::FETCH_COLUMN);
+  $pk = in_array('id', $cols) ? 'id' : (in_array('_id', $cols) ? '_id' : null);
+  if (!$pk) fr_out(['error' => 'Cannot determine vessels primary key'], 500);
+
+  // Create archive tables with a plain vessel_ref column (no foreign key constraint)
+  // This avoids schema mismatches with the existing vessels table
+  $pdo->exec("CREATE TABLE IF NOT EXISTS service_histories (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    vessel_ref VARCHAR(120) NOT NULL,
+    event_date DATE NULL,
+    event_type VARCHAR(80) NOT NULL DEFAULT 'service',
+    title VARCHAR(255) NOT NULL,
+    details TEXT NULL,
+    location VARCHAR(255) NULL,
+    source_reference VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY(id),
+    KEY idx_service_vessel(vessel_ref)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+  $pdo->exec("CREATE TABLE IF NOT EXISTS armament_sheets (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    vessel_ref VARCHAR(120) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    primary_armament TEXT NULL,
+    secondary_armament TEXT NULL,
+    defensive_systems TEXT NULL,
+    ammunition_notes TEXT NULL,
+    classification VARCHAR(80) NOT NULL DEFAULT 'standard',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY(id),
+    UNIQUE KEY uq_armament_vessel_title(vessel_ref, title),
+    KEY idx_armament_vessel(vessel_ref)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+  $pdo->exec("CREATE TABLE IF NOT EXISTS black_box_files (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    vessel_ref VARCHAR(120) NOT NULL,
+    file_code VARCHAR(120) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    incident_date DATE NULL,
+    classification VARCHAR(80) NOT NULL DEFAULT 'operator-only',
+    summary TEXT NULL,
+    payload MEDIUMTEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY(id),
+    UNIQUE KEY uq_black_box_vessel_code(vessel_ref, file_code),
+    KEY idx_black_box_vessel(vessel_ref)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+} catch (Throwable $e) { fr_out(['error' => 'Database connection failed: ' . $e->getMessage()], 500); }
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $action = (string)($_GET['action'] ?? 'list');
@@ -53,16 +104,16 @@ if ($action === 'login' && $method === 'POST') {
 // Operator logout
 if ($action === 'logout' && $method === 'POST') { session_destroy(); fr_out(['loggedIn' => false]); }
 
-// List vessels (public)
+// List vessels (public) — uses the detected primary key
 if ($action === 'vessels' && $method === 'GET') {
-  $stmt = $pdo->query('SELECT id, designation, registry_number, name, ship_class, status FROM vessels ORDER BY designation');
+  $stmt = $pdo->query("SELECT `$pk`, designation, registry_number, name, ship_class, status FROM vessels ORDER BY designation");
   fr_out(['records' => $stmt->fetchAll()]);
 }
 
 // Read archives (service + armament public, black-box operator-only)
 if ($action === 'archives' && $method === 'GET') {
-  $vesselId = fr_id($_GET['vessel_id'] ?? null); $isOp = !empty($_SESSION['fleet_operator']);
-  $where = $vesselId ? ' WHERE vessel_id = :vid' : ''; $params = $vesselId ? [':vid' => $vesselId] : [];
+  $vesselRef = fr_text($_GET, 'vessel_ref', 120); $isOp = !empty($_SESSION['fleet_operator']);
+  $where = $vesselRef ? ' WHERE vessel_ref = :vref' : ''; $params = $vesselRef ? [':vref' => $vesselRef] : [];
   $svc = $pdo->prepare('SELECT * FROM service_histories' . $where . ' ORDER BY event_date DESC, id DESC'); $svc->execute($params);
   $arm = $pdo->prepare('SELECT * FROM armament_sheets' . $where . ' ORDER BY id DESC'); $arm->execute($params);
   $result = ['service_histories' => $svc->fetchAll(), 'armament_sheets' => $arm->fetchAll()];
@@ -75,16 +126,16 @@ fr_operator(); fr_csrf();
 
 // Create or update archive record
 if ($action === 'archive' && in_array($method, ['POST', 'PUT'], true)) {
-  $input = fr_body(); $type = (string)($input['type'] ?? ''); $id = fr_id($input['id'] ?? null); $vesselId = fr_id($input['vessel_id'] ?? null);
-  if (!$vesselId || !in_array($type, ['service_histories', 'armament_sheets', 'black_box_files'], true)) fr_out(['error' => 'Invalid archive record'], 422);
+  $input = fr_body(); $type = (string)($input['type'] ?? ''); $id = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT); $vesselRef = fr_text($input, 'vessel_ref', 120);
+  if (!$vesselRef || !in_array($type, ['service_histories', 'armament_sheets', 'black_box_files'], true)) fr_out(['error' => 'Invalid archive record'], 422);
   if ($type === 'black_box_files') fr_operator();
-  $check = $pdo->prepare('SELECT id FROM vessels WHERE id = ?'); $check->execute([$vesselId]); if (!$check->fetchColumn()) fr_out(['error' => 'Vessel not found'], 422);
+  $check = $pdo->prepare("SELECT `$pk` FROM vessels WHERE `$pk` = ?"); $check->execute([$vesselRef]); if (!$check->fetchColumn()) fr_out(['error' => 'Vessel not found'], 422);
   $fields = [
     'service_histories' => ['event_date','event_type','title','details','location','source_reference'],
     'armament_sheets' => ['title','primary_armament','secondary_armament','defensive_systems','ammunition_notes','classification'],
     'black_box_files' => ['file_code','title','incident_date','classification','summary','payload'],
   ][$type];
-  $values = ['vessel_id' => $vesselId];
+  $values = ['vessel_ref' => $vesselRef];
   foreach ($fields as $f) $values[$f] = fr_text($input, $f, in_array($f, ['details','primary_armament','secondary_armament','defensive_systems','ammunition_notes','summary','payload'], true) ? 10000000 : 255);
   if (!$values['title']) fr_out(['error' => 'Title is required'], 422);
   if ($type === 'black_box_files' && !$values['file_code']) fr_out(['error' => 'File code is required'], 422);
@@ -96,7 +147,7 @@ if ($action === 'archive' && in_array($method, ['POST', 'PUT'], true)) {
 
 // Delete archive record
 if ($action === 'archive' && $method === 'DELETE') {
-  $type = (string)($_GET['type'] ?? ''); $id = fr_id($_GET['id'] ?? null);
+  $type = (string)($_GET['type'] ?? ''); $id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT);
   if (!in_array($type, ['service_histories','armament_sheets','black_box_files'], true) || !$id) fr_out(['error' => 'Invalid delete'], 422);
   if ($type === 'black_box_files') fr_operator();
   $stmt = $pdo->prepare("DELETE FROM `$type` WHERE id = ?"); $stmt->execute([$id]);
@@ -105,14 +156,14 @@ if ($action === 'archive' && $method === 'DELETE') {
 
 // Reassign all archive records from one vessel to another
 if ($action === 'reassign' && $method === 'POST') {
-  $input = fr_body(); $from = fr_id($input['from_vessel_id'] ?? null); $to = fr_id($input['to_vessel_id'] ?? null);
-  if (!$from || !$to || $from === $to) fr_out(['error' => 'Two different vessel IDs required'], 422);
+  $input = fr_body(); $from = fr_text($input, 'from_vessel_ref', 120); $to = fr_text($input, 'to_vessel_ref', 120);
+  if (!$from || !$to || $from === $to) fr_out(['error' => 'Two different vessel references required'], 422);
   $pdo->beginTransaction();
   try {
-    $check = $pdo->prepare('SELECT id FROM vessels WHERE id IN (?, ?)'); $check->execute([$from, $to]);
-    if ($check->rowCount() !== 2) throw new RuntimeException('Both vessel IDs must exist');
+    $check = $pdo->prepare("SELECT `$pk` FROM vessels WHERE `$pk` IN (?, ?)"); $check->execute([$from, $to]);
+    if ($check->rowCount() !== 2) throw new RuntimeException('Both vessel references must exist');
     foreach (['service_histories','armament_sheets','black_box_files'] as $tbl) {
-      $stmt = $pdo->prepare("UPDATE `$tbl` SET vessel_id = ? WHERE vessel_id = ?"); $stmt->execute([$to, $from]);
+      $stmt = $pdo->prepare("UPDATE `$tbl` SET vessel_ref = ? WHERE vessel_ref = ?"); $stmt->execute([$to, $from]);
     }
     $pdo->commit(); fr_out(['success' => true]);
   } catch (Throwable $e) { $pdo->rollBack(); fr_out(['error' => 'Reassignment rolled back'], 409); }
