@@ -16,6 +16,7 @@ import {
 } from "@/components/widgets/PersonnelDossierBrowser";
 import { BookOpenText, Database, Download, FileText, ImageIcon } from "lucide-react";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { ShareButtons } from "@/components/ShareButtons";
 import type { Doc } from "@/convex/_generated/dataModel";
 
 type LibraryItem = Doc<"loreLibrary"> & {
@@ -33,6 +34,7 @@ export default function LoreDetail() {
   usePageMeta({
     title: metaTitle ? `${metaTitle} — Star Force 1198` : "Lore — Star Force 1198",
     description: libraryItem?.description ?? entry?.excerpt ?? undefined,
+    image: (libraryItem && "coverUrl" in libraryItem ? (libraryItem as { coverUrl: string | null }).coverUrl : entry && "coverUrl" in entry ? (entry as { coverUrl: string | null }).coverUrl : null) ?? undefined,
   });
 
   if (libraryItem === undefined && entry === undefined) {
@@ -97,8 +99,9 @@ export default function LoreDetail() {
             </p>
           ) : null}
         </article>
-        <div className="mt-6">
+        <div className="mt-6 flex items-center justify-between flex-wrap gap-4">
           <ReactionBar targetId={entry._id} targetType="lore" />
+          <ShareButtons title={entry.title} path={`/lore/${entry.slug}`} description={entry.excerpt ?? undefined} />
         </div>
         <div className="mt-8">
           <LiveComments postId={entry._id} parentType="lore" limit={20} />

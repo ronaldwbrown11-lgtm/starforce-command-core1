@@ -1,4 +1,5 @@
 import '@vly-ai/integrations';
+import "@/sentry";
 import { Toaster } from "@/components/ui/sonner";
 import { InstrumentationProvider } from "@/instrumentation.tsx";
 import { I18nProvider } from "@/lib/i18n";
@@ -8,6 +9,7 @@ import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+import { CookieConsent } from "@/components/CookieConsent";
 import "./index.css";
 import "./types/global.d.ts";
 
@@ -198,6 +200,7 @@ createRoot(document.getElementById("root")!).render(
             </Routes>
           </AppErrorBoundary>
           <Toaster />
+          <CookieConsent />
         </BrowserRouter>
       </ConvexAuthProvider>
       </I18nProvider>

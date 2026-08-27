@@ -11,6 +11,7 @@ import { MiniBadgeRow } from "@/components/widgets/MiniBadgeRow";
 import { LiveComments } from "@/components/widgets/LiveComments";
 import { Flair } from "@/components/widgets/Flair";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { ShareButtons } from "@/components/ShareButtons";
 
 export default function StoryDetail() {
   const params = useParams<{ slug: string }>();
@@ -21,6 +22,7 @@ export default function StoryDetail() {
   usePageMeta({
     title: story ? `${story.title} — Star Force 1198` : "Story — Star Force 1198",
     description: story?.excerpt ?? undefined,
+    image: (story && "coverUrl" in story ? (story as { coverUrl: string | null }).coverUrl : null) ?? undefined,
   });
 
   if (story === undefined) {
@@ -116,8 +118,9 @@ export default function StoryDetail() {
             </footer>
           ) : null}
         </article>
-        <div className="mt-6">
+        <div className="mt-6 flex items-center justify-between flex-wrap gap-4">
           <ReactionBar targetId={story._id} />
+          <ShareButtons title={story.title} path={`/stories/${story.slug}`} description={story.excerpt ?? undefined} />
         </div>
         <div className="mt-4 flex items-center gap-3 flex-wrap">
           <button
