@@ -1,5 +1,4 @@
 import '@vly-ai/integrations';
-import "@/sentry";
 import { Toaster } from "@/components/ui/sonner";
 import { InstrumentationProvider } from "@/instrumentation.tsx";
 import { I18nProvider } from "@/lib/i18n";
