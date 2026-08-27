@@ -24,6 +24,7 @@ import type { LucideIcon } from "lucide-react";
 // ---------------------------------------------------------------------------
 interface NavItem {
   label: string;
+  labelKey: string;
   href: string;
   desc?: string;
   highlight?: boolean;
@@ -39,44 +40,44 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Archive",
     icon: BookOpen,
     items: [
-      { label: "Stories", href: "/stories", desc: "Fiction & narratives" },
-      { label: "Lore", href: "/lore", desc: "Universe canon" },
-      { label: "Maps", href: "/maps", desc: "Sector charts" },
-      { label: "Star Atlas", href: "/map", desc: "Interactive galaxy" },
-      { label: "Transmissions", href: "/videos", desc: "Video & audio" },
-      { label: "Missions", href: "/missions", desc: "Active operations" },
-      { label: "Signal Vault", href: "/vault", desc: "ARG puzzles" },
+      { label: "Stories", labelKey: "nav.stories", href: "/stories", desc: "Fiction & narratives" },
+      { label: "Lore", labelKey: "nav.lore", href: "/lore", desc: "Universe canon" },
+      { label: "Maps", labelKey: "nav.maps", href: "/maps", desc: "Sector charts" },
+      { label: "Star Atlas", labelKey: "nav.starAtlas", href: "/map", desc: "Interactive galaxy" },
+      { label: "Transmissions", labelKey: "nav.videos", href: "/videos", desc: "Video & audio" },
+      { label: "Missions", labelKey: "nav.missions", href: "/missions", desc: "Active operations" },
+      { label: "Signal Vault", labelKey: "nav.vault", href: "/vault", desc: "ARG puzzles" },
     ],
   },
   {
     label: "Community",
     icon: Users,
     items: [
-      { label: "Hub", href: "/community", desc: "Central command" },
-      { label: "Forums", href: "/forums", desc: "Discussion threads" },
-      { label: "Members", href: "/members", desc: "Fleet roster" },
-      { label: "Leaderboard", href: "/leaderboard", desc: "Top contributors" },
-      { label: "Events", href: "/events", desc: "Upcoming ops" },
-      { label: "Submit", href: "/submit", desc: "File a report" },
-      { label: "Messages", href: "/messages", desc: "Direct comms" },
+      { label: "Hub", labelKey: "nav.community", href: "/community", desc: "Central command" },
+      { label: "Forums", labelKey: "nav.forums", href: "/forums", desc: "Discussion threads" },
+      { label: "Members", labelKey: "nav.members", href: "/members", desc: "Fleet roster" },
+      { label: "Leaderboard", labelKey: "nav.leaderboard", href: "/leaderboard", desc: "Top contributors" },
+      { label: "Events", labelKey: "nav.events", href: "/events", desc: "Upcoming ops" },
+      { label: "Submit", labelKey: "nav.submit", href: "/submit", desc: "File a report" },
+      { label: "Messages", labelKey: "nav.messages", href: "/messages", desc: "Direct comms" },
     ],
   },
   {
     label: "Network",
     icon: Compass,
     items: [
-      { label: "Blog", href: "/blog", desc: "Dispatches" },
-      { label: "FAQs", href: "/faqs", desc: "Common queries" },
-      { label: "Changelog", href: "/changelog", desc: "System updates" },
-      { label: "Resources", href: "/resources", desc: "Reference files" },
+      { label: "Blog", labelKey: "nav.blog", href: "/blog", desc: "Dispatches" },
+      { label: "FAQs", labelKey: "nav.faqs", href: "/faqs", desc: "Common queries" },
+      { label: "Changelog", labelKey: "nav.changelog", href: "/changelog", desc: "System updates" },
+      { label: "Resources", labelKey: "nav.resources", href: "/resources", desc: "Reference files" },
     ],
   },
   {
     label: "Access",
     icon: Star,
     items: [
-      { label: "Membership", href: "/membership", desc: "Join the fleet" },
-      { label: "Support", href: "/support", desc: "Get help" },
+      { label: "Membership", labelKey: "nav.membership", href: "/membership", desc: "Join the fleet" },
+      { label: "Support", labelKey: "nav.support", href: "/support", desc: "Get help" },
     ],
   },
 ];
@@ -145,7 +146,7 @@ function MegaMenuDropdown({ group }: { group: NavGroup }) {
                     )}
                     role="menuitem"
                   >
-                    <span className="text-sm font-semibold">{item.label}</span>
+                    <span className="text-sm font-semibold">{t(item.labelKey)}</span>
                     {item.desc && <span className="text-xs text-gray-300 mt-0.5">{item.desc}</span>}
                   </Link>
                 </li>
