@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { tierLabel, tierPillVariant, type TierId } from "@/lib/tiers";
 import { FRAME_CATALOG } from "@/lib/economy";
 import { TierUsageWidget } from "@/components/usage/TierUsageWidget";
+import { StorageManager } from "@/components/widgets/StorageManager";
 import { Camera, ChevronDown, LogOut, Send } from "lucide-react";
 
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -314,6 +315,9 @@ export default function Account() {
                 </NeonButton>
               </div>
             ) : null}
+            <div className="mt-4">
+              <StorageManager />
+            </div>
             <details
               className="mt-6 group rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] overflow-hidden"
               aria-label="Developer access"

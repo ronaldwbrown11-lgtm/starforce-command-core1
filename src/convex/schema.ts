@@ -867,6 +867,18 @@ const schema = defineSchema(
       .index("by_created", ["createdAt"])
       .index("by_user", ["userId"]),
 
+    // Member file storage (R2 integration) — tracks uploaded files per user.
+    memberFiles: defineTable({
+      userId: v.id("users"),
+      fileName: v.string(),
+      fileSize: v.number(), // bytes
+      fileType: v.string(),
+      r2Key: v.string(), // unique key in the R2 bucket
+      uploadedAt: v.number(),
+    })
+      .index("by_user", ["userId"])
+      .index("by_r2key", ["r2Key"]),
+
     // Fixed-window rate limiting — one row per (kind, key). Convex
     // serializes writes per document, so counting is race-safe.
     rateLimits: defineTable({

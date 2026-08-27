@@ -48,6 +48,8 @@ import type * as siteAppearance from "../siteAppearance.js";
 import type * as sitemap from "../sitemap.js";
 import type * as social from "../social.js";
 import type * as staticCovers from "../staticCovers.js";
+import type * as storage from "../storage.js";
+import type * as storageHelper from "../storageHelper.js";
 import type * as stripe from "../stripe.js";
 import type * as stripeWebhook from "../stripeWebhook.js";
 import type * as support from "../support.js";
@@ -103,6 +105,8 @@ declare const fullApi: ApiFromModules<{
   sitemap: typeof sitemap;
   social: typeof social;
   staticCovers: typeof staticCovers;
+  storage: typeof storage;
+  storageHelper: typeof storageHelper;
   stripe: typeof stripe;
   stripeWebhook: typeof stripeWebhook;
   support: typeof support;
