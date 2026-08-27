@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { Compass, Crosshair, Library, Ship } from "lucide-react";
+import { Compass, Crosshair, Library, Ship, Wrench, ShieldAlert, FileClock } from "lucide-react";
 import {
   SiteShell,
   PageHero,
@@ -22,6 +22,13 @@ const ARCHIVE_STRIPS = [
   { label: "Service histories", value: "Archived", accent: "violet" as const },
   { label: "Armament sheets", value: "Cross-linked", accent: "amber" as const },
   { label: "Black-box files", value: "Restricted", accent: "magenta" as const },
+];
+
+const ARCHIVE_CARDS = [
+  { icon: Ship, accent: "cyan" as const, title: "Hulls & Classes", body: "Browse the existing vessel registry and vessel variants without altering the command database.", href: FLEET_REGISTRY_URL },
+  { icon: FileClock, accent: "violet" as const, title: "Service Histories", body: "Review maintenance, refits, deployments, and operational milestones linked to each vessel ID.", href: `${FLEET_REGISTRY_URL}#service-histories` },
+  { icon: Wrench, accent: "amber" as const, title: "Armament Sheets", body: "Cross-reference primary, secondary, and defensive systems against the registered hull.", href: `${FLEET_REGISTRY_URL}#armament-sheets` },
+  { icon: ShieldAlert, accent: "magenta" as const, title: "Black-box Files", body: "Operator-only incident records protected behind Fleet Registry clearance.", href: `${FLEET_REGISTRY_URL}#black-box-files` },
 ];
 
 const RELATED = [
@@ -84,6 +91,21 @@ export default function FleetRegistry() {
       />
 
       <section className="uf-section max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6" aria-label="Fleet archive datasets">
+          {ARCHIVE_CARDS.map((card) => {
+            const Icon = card.icon;
+            return (
+              <a key={card.title} href={card.href} className="block focus-visible:outline-2 focus-visible:outline-[color:var(--uf-cyan)] rounded-xl">
+                <HoloCard accent={card.accent} className="h-full transition-transform duration-200 hover:-translate-y-1">
+                  <Icon className="h-5 w-5 text-uf-cyan" aria-hidden />
+                  <h2 className="text-base font-semibold mt-3">{card.title}</h2>
+                  <p className="text-uf-muted text-sm mt-2">{card.body}</p>
+                  <span className="uf-eyebrow block mt-4 text-[10px]">Open dataset →</span>
+                </HoloCard>
+              </a>
+            );
+          })}
+        </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-6">
           {ARCHIVE_STRIPS.map((strip) => (
             <StatCard
@@ -95,7 +117,7 @@ export default function FleetRegistry() {
           ))}
         </div>
 
-        <GlassPanel accent="cyan" className="overflow-hidden rounded-xl p-0">
+        <GlassPanel accent="cyan" className="overflow-hidden rounded-xl p-0" id="fleet-console">
           {/* Console chrome — decorative brackets are hidden from AT */}
           <div
             aria-hidden="true"

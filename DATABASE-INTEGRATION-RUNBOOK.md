@@ -89,11 +89,13 @@ so the built download page matches, verify checksums in `dist/`.
 | --- | --- | --- | --- | --- | --- | --- |
 | Personnel (Service Record Manager) | `personnel.` | `api/records.php` | n/a (app-owned) | existing | `PersonnelDossierBrowser.tsx` | ✅ done, live |
 | Armory | `armory.` | `weapons.php` (marker `weapons-read-v2`) | `weapons-sync.php` (marker `weapons-sync-v4`) | `index.html` (sync-enabled) | `ArmoryBrowser.tsx` | ✅ done, live |
-| Sector Atlas | — (no subdomain yet) | — | — | — | — | ⬜ to build |
-| Fleet Registry | — (no subdomain yet) | — | — | — | — | ⬜ to build |
+| Sector Atlas | — n/a (built into site) | Convex `sectorMap` table | Convex mutations (operator console) | `/map` + `/maps` pages | `DiscoveryMap.tsx` | ✅ done, built-in |
+| Fleet Registry | `fleetregistry.` | `api.php` (vehicle read API) | app-owned (`/api/auth/login` console) | React app on subdomain (`/registry`) | iframe on `/fleet-registry` | ✅ done, live |
 
 Hostinger MySQL: DB `u102692168_Star_Force`, user `u102692168_Seven`
-(armory `weapons` table already holds the 23 canon weapons).
+(armory `weapons` table already holds the 23 canon weapons; the fleet
+registry app stores its vehicle records in the same DB — `vehicles` table,
+operator logins in `nighthawk_operators`).
 
 Current site build zip: SHA-256 `938d6866…` (after the lore-databases-own-pages
 change). Armory wiring zip: `7ebebbbb…` (contains `weapons.php`,
