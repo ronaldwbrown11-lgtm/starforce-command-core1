@@ -10,7 +10,7 @@ interface ShareButtonsProps {
   description?: string;
 }
 
-export function ShareButtons({ title, path, description }: ShareButtonsProps) {
+export function ShareButtons({ title, path }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false);
   const url = `${SITE_URL}${path}`;
   const text = `${title} — Star Force Base 1198`;
@@ -29,45 +29,42 @@ export function ShareButtons({ title, path, description }: ShareButtonsProps) {
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs uppercase tracking-[0.12em] text-gray-300 mr-1 hidden sm:inline">
-        <Share2 className="h-3.5 w-3.5 inline mr-1" />
-        Share
-      </span>
+    <div className="flex items-center gap-2" style={{ background: "rgba(10,15,30,0.6)", borderRadius: 8, padding: "6px 10px", border: "1px solid rgba(0,229,255,0.15)" }}>
+      <Share2 className="h-4 w-4 text-cyan-400 mr-1 shrink-0" />
       <a
         href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedText}`}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Share on X / Twitter"
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-cyan-800/40 text-gray-300 hover:text-white hover:bg-[rgba(0,229,255,0.12)] transition-colors"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-200 hover:text-white hover:bg-[rgba(0,229,255,0.15)] transition-colors"
       >
-        <Twitter className="h-4 w-4" />
+        <Twitter className="h-5 w-5" />
       </a>
       <a
         href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Share on Facebook"
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-cyan-800/40 text-gray-300 hover:text-white hover:bg-[rgba(0,229,255,0.12)] transition-colors"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-200 hover:text-white hover:bg-[rgba(0,229,255,0.15)] transition-colors"
       >
-        <Facebook className="h-4 w-4" />
+        <Facebook className="h-5 w-5" />
       </a>
       <a
         href={`https://reddit.com/submit?url=${encodedUrl}&title=${encodedText}`}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Share on Reddit"
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-cyan-800/40 text-gray-300 hover:text-white hover:bg-[rgba(0,229,255,0.12)] transition-colors"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-200 hover:text-white hover:bg-[rgba(0,229,255,0.15)] transition-colors"
       >
-        <span className="text-xs font-bold">R</span>
+        <span className="text-sm font-bold">R</span>
       </a>
       <button
         type="button"
         onClick={copyLink}
         aria-label={copied ? "Link copied" : "Copy link"}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-cyan-800/40 text-gray-300 hover:text-white hover:bg-[rgba(0,229,255,0.12)] transition-colors"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-200 hover:text-white hover:bg-[rgba(0,229,255,0.15)] transition-colors"
       >
-        {copied ? <Check className="h-4 w-4 text-uf-green" /> : <LinkIcon className="h-4 w-4" />}
+        {copied ? <Check className="h-5 w-5 text-green-400" /> : <LinkIcon className="h-5 w-5" />}
       </button>
     </div>
   );
