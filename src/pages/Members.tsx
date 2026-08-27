@@ -95,7 +95,7 @@ export default function Members() {
           </div>
         </div>
         {members === undefined ? (
-          <div className="uf-grid uf-grid--4">
+          <div className="uf-grid uf-grid--3">
             {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
               <div key={i} className="uf-skeleton" style={{ height: 200 }} />
             ))}
@@ -103,7 +103,7 @@ export default function Members() {
         ) : members.length === 0 ? (
           <div className="uf-empty">No roster matches.</div>
         ) : (
-          <div className="uf-grid uf-grid--4">
+          <div className="uf-grid uf-grid--3">
             {members.map((m) => (
               <MemberCard
                 key={m._id}
@@ -213,13 +213,13 @@ function MemberCard({
       </div>
       <p className="text-xs text-uf-muted mt-2">{xp.toLocaleString()} XP</p>
       <div className="flex gap-2 mt-4">
-        <Link to={`/u/${member._id}`} className="flex-1">
-          <NeonButton variant="ghost" className="w-full">
+        <Link to={`/u/${member._id}`} className="flex-1 min-w-0">
+          <NeonButton variant="ghost" className="w-full text-xs sm:text-sm whitespace-nowrap">
             View dossier
           </NeonButton>
         </Link>
-        <Link to={`/messages?recipient=${member._id}`} className="flex-1">
-          <NeonButton variant="primary" className="w-full">
+        <Link to={`/messages?recipient=${member._id}`} className="flex-1 min-w-0">
+          <NeonButton variant="primary" className="w-full text-xs sm:text-sm whitespace-nowrap">
             Send comms
           </NeonButton>
         </Link>

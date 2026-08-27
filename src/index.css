@@ -311,7 +311,7 @@
 }
 .uf-grid--2 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
 .uf-grid--3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-.uf-grid--4 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.uf-grid--4 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 
 /* ===========================================================================
    GLASS MORPHISM — CARD / PANEL SYSTEM

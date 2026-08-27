@@ -1,6 +1,6 @@
 import { Link, NavLink, useLocation, useNavigate } from "react-router";
-import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, LayoutDashboard, LogOut, Menu, Search, Shield, User, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BookOpen, ChevronDown, Compass, LayoutDashboard, LifeBuoy, LogOut, Menu, Search, Shield, Sparkles, Star, User, Users, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { LOCALES, useI18n } from "@/lib/i18n";
@@ -17,30 +17,146 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import type { LucideIcon } from "lucide-react";
 
-const NAV = [
-  { labelKey: "nav.stories", href: "/stories" },
-  { labelKey: "nav.lore", href: "/lore" },
-  { labelKey: "nav.maps", href: "/maps" },
-  { labelKey: "nav.starAtlas", href: "/map" },
-  { labelKey: "nav.videos", href: "/videos" },
-  { labelKey: "nav.missions", href: "/missions" },
-  { labelKey: "nav.aiAssistant", href: "/tools/assistant" },
-  { labelKey: "nav.vault", href: "/vault" },
-  { labelKey: "nav.events", href: "/events" },
-  { labelKey: "nav.community", href: "/community" },
-  { labelKey: "nav.forums", href: "/forums" },
-  { labelKey: "nav.members", href: "/members" },
-  { labelKey: "nav.leaderboard", href: "/leaderboard" },
-  { labelKey: "nav.submit", href: "/submit" },
-  { labelKey: "nav.messages", href: "/messages" },
-  { labelKey: "nav.blog", href: "/blog" },
-  { labelKey: "nav.faqs", href: "/faqs" },
-  { labelKey: "nav.changelog", href: "/changelog" },
-  { labelKey: "nav.resources", href: "/resources" },
-  { labelKey: "nav.membership", href: "/membership" },
-  { labelKey: "nav.support", href: "/support" },
+// ---------------------------------------------------------------------------
+// Categorized mega-menu navigation
+// ---------------------------------------------------------------------------
+interface NavItem {
+  label: string;
+  href: string;
+  desc?: string;
+  highlight?: boolean;
+}
+interface NavGroup {
+  label: string;
+  icon: LucideIcon;
+  items: NavItem[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: "Archive",
+    icon: BookOpen,
+    items: [
+      { label: "Stories", href: "/stories", desc: "Fiction & narratives" },
+      { label: "Lore", href: "/lore", desc: "Universe canon" },
+      { label: "Maps", href: "/maps", desc: "Sector charts" },
+      { label: "Star Atlas", href: "/map", desc: "Interactive galaxy" },
+      { label: "Transmissions", href: "/videos", desc: "Video & audio" },
+      { label: "Missions", href: "/missions", desc: "Active operations" },
+      { label: "Signal Vault", href: "/vault", desc: "ARG puzzles" },
+    ],
+  },
+  {
+    label: "Community",
+    icon: Users,
+    items: [
+      { label: "Hub", href: "/community", desc: "Central command" },
+      { label: "Forums", href: "/forums", desc: "Discussion threads" },
+      { label: "Members", href: "/members", desc: "Fleet roster" },
+      { label: "Leaderboard", href: "/leaderboard", desc: "Top contributors" },
+      { label: "Events", href: "/events", desc: "Upcoming ops" },
+      { label: "Submit", href: "/submit", desc: "File a report" },
+      { label: "Messages", href: "/messages", desc: "Direct comms" },
+    ],
+  },
+  {
+    label: "Network",
+    icon: Compass,
+    items: [
+      { label: "Blog", href: "/blog", desc: "Dispatches" },
+      { label: "FAQs", href: "/faqs", desc: "Common queries" },
+      { label: "Changelog", href: "/changelog", desc: "System updates" },
+      { label: "Resources", href: "/resources", desc: "Reference files" },
+    ],
+  },
+  {
+    label: "Access",
+    icon: Star,
+    items: [
+      { label: "Membership", href: "/membership", desc: "Join the fleet" },
+      { label: "Support", href: "/support", desc: "Get help" },
+    ],
+  },
 ];
+
+const AI_TOOL: NavItem = { label: "AI Assistant", href: "/tools/assistant", desc: "Lore-powered creative AI", highlight: true };
+
+// ---------------------------------------------------------------------------
+// Mega menu dropdown (hover-triggered, keyboard-accessible)
+// ---------------------------------------------------------------------------
+function MegaMenuDropdown({ group }: { group: NavGroup }) {
+  const [open, setOpen] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const { t } = useI18n();
+  const pathname = useLocation().pathname;
+  const Icon = group.icon;
+
+  const isActive = group.items.some((i) => pathname === i.href || pathname.startsWith(i.href + "/"));
+
+  const enter = () => { clearTimeout(timeoutRef.current); setOpen(true); };
+  const leave = () => { timeoutRef.current = setTimeout(() => setOpen(false), 150); };
+
+  return (
+    <div className="relative" onMouseEnter={enter} onMouseLeave={leave}>
+      <button
+        type="button"
+        className={cn(
+          "flex items-center gap-1.5 px-3 py-2 rounded-md text-sm tracking-[0.08em] uppercase font-medium transition-colors",
+          "text-uf-text hover:text-uf-text cursor-pointer",
+          isActive
+            ? "bg-[rgba(0,229,255,0.10)] shadow-[var(--uf-glow-cyan)]"
+            : "hover:bg-[rgba(0,229,255,0.06)]",
+        )}
+        aria-expanded={open}
+        aria-haspopup="true"
+        onFocus={enter}
+        onBlur={leave}
+      >
+        {group.label}
+        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 top-full pt-2 z-50"
+          onMouseEnter={enter}
+          onMouseLeave={leave}
+        >
+          <div
+            className="!rounded-xl p-4 min-w-[260px]"
+            role="menu"
+            style={{ background: "rgba(10, 15, 30, 0.95)", border: "1px solid rgba(0,229,255,0.2)", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}
+          >
+            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-cyan-800/40">
+              <Icon className="h-4 w-4 text-cyan-400" />
+              <span className="text-xs uppercase tracking-[0.16em] text-cyan-300 font-bold">{group.label}</span>
+            </div>
+            <ul className="flex flex-col gap-0.5 list-none p-0 m-0">
+              {group.items.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    to={item.href}
+                    className={cn(
+                      "flex flex-col rounded-lg px-3 py-2 transition-colors",
+                      pathname === item.href
+                        ? "bg-cyan-900/40 text-white"
+                        : "text-gray-100 hover:bg-cyan-900/30 hover:text-white",
+                    )}
+                    role="menuitem"
+                  >
+                    <span className="text-sm font-semibold">{item.label}</span>
+                    {item.desc && <span className="text-xs text-gray-300 mt-0.5">{item.desc}</span>}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function SiteShell({
   children,
@@ -123,7 +239,7 @@ function PageBackgroundImage({ url }: { url: string }) {
  */
 function CinematicOverlay() {
   return (
-    <div aria-hidden="true" className="fixed inset-0 pointer-events-none" style={{ zIndex: 1 }}>
+    <div aria-hidden="true" className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 1 }}>
       {/* Top-left lens flare */}
       <div className="uf-lens-flare" />
       {/* Bottom-right rim light */}
@@ -146,6 +262,7 @@ const OP_ROLES = [
 
 function Header() {
   const { t } = useI18n();
+  const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [signingOut, setSigningOut] = useState(false);
@@ -198,24 +315,23 @@ function Header() {
           />
           <span className="hidden sm:inline">Star Force 1198</span>
         </Link>
-        <nav aria-label="Primary" className="hidden lg:flex gap-1 ml-auto">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.href}
-              to={item.href}
-              className={({ isActive }) =>
-                cn(
-                  "px-3 py-2 rounded-md text-sm tracking-[0.08em] uppercase font-medium",
-                  "text-uf-text hover:text-uf-text",
-                  isActive
-                    ? "bg-[rgba(0,229,255,0.10)] shadow-[var(--uf-glow-cyan)]"
-                    : "hover:bg-[rgba(0,229,255,0.06)]",
-                )
-              }
-            >
-              {t(item.labelKey)}
-            </NavLink>
+        <nav aria-label="Primary" className="hidden lg:flex items-center gap-1 ml-auto">
+          {NAV_GROUPS.map((group) => (
+            <MegaMenuDropdown key={group.label} group={group} />
           ))}
+          <Link
+            to={AI_TOOL.href}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-2 rounded-md text-sm tracking-[0.08em] uppercase font-medium transition-colors",
+              "text-uf-cyan hover:text-uf-cyan",
+              pathname === AI_TOOL.href
+                ? "bg-[rgba(0,229,255,0.15)] shadow-[var(--uf-glow-cyan)]"
+                : "hover:bg-[rgba(0,229,255,0.08)]",
+            )}
+          >
+            <Sparkles className="h-4 w-4" />
+            {AI_TOOL.label}
+          </Link>
         </nav>
         <form
           role="search"
@@ -326,28 +442,50 @@ function Header() {
           aria-label="Mobile command nav"
           className="lg:hidden border-t border-[color:var(--uf-border)] bg-[color:var(--uf-panel)] px-4 py-4"
         >
-          <nav aria-label="Primary mobile" className="flex flex-col gap-2">
-            {NAV.map((item) => (
-              <NavLink
-                key={item.href}
-                to={item.href}
+          <nav aria-label="Primary mobile" className="flex flex-col gap-3">
+            {NAV_GROUPS.map((group) => {
+              const Icon = group.icon;
+              return (
+                <div key={group.label}>
+                  <div className="flex items-center gap-2 px-3 mb-1">
+                    <Icon className="h-3.5 w-3.5 text-uf-cyan" />
+                    <span className="text-[10px] uppercase tracking-[0.16em] text-cyan-300 font-semibold">{group.label}</span>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    {group.items.map((item) => (
+                      <NavLink
+                        key={item.href}
+                        to={item.href}
+                        onClick={() => setOpen(false)}
+                        className={({ isActive }) =>
+                          cn(
+                            "px-3 py-2 rounded-md text-sm",
+                            isActive
+                              ? "bg-[rgba(0,229,255,0.10)] text-uf-text"
+                              : "text-uf-muted",
+                          )}
+                      >
+                        {item.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            <div className="border-t border-[color:var(--uf-border)] pt-2">
+              <Link
+                to={AI_TOOL.href}
                 onClick={() => setOpen(false)}
-                className={({ isActive }) =>
-                  cn(
-                    "px-3 py-2 rounded-md text-sm uppercase tracking-[0.08em]",
-                    isActive
-                      ? "bg-[rgba(0,229,255,0.10)] text-uf-text"
-                      : "text-uf-muted",
-                  )
-                }
+                className="px-3 py-2 rounded-md text-sm text-uf-cyan flex items-center gap-2"
               >
-                {t(item.labelKey)}
-              </NavLink>
-            ))}
+                <Sparkles className="h-4 w-4" />
+                {AI_TOOL.label}
+              </Link>
+            </div>
             <NavLink
               to="/search"
               onClick={() => setOpen(false)}
-              className="px-3 py-2 rounded-md text-sm uppercase tracking-[0.08em] text-uf-muted flex items-center gap-2"
+              className="px-3 py-2 rounded-md text-sm text-uf-muted flex items-center gap-2"
             >
               <Search className="h-4 w-4" aria-hidden />
               Search the network
