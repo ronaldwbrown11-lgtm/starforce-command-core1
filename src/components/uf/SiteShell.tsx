@@ -82,7 +82,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-const AI_TOOL: NavItem = { label: "AI Assistant", href: "/tools/assistant", desc: "Lore-powered creative AI", highlight: true };
+const AI_TOOL: NavItem = { label: "AI Assistant", labelKey: "nav.aiAssistant", href: "/tools/assistant", desc: "Lore-powered creative AI", highlight: true };
 
 // ---------------------------------------------------------------------------
 // Mega menu dropdown (hover-triggered, keyboard-accessible)
