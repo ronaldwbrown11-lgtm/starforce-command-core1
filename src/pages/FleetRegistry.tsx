@@ -19,9 +19,9 @@ const UPLINK_TIMEOUT_MS = 12_000;
 
 const ARCHIVE_STRIPS = [
   { label: "Hulls & classes", value: "Catalogued", accent: "cyan" as const, href: FLEET_REGISTRY_URL },
-  { label: "Service histories", value: "Archived", accent: "violet" as const, href: `${FLEET_REGISTRY_URL}#service-histories` },
-  { label: "Armament sheets", value: "Cross-linked", accent: "amber" as const, href: `${FLEET_REGISTRY_URL}#armament-sheets` },
-  { label: "Black-box files", value: "Restricted", accent: "magenta" as const, href: `${FLEET_REGISTRY_URL}#black-box-files` },
+  { label: "Service histories", value: "Archived", accent: "violet" as const, href: "/fleet-registry/service-histories" },
+  { label: "Armament sheets", value: "Cross-linked", accent: "amber" as const, href: "/fleet-registry/armament-sheets" },
+  { label: "Black-box files", value: "Restricted", accent: "magenta" as const, href: "/fleet-registry/black-box-files" },
 ];
 
 const RELATED = [
@@ -86,11 +86,9 @@ export default function FleetRegistry() {
       <section className="uf-section max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-6">
           {ARCHIVE_STRIPS.map((strip) => (
-            <a
+            <Link
               key={strip.label}
-              href={strip.href}
-              target="_blank"
-              rel="noopener noreferrer"
+              to={strip.href}
               className="block focus-visible:outline-2 focus-visible:outline-[color:var(--uf-cyan)] rounded-xl"
             >
               <StatCard
@@ -98,7 +96,7 @@ export default function FleetRegistry() {
                 value={strip.value}
                 accent={strip.accent}
               />
-            </a>
+            </Link>
           ))}
         </div>
 

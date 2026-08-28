@@ -77,6 +77,9 @@ import FaqsPage from "./pages/Faqs.tsx";
 import OpBlog from "./pages/operator/BlogManage.tsx";
 import OpFaqs from "./pages/operator/FaqsManage.tsx";
 import FleetRegistryPage from "./pages/FleetRegistry.tsx";
+import FleetServiceHistoryPage from "./pages/FleetServiceHistory.tsx";
+import FleetArmamentSheetsPage from "./pages/FleetArmamentSheets.tsx";
+import FleetBlackBoxFilesPage from "./pages/FleetBlackBoxFiles.tsx";
 import OpFleet from "./pages/operator/FleetManage.tsx";
 import OpBroadcasts from "./pages/operator/Broadcasts.tsx";
 import OpSupport from "./pages/operator/Support.tsx";
@@ -154,6 +157,9 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/blog/:slug" element={<BlogDetailPage />} />
               <Route path="/faqs" element={<FaqsPage />} />
               <Route path="/fleet-registry" element={<FleetRegistryPage />} />
+              <Route path="/fleet-registry/service-histories" element={<FleetServiceHistoryPage />} />
+              <Route path="/fleet-registry/armament-sheets" element={<FleetArmamentSheetsPage />} />
+              <Route path="/fleet-registry/black-box-files" element={<FleetBlackBoxFilesPage />} />
               <Route path="/support" element={<Support />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
