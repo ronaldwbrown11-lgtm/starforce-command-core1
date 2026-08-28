@@ -7,7 +7,7 @@ declare(strict_types=1);
 $db_host = 'localhost';
 $db_name = 'u102692168_Star_Force';
 $db_user = 'u102692168_Seven';
-$db_pass = 'Coralsea!14';
+$db_pass = 'PASTE_YOUR_PASSWORD_HERE';
 // ============================================
 
 // Quick health check — visit ?action=ping to verify PHP is running
