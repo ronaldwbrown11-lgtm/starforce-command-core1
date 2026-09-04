@@ -28,6 +28,8 @@ import type * as cronJobs from "../cronJobs.js";
 import type * as digest from "../digest.js";
 import type * as digestData from "../digestData.js";
 import type * as discordBridge from "../discordBridge.js";
+import type * as discordBridgeActions from "../discordBridgeActions.js";
+import type * as discordBridgeNode from "../discordBridgeNode.js";
 import type * as discoveries from "../discoveries.js";
 import type * as economy from "../economy.js";
 import type * as email from "../email.js";
@@ -92,6 +94,8 @@ declare const fullApi: ApiFromModules<{
   digest: typeof digest;
   digestData: typeof digestData;
   discordBridge: typeof discordBridge;
+  discordBridgeActions: typeof discordBridgeActions;
+  discordBridgeNode: typeof discordBridgeNode;
   discoveries: typeof discoveries;
   economy: typeof economy;
   email: typeof email;

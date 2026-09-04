@@ -4,7 +4,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { opRoleValidator, tierValidator } from "./schema";
-import { postDiscordAnnouncement } from "./discordBridge";
+import { internal } from "./_generated/api";
 
 // Same gate the rest of the operator surface uses; kept here so this file
 // exposes no inadvertent surface that callers could bypass. Exported so
@@ -71,7 +71,7 @@ export const sendBroadcast = mutation({
         }),
       ),
     );
-    await ctx.db.insert("auditLog", {
+    const auditLogId = await ctx.db.insert("auditLog", {
       actorId: me,
       action: "broadcast.send",
       target: `audience:${args.audience.type}`,
@@ -84,16 +84,24 @@ export const sendBroadcast = mutation({
     });
 
     // Discord presence bridge: mirror the announcement to the configured
-    // webhook when the operator has set DISCORD_WEBHOOK_URL. Best-effort —
-    // a missing/misconfigured webhook never fails the broadcast itself.
-    let discordMirrored = false;
+    // webhook when the operator has set DISCORD_WEBHOOK_URL. Mutations
+    // cannot run actions inline on this Convex version, so the POST is
+    // scheduled immediately and runs in the Node.js runtime
+    // (discordBridgeNode.ts — the V8 isolate has no fetch). The mirror
+    // action writes its outcome back onto this audit row, so history shows
+    // whether the mirror landed. Best-effort — a missing or misconfigured
+    // webhook never fails the broadcast itself.
     try {
-      const res = await postDiscordAnnouncement(title, body);
-      discordMirrored = res.posted;
+      await ctx.scheduler.runAfter(0, internal.discordBridgeNode.mirrorAnnouncement, {
+        auditLogId,
+        title,
+        body,
+      });
     } catch {
-      discordMirrored = false;
+      // Mirror scheduling is best-effort; in-app delivery already happened.
     }
-    return { ok: true, delivered: targets.length, discordMirrored };
+
+    return { ok: true, delivered: targets.length };
   },
 });
 

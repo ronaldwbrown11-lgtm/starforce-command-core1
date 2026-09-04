@@ -1,10 +1,10 @@
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState } from "react";
 import { OperatorShell } from "@/components/operator/OperatorShell";
 import { HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { toast } from "sonner";
-import { Megaphone, Send } from "lucide-react";
+import { Megaphone, Send, Webhook } from "lucide-react";
 import { TIER_ORDER, tierLabel, tierPillVariant } from "@/lib/tiers";
 
 const OP_ROLES = [
@@ -22,7 +22,9 @@ type Audience =
 
 export default function OperatorBroadcasts() {
   const history = useQuery(api.admin.listBroadcastHistory, { limit: 25 });
+  const bridge = useQuery(api.discordBridge.bridgeStatus);
   const sendBroadcast = useMutation(api.admin.sendBroadcast);
+  const testBridge = useAction(api.discordBridgeActions.testBridgeConnection);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [audienceType, setAudienceType] = useState<"all" | "tier" | "opRole">(
@@ -35,6 +37,7 @@ export default function OperatorBroadcasts() {
     (typeof OP_ROLES)[number]["value"]
   >("operator");
   const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   const audience: Audience =
     audienceType === "all"
@@ -56,13 +59,32 @@ export default function OperatorBroadcasts() {
     setBusy(true);
     try {
       const res = await sendBroadcast({ title, body, audience });
-      toast.success(`Broadcast delivered to ${res.delivered} member${res.delivered === 1 ? "" : "s"}.`);
+      toast.success(
+        `Broadcast delivered to ${res.delivered} member${res.delivered === 1 ? "" : "s"}. Discord mirror status appears in the history row below.`,
+        { duration: 6000 },
+      );
       setTitle("");
       setBody("");
     } catch (e) {
       toast.error("Broadcast failed.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleTestBridge() {
+    setTesting(true);
+    try {
+      const res = await testBridge();
+      if (res.posted) {
+        toast.success("Test transmission posted — check the Discord announcements channel.");
+      } else {
+        toast.error(`Discord mirror is off: ${res.reason ?? "unknown"}`);
+      }
+    } catch {
+      toast.error("Test failed — check the bridge setup below.");
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -80,6 +102,101 @@ export default function OperatorBroadcasts() {
           notification immediately.
         </p>
       </header>
+
+      <section aria-labelledby="bridge-status" className="mb-8">
+        <HoloCard>
+          <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2
+              id="bridge-status"
+              className="flex items-center gap-2 text-xl font-semibold"
+            >
+              <Webhook className="h-5 w-5 text-uf-cyan" aria-hidden />
+              Discord presence bridge
+            </h2>
+            {bridge === undefined ? (
+              <StatusPill variant="default">Checking…</StatusPill>
+            ) : bridge.configured ? (
+              <StatusPill variant="success">Online — mirroring to Discord</StatusPill>
+            ) : (
+              <StatusPill variant="gold">Not configured</StatusPill>
+            )}
+          </header>
+
+          {bridge?.configured ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="max-w-2xl text-sm text-uf-muted">
+                Every broadcast is mirrored to the announcements channel via the
+                configured webhook. Each history row below reports whether the
+                mirror landed.
+              </p>
+              <NeonButton
+                variant="primary"
+                loading={testing}
+                disabled={testing}
+                onClick={handleTestBridge}
+                className="shrink-0"
+              >
+                <Send className="h-4 w-4" aria-hidden />
+                Test transmission
+              </NeonButton>
+            </div>
+          ) : (
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <div>
+                <p className="text-sm text-uf-muted">
+                  <span className="font-medium text-uf-text">What this is:</span>{" "}
+                  announcements posted here are mirrored to a Discord channel as
+                  a webhook embed — no bot, no self-hosted process, nothing to
+                  keep online. It is a one-time setup.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <NeonButton
+                    variant="default"
+                    loading={testing}
+                    disabled={testing}
+                    onClick={handleTestBridge}
+                  >
+                    <Send className="h-4 w-4" aria-hidden />
+                    Test after configuring
+                  </NeonButton>
+                </div>
+              </div>
+              <ol className="m-0 flex list-none flex-col gap-2 p-0">
+                {[
+                  [
+                    "Create the webhook",
+                    "On Discord, open your server → Server Settings → Integrations → Webhooks → New Webhook. Pick the announcements channel and copy the Webhook URL.",
+                  ],
+                  [
+                    "Store it as DISCORD_WEBHOOK_URL",
+                    "Paste the URL into the project's Keys/API keys tab as DISCORD_WEBHOOK_URL (server-side env var, never in the client bundle).",
+                  ],
+                  [
+                    "Verify",
+                    "Return here and press “Test after configuring” — a test transmission posts to the channel when the URL is live.",
+                  ],
+                ].map(([step, copy], i) => (
+                  <li
+                    key={step}
+                    className="flex gap-3 border border-[color:var(--uf-border)] rounded-md px-3 py-2"
+                  >
+                    <span
+                      className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[rgba(0,229,255,0.12)] text-xs font-bold text-uf-cyan"
+                      aria-hidden
+                    >
+                      {i + 1}
+                    </span>
+                    <p className="text-sm">
+                      <span className="font-semibold">{step}.</span>{" "}
+                      <span className="text-uf-muted">{copy}</span>
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </HoloCard>
+      </section>
 
       <section aria-labelledby="broadcast-compose" className="mb-8">
         <header className="mb-3">
@@ -232,9 +349,22 @@ export default function OperatorBroadcasts() {
                         {meta?.count ?? 0} delivered
                       </p>
                     </div>
-                    <StatusPill variant="violet">
-                      {audienceLabel(meta?.audience ?? { type: "all" })}
-                    </StatusPill>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {meta?.discordMirrored ? (
+                        <StatusPill variant="success">Mirrored to Discord</StatusPill>
+                      ) : null}
+                      {meta?.discordMirrorReason ? (
+                        <span
+                          className="text-xs text-uf-muted"
+                          title={meta.discordMirrorReason}
+                        >
+                          Mirror skipped
+                        </span>
+                      ) : null}
+                      <StatusPill variant="violet">
+                        {audienceLabel(meta?.audience ?? { type: "all" })}
+                      </StatusPill>
+                    </div>
                   </div>
                 </li>
               );
@@ -257,6 +387,8 @@ function parseMeta(meta?: string): null | {
   title?: string;
   count?: number;
   audience?: Audience;
+  discordMirrored?: boolean;
+  discordMirrorReason?: string;
 } {
   if (!meta) return null;
   try {

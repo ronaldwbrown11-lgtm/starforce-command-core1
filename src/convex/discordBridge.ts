@@ -1,4 +1,9 @@
-import { mutation, query } from "./_generated/server";
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireOperatorCapability } from "./admin";
@@ -7,15 +12,20 @@ import { requireOperatorCapability } from "./admin";
 // Discord presence bridge — INTEGRATION PLACEHOLDER.
 //
 // What this module does today:
-//   1. `mirrorAnnouncement` — posts operator announcements to a Discord
+//   1. Announcement mirroring — operator broadcasts post to a Discord
 //      channel via a webhook URL (no bot token needed, no server to host).
-//      Fires from admin.sendBroadcast automatically when configured.
+//      The webhook POST runs in discordBridgeNode.ts (Node.js runtime),
+//      scheduled from admin.sendBroadcast; the outcome lands back on the
+//      audit log so the operator console shows whether the mirror fired.
 //   2. `linkDiscordAccount` / `verifyDiscordLink` / `unlinkDiscord` —
 //      members record their Discord username and operators verify it,
 //      giving the site a verified cross-platform presence claim.
+//   The operator-facing test action lives in discordBridgeActions.ts (kept
+//   out of this module because a public action referencing this module's own
+//   internals triggers a TypeScript inference cycle).
 //
-// What it needs before it goes live (user-provided):
-//   Env vars (paste into the project's Keys/API keys tab):
+// What it needs before mirroring goes live (user-provided):
+//   Env var (paste into the project's Keys/API keys tab):
 //     DISCORD_WEBHOOK_URL — webhook URL of the announcements channel.
 //   Manual steps:
 //     Discord → Server Settings → Integrations → Webhooks → New Webhook →
@@ -75,6 +85,65 @@ export const bridgeStatus = query({
         ? "Announcements mirror to Discord."
         : "DISCORD_WEBHOOK_URL not configured — mirroring is off.",
     };
+  },
+});
+
+// Internal gate: the node actions and public test action have no db/handler
+// context of their own, so operator authorization is enforced here, in a
+// context that can run requireOperatorCapability. Never export as public.
+export const requireBridgeOperator = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+    ]);
+    return { me };
+  },
+});
+
+// Internal: the node mirror action reports its outcome back onto the
+// broadcast's audit row so history shows whether the Discord mirror fired.
+export const recordMirrorOutcome = internalMutation({
+  args: {
+    auditLogId: v.id("auditLog"),
+    posted: v.boolean(),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.auditLogId);
+    if (!row) return { ok: false };
+    let meta: Record<string, unknown> = {};
+    try {
+      meta = row.meta ? (JSON.parse(row.meta) as Record<string, unknown>) : {};
+    } catch {
+      meta = {};
+    }
+    meta.discordMirrored = args.posted;
+    if (!args.posted && args.reason) meta.discordMirrorReason = args.reason;
+    await ctx.db.patch(args.auditLogId, { meta: JSON.stringify(meta) });
+    return { ok: true };
+  },
+});
+
+// Internal: audit a test transmission (actor comes from requireBridgeOperator).
+export const recordDiscordTest = internalMutation({
+  args: {
+    actorId: v.id("users"),
+    result: v.object({
+      posted: v.boolean(),
+      reason: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("auditLog", {
+      actorId: args.actorId,
+      action: "discord.test",
+      target: "discord:webhook",
+      meta: JSON.stringify(args.result),
+      createdAt: Date.now(),
+    });
+    return { ok: true };
   },
 });
 
