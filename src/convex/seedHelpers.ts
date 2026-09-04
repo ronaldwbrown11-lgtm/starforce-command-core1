@@ -37,6 +37,9 @@ const TABLES_TO_WIPE = [
   "comments",
   "activityFeed",
   "notifications",
+  "armamentSheets",
+  "serviceHistories",
+  "blackBoxFiles",
 ] as const;
 
 // Wipe all seed tables. `users` is intentionally excluded so re-seeding
@@ -252,6 +255,7 @@ export const seedGroups = internalMutation({
     await ctx.runMutation(internal.seedHelpers.seedCalendar, {});
     await ctx.runMutation(internal.seedHelpers.seedCaptainLogs, {});
     await ctx.runMutation(internal.seedHelpers.seedChangelog, {});
+    await ctx.runMutation(internal.seedHelpers.seedFleetRecords, {});
   },
 });
 
@@ -662,6 +666,166 @@ export const tagSeededStoriesExample = internalMutation({
  * Tag all existing stories with "Example" so visitors can tell demo
  * content from real submissions. Safe to re-run.
  */
+// ---- Fleet sub-records (armament sheets, service histories, black-box files) ----
+
+// Fleet record specs reference vessel designations. The helper resolves
+// them to vessel IDs at runtime so the seed is idempotent on vessel
+// existence and on table-emptiness.
+
+const ARMAMENT_SPECS = [
+  {
+    vesselDesignation: "OMEGA MAJESTY",
+    title: "Omega Majesty — Primary Loadout",
+    primaryArmament: "4× MK-9 Helical Plasma Repeaters — 1,200 RPM, 14.8 km effective range",
+    secondaryArmament: "15× Antimatter Micro-Mines — AM-7 Cascade warhead",
+    defensiveSystems: "Graviton Force-Field Class 6 Barrier — 8.4 sec recharge, full sphere 360° coverage",
+    ammunitionNotes: "Plasma cells rated for 12,000 bursts per cell. Micro-mines resupplied at drydock only.",
+    classification: "heavy",
+  },
+  {
+    vesselDesignation: "F5000-A",
+    title: "Sagittarius Standard — Multi-Role Strike Loadout",
+    primaryArmament: "4× MK-9 Helical Plasma Repeaters — 1,200 RPM, 14.8 km effective range",
+    secondaryArmament: "15× Antimatter Micro-Mines — AM-7 Cascade warhead",
+    defensiveSystems: "Graviton Force-Field Class 6 Barrier — 8.4 sec recharge, full sphere 360° coverage",
+    ammunitionNotes: "Standard production loadout. Neural Interface Class IV required for targeting sync.",
+    classification: "standard",
+  },
+  {
+    vesselDesignation: "VANGUARD SOVEREIGN",
+    title: "Vanguard Sovereign — Classified Weapons Platform",
+    primaryArmament: "CLASSIFIED",
+    secondaryArmament: "CLASSIFIED",
+    defensiveSystems: "CLASSIFIED — Tier Command clearance required",
+    ammunitionNotes: "CLASSIFIED",
+    classification: "classified",
+  },
+];
+
+const SERVICE_SPECS = [
+  {
+    vesselDesignation: "OMEGA MAJESTY",
+    eventType: "deployment",
+    title: "Initial commissioning patrol — Sol system-Gemini",
+    details: "Omega Majesty completed its inaugural patrol sweep of the Sol system-Gemini corridor. All systems nominal. Beacon traffic confirmed on Terran frequency.",
+    eventDate: "Stardate 2841.3",
+    location: "Sol system-Gemini",
+    sourceReference: "Fleet Command Dispatch #041",
+  },
+  {
+    vesselDesignation: "OMEGA MAJESTY",
+    eventType: "refit",
+    title: "Graviton barrier upgrade — Class 5 → Class 6",
+    details: "Barrier projectors replaced with Class 6 units during scheduled drydock at Celestial Dynamics Platform Theta-7. Recharge time improved from 11.2s to 8.4s.",
+    eventDate: "Stardate 2855.7",
+    location: "Platform Theta-7 Drydock",
+    sourceReference: "Refit Manifest RF-2855-001",
+  },
+  {
+    vesselDesignation: "VANGUARD SOVEREIGN",
+    eventType: "incident",
+    title: "Corridor 4 anomaly encounter",
+    details: "Vanguard Sovereign encountered an unidentified signal echo in Corridor 4 during a routine patrol. Vessel held position for 47 minutes while the signal was logged. No damage sustained.",
+    eventDate: "Stardate 2862.1",
+    location: "Corridor 4, Outer Belt",
+    sourceReference: "Incident Report IR-2862-004",
+  },
+  {
+    vesselDesignation: "F5000-A",
+    eventType: "milestone",
+    title: "1,000th flight hour logged",
+    details: "Sagittarius Standard logged its 1,000th flight hour during a long-range recon sweep. Pilot Dax Norel at the neural interface.",
+    eventDate: "Stardate 2858.9",
+    location: "Outer Belt — Grid 7-Theta",
+    sourceReference: "Flight Log FL-2858-1000",
+  },
+];
+
+const BLACKBOX_SPECS = [
+  {
+    vesselDesignation: "VANGUARD SOVEREIGN",
+    fileCode: "BB-001",
+    title: "Corridor 4 Signal Echo — Full Recording",
+    incidentDate: "Stardate 2862.1",
+    classification: "restricted",
+    summary: "Vanguard Sovereign recorded a repeating signal echo in Corridor 4 matching the 9-minute cycle reported by the listening-post network. Signal origin unidentified. No hostile action detected.",
+    payload: "BLACK-BOX AUDIO LOG — STELLAR DATE 2862.1\nVessel: VANGUARD SOVEREIGN\nLocation: Corridor 4, Outer Belt\nDuration: 47 minutes\n\n00:00 — Signal echo detected on bearing 247.3\n00:12 — Echo confirms 9-minute repeating pattern\n00:47 — Pattern logged to signal archive\n01:03 — No hostile contact. Holding position.\n\nEnd of log. Classification: RESTRICTED.",
+  },
+  {
+    vesselDesignation: "OMEGA MAJESTY",
+    fileCode: "BB-002",
+    title: "Sol system-Gemini Beacon Resumption — Bridge Recording",
+    incidentDate: "Stardate 2841.3",
+    classification: "classified",
+    summary: "Bridge recording of the moment the Sol system-Gemini beacon resumed broadcasting on a Terran frequency after nearly four decades of silence. Three confirmed contacts, one anomaly pending classification.",
+    payload: "BLACK-BOX BRIDGE LOG — STELLAR DATE 2841.3\nVessel: OMEGA MAJESTY\nLocation: Sol system-Gemini\nDuration: 12 minutes\n\n00:00 — Beacon resumed at 04:18 local\n00:34 — First sweep team returned: 3 confirmed contacts\n02:17 — Anomaly on bearing 091.2 — unclassified\n04:45 — Mirra Singh deploys two recon wings\n11:58 — Second wing entering the dark corridor\n\nEnd of log. Classification: CLASSIFIED.",
+  },
+];
+
+export const seedFleetRecords = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    // Skip if all three tables already have rows (partial inserts possible
+    // when vessel designations change, so only skip when every table is populated).
+    const existingSheets = await ctx.db.query("armamentSheets").first();
+    const existingHistories = await ctx.db.query("serviceHistories").first();
+    const existingBoxes = await ctx.db.query("blackBoxFiles").first();
+    if (existingSheets && existingHistories && existingBoxes) return;
+
+    // Resolve vessel designations → IDs.
+    const vessels = await ctx.db.query("vessels").collect();
+    const vesselByDesignation = new Map(
+      vessels.map((v) => [v.designation, v._id]),
+    );
+    const now = Date.now();
+
+    for (const spec of ARMAMENT_SPECS) {
+      const vesselId = vesselByDesignation.get(spec.vesselDesignation);
+      if (!vesselId) continue;
+      await ctx.db.insert("armamentSheets", {
+        vesselId,
+        title: spec.title,
+        primaryArmament: spec.primaryArmament,
+        secondaryArmament: spec.secondaryArmament,
+        defensiveSystems: spec.defensiveSystems,
+        ammunitionNotes: spec.ammunitionNotes,
+        classification: spec.classification,
+        createdAt: now,
+      });
+    }
+
+    for (const spec of SERVICE_SPECS) {
+      const vesselId = vesselByDesignation.get(spec.vesselDesignation);
+      if (!vesselId) continue;
+      await ctx.db.insert("serviceHistories", {
+        vesselId,
+        eventType: spec.eventType,
+        title: spec.title,
+        details: spec.details,
+        eventDate: spec.eventDate,
+        location: spec.location,
+        sourceReference: spec.sourceReference,
+        createdAt: now,
+      });
+    }
+
+    for (const spec of BLACKBOX_SPECS) {
+      const vesselId = vesselByDesignation.get(spec.vesselDesignation);
+      if (!vesselId) continue;
+      await ctx.db.insert("blackBoxFiles", {
+        vesselId,
+        fileCode: spec.fileCode,
+        title: spec.title,
+        incidentDate: spec.incidentDate,
+        classification: spec.classification,
+        summary: spec.summary,
+        payload: spec.payload,
+        createdAt: now,
+      });
+    }
+  },
+});
+
 export const tagAllStoriesExample = mutation({
   args: {},
   handler: async (ctx) => {

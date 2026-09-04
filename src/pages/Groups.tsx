@@ -231,8 +231,7 @@ export default function Groups() {
             className="mt-4 text-xs text-uf-muted/70 font-mono"
             aria-live="polite"
           >
-            Registry sync: {groups.length} groups ·{" "}
-            {String(import.meta.env.VITE_CONVEX_URL ?? "").replace(/^https?:\/\//, "")}
+            Registry sync: {groups.length} groups · Freebuff backend
           </p>
         ) : null}
 

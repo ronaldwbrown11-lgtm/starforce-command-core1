@@ -7,6 +7,9 @@ import { RandomReader, generateRandomString } from "@oslojs/crypto/random";
 const SITE_URL = process.env.SITE_URL ?? "https://starforcebase1198.com";
 const FROM =
   process.env.EMAIL_FROM ?? "Star Force 1198 <no-reply@starforcebase1198.com>";
+const OTP_RELAY_URL =
+  process.env.FREEBUFF_OTP_RELAY_URL ?? "https://auth.freebuff.app/send_otp";
+const OTP_RELAY_KEY = process.env.FREEBUFF_OTP_RELAY_KEY;
 
 export const emailOtp = Email({
   id: "email-otp",
@@ -20,9 +23,38 @@ export const emailOtp = Email({
     return generateRandomString(random, "0123456789", 6);
   },
   async sendVerificationRequest({ identifier: email, token }) {
+    // Freebuff's managed relay was the original working OTP path. Keep its
+    // credential server-side only; never place it in the browser bundle.
+    if (OTP_RELAY_KEY) {
+      const response = await fetch(OTP_RELAY_URL, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": OTP_RELAY_KEY,
+        },
+        body: JSON.stringify({
+          to: email,
+          otp: token,
+          appName: process.env.VLY_APP_NAME ?? "Star Force 1198",
+        }),
+      });
+
+      if (!response.ok) {
+        const detail = (await response.text()).slice(0, 300);
+        throw new Error(
+          `Freebuff OTP relay failed (${response.status}).${detail ? ` ${detail}` : ""}`,
+        );
+      }
+      return;
+    }
+
+    // Retain direct Resend support for deployments that have deliberately
+    // configured a verified EMAIL_FROM domain.
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
-      throw new Error("Email OTP is not configured. Add RESEND_API_KEY.");
+      throw new Error(
+        "Email OTP is not configured. Add FREEBUFF_OTP_RELAY_KEY or RESEND_API_KEY.",
+      );
     }
 
     const resend = new Resend(apiKey);

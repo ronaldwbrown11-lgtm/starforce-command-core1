@@ -186,7 +186,7 @@ export default function OperatorDatabaseFrontend() {
                 <input
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://fleet.starforce.local"
+                  placeholder="https://fleetregistry.starforcebase1198.com"
                   className="mt-1 w-full border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)] font-mono"
                 />
               </label>

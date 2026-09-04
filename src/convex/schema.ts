@@ -897,6 +897,44 @@ const schema = defineSchema(
       order: v.number(), // sort order (lower = first)
       enabled: v.boolean(), // toggle without deleting
     }),
+
+    // ---- Fleet sub-records (replaces external fleetregistry MySQL) ----
+
+    // Armament sheets — per-vessel weapons loadout profiles.
+    armamentSheets: defineTable({
+      vesselId: v.id("vessels"),
+      title: v.string(),
+      primaryArmament: v.optional(v.string()),
+      secondaryArmament: v.optional(v.string()),
+      defensiveSystems: v.optional(v.string()),
+      ammunitionNotes: v.optional(v.string()),
+      classification: v.string(), // standard / heavy / classified
+      createdAt: v.number(),
+    }).index("by_vessel", ["vesselId"]),
+
+    // Service histories — deployment, refit, and milestone records.
+    serviceHistories: defineTable({
+      vesselId: v.id("vessels"),
+      eventType: v.string(), // deployment / refit / milestone / incident
+      title: v.string(),
+      details: v.optional(v.string()),
+      eventDate: v.optional(v.string()),
+      location: v.optional(v.string()),
+      sourceReference: v.optional(v.string()),
+      createdAt: v.number(),
+    }).index("by_vessel", ["vesselId"]),
+
+    // Black-box files — classified incident reports.
+    blackBoxFiles: defineTable({
+      vesselId: v.id("vessels"),
+      fileCode: v.string(), // e.g. "BB-001"
+      title: v.string(),
+      incidentDate: v.optional(v.string()),
+      classification: v.string(), // classified / top-secret / restricted
+      summary: v.optional(v.string()),
+      payload: v.optional(v.string()),
+      createdAt: v.number(),
+    }).index("by_vessel", ["vesselId"]),
   },
   {
     schemaValidation: false,

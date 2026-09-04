@@ -275,7 +275,7 @@ export default function LoreSubmit() {
                     <input
                       value={databaseUrl}
                       onChange={(e) => setDatabaseUrl(e.target.value)}
-                      placeholder="https://fleet.starforce.local"
+                      placeholder="https://fleetregistry.starforcebase1198.com"
                       required
                       className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)] font-mono"
                     />

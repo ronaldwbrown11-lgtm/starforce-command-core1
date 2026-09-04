@@ -95,7 +95,53 @@ import OpLog from "./pages/operator/LogManage.tsx";
 import OpChangelog from "./pages/operator/ChangelogManage.tsx";
 import { OperatorGuard } from "./components/operator/OperatorGuard.tsx";
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+// This is the public Convex endpoint associated with the current Freebuff
+// project. It is not a migration target and contains no secret credential.
+// Freebuff overrides it with VITE_CONVEX_URL when it builds the project;
+// the fallback keeps a manually uploaded Hostinger bundle connected.
+const FREEBUFF_CONVEX_URL = "https://lovely-koala-228.convex.cloud";
+const CONVEX_URL =
+  (import.meta.env.VITE_CONVEX_URL as string | undefined)?.trim() ||
+  FREEBUFF_CONVEX_URL;
+
+function createConvexClient() {
+  if (!CONVEX_URL) return null;
+  try {
+    // Guard against an accidentally pasted Freebuff project URL or private key
+    // causing a constructor exception before React can render a recovery screen.
+    const parsed = new URL(CONVEX_URL);
+    if (parsed.protocol !== "https:" || !parsed.hostname.endsWith(".convex.cloud")) {
+      console.error("Invalid VITE_CONVEX_URL: expected an https://*.convex.cloud URL.");
+      return null;
+    }
+    return new ConvexReactClient(parsed.toString().replace(/\/$/, ""));
+  } catch (error) {
+    console.error("Unable to initialize Convex client:", error);
+    return null;
+  }
+}
+
+const convex = createConvexClient();
+
+function ConvexConfigurationNotice() {
+  return (
+    <main className="min-h-screen grid place-items-center bg-[#050a14] px-6 py-16 text-center text-white">
+      <section className="max-w-xl rounded-xl border border-[rgba(0,229,255,0.35)] bg-[rgba(10,22,40,0.85)] p-8">
+        <p className="text-xs uppercase tracking-[0.22em] text-[#00e5ff]">Star Force Command</p>
+        <h1 className="mt-3 text-2xl font-semibold">Backend connection not configured</h1>
+        <p className="mt-4 text-sm leading-6 text-slate-300">
+          This website bundle was built without the Freebuff project&apos;s public
+          Convex URL. No data was deleted, and no admin key is needed for the
+          website. Rebuild this project in Freebuff, then upload that build to
+          Hostinger.
+        </p>
+        <p className="mt-4 font-mono text-xs text-slate-400">
+          Required build variable: VITE_CONVEX_URL
+        </p>
+      </section>
+    </main>
+  );
+}
 
 function RouteSyncer() {
   const location = useLocation();
@@ -120,12 +166,18 @@ function RouteSyncer() {
   return null;
 }
 
+// Remove the static boot screen only after this module has loaded successfully.
+// If the module itself fails to load, the HTML fallback remains visible instead
+// of leaving visitors with a blank screen.
+document.getElementById("boot-fallback")?.remove();
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <InstrumentationProvider>
       <I18nProvider>
-        <ConvexAuthProvider client={convex}>
-          <BrowserRouter>
+        {convex ? (
+          <ConvexAuthProvider client={convex}>
+            <BrowserRouter>
           <RouteSyncer />
           <AppErrorBoundary>
             <Routes>
@@ -208,8 +260,11 @@ createRoot(document.getElementById("root")!).render(
           </AppErrorBoundary>
           <Toaster />
           <CookieConsent />
-        </BrowserRouter>
-      </ConvexAuthProvider>
+            </BrowserRouter>
+          </ConvexAuthProvider>
+        ) : (
+          <ConvexConfigurationNotice />
+        )}
       </I18nProvider>
     </InstrumentationProvider>
   </StrictMode>,

@@ -10,6 +10,50 @@ import { isArmoryArchive } from "@/components/widgets/ArmoryBrowser";
 import { ArrowLeft, Database, Ship } from "lucide-react";
 import { usePageMeta } from "@/hooks/use-page-meta";
 
+// Databases that live inside the main site rather than on a subdomain. These
+// open the built-in page instead of embedding a dead external URL.
+const BUILT_IN_DATABASES: Record<
+  string,
+  { label: string; href: string; description: string }
+> = {
+  "lore-db-sector-atlas": {
+    label: "Sector Atlas",
+    href: "/map",
+    description:
+      "Sector charts are built into the site's Star Atlas. Open the interactive map to browse charted space.",
+  },
+  "lore-db-signal-intel": {
+    label: "Signal Vault",
+    href: "/vault",
+    description:
+      "Signal intelligence lives in the Signal Vault. Open the vault to review intercepted transmissions and ARG leads.",
+  },
+};
+
+// Seed records used placeholder *.starforce.local hosts. Remap any that are
+// still stored that way to the real live subdomains so embedded frontends load.
+const PLACEHOLDER_HOST_TO_LIVE: Record<string, string> = {
+  "personnel.starforce.local": "https://personnel.starforcebase1198.com",
+  "armory.starforce.local": "https://armory.starforcebase1198.com",
+  "fleet.starforce.local": "https://fleetregistry.starforcebase1198.com",
+  "fleetregistry.starforce.local": "https://fleetregistry.starforcebase1198.com",
+  "nighthawk.starforce.local": "https://nighthawk.starforcebase1198.com",
+};
+
+function resolveDatabaseUrl(item: { databaseUrl?: string | null }): string | null {
+  const raw = item.databaseUrl?.trim();
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    if (u.hostname.endsWith(".starforce.local")) {
+      return PLACEHOLDER_HOST_TO_LIVE[u.hostname] ?? null;
+    }
+  } catch {
+    return null;
+  }
+  return raw;
+}
+
 export default function LoreDatabase() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug ?? "";
@@ -55,6 +99,8 @@ export default function LoreDatabase() {
   const isPersonnel = isPersonnelArchive(item);
   const isArmory = isArmoryArchive(item);
   const isFleetRegistry = slug === "lore-db-fleet-registry";
+  const builtIn = BUILT_IN_DATABASES[slug];
+  const embedUrl = resolveDatabaseUrl(item);
   const eyebrow = [item.faction, "Lore database"].filter(Boolean).join(" • ");
 
   return (
@@ -99,18 +145,39 @@ export default function LoreDatabase() {
         ) : isArmory ? (
           <HoloCard className="p-0 overflow-hidden">
             <iframe
-              src={item.databaseUrl ?? "https://armory.starforcebase1198.com/"}
+              src={embedUrl ?? "https://armory.starforcebase1198.com/"}
               title={item.title}
               className="w-full h-[78vh] border-0 bg-[rgba(5,8,22,0.85)]"
               loading="eager"
               referrerPolicy="strict-origin-when-cross-origin"
             />
           </HoloCard>
-        ) : item.databaseUrl ? (
+        ) : builtIn ? (
+          <HoloCard>
+            <div className="flex items-center gap-3 mb-4">
+              <span
+                className="h-10 w-10 rounded-md flex items-center justify-center"
+                style={{
+                  color: "var(--uf-cyan)",
+                  border: "1px solid rgba(0,229,255,0.35)",
+                  background: "rgba(0,229,255,0.08)",
+                }}
+              >
+                <Database className="h-5 w-5" aria-hidden />
+              </span>
+              <div>
+                <p className="text-sm font-semibold">{builtIn.label}</p>
+                <p className="text-uf-muted text-xs">{builtIn.description}</p>
+              </div>
+            </div>
+            <NeonButton variant="primary" onClick={() => window.location.href = builtIn.href}>
+              Open the {builtIn.label} →
+            </NeonButton>
+          </HoloCard>
+        ) : embedUrl ? (
           <HoloCard className="p-0 overflow-hidden">
             <iframe
-              src={`${item.databaseUrl}${item.databaseUrl.includes("?") ? "&" : "?"}embeded=public`}
-              
+              src={`${embedUrl}${embedUrl.includes("?") ? "&" : "?"}embeded=public`}
               title={item.title}
               className="w-full h-[68vh] border-0 bg-[rgba(5,8,22,0.85)]"
             />

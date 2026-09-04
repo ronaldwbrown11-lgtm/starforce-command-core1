@@ -10,7 +10,7 @@ Written for the site owner (Cmdr. Vega / operator).
 | Part | Where it lives | What it is |
 | --- | --- | --- |
 | **The Website** | Hostinger (`public_html/`) | The static files (`index.html`, `assets/`, `.htaccess`) that visitors' browsers load. This is what you upload when there's a new build. |
-| **The Database** | Convex Cloud (`https://lovely-koala-228.convex.cloud`) | Every user, story, mission, report, forum post, message, comment. It is a separate cloud service — **not on Hostinger, and never inside the upload zip**. The website talks to it automatically. |
+| **The Database** | The Convex deployment managed by the Freebuff project `crisp-turtles-fall` | Every user, story, mission, report, forum post, message, comment. It is separate from Hostinger and remains associated with the Freebuff project. Do not migrate it to another Convex project. |
 | **The Admin Console** | Inside your own site (`/operator`) | Your daily dashboard for running the platform — users, content, moderation, analytics. |
 
 **The single most important fact:** uploading a new website build **never touches the database**. Your data is separate from your files. You cannot lose or damage data by uploading — and a broken upload is always fixable by uploading a previous good zip.
@@ -44,11 +44,9 @@ Sign in with your account email, then visit **`/operator`**. It contains:
 
 You can also view and edit the raw database directly:
 
-**`https://dashboard.convex.dev/t/ronald-brown/starforce-chronicle-main/lovely-koala-228`**
+The backend/data tools available from the Freebuff project control panel: **`https://freebuff.com/web/project/crisp-turtles-fall`**
 
-- **Data tab** — browse every table (users, stories, missions, …), inspect or edit any row
-- **Functions tab** — run backend functions manually (e.g. `seed:seedDemo`)
-- **Export** — back up the entire database
+Use the Freebuff project control panel for backend functions, data, migration status, and backups. Since this project is staying on Freebuff, leave the Convex migration paused and do not enter an admin key.
 
 Caveat: the dashboard signs in with the Convex account that owns the project. If you can't get in, that's fine — every data task (exports, row fixes, bulk edits, reports) can be requested from the development assistant, who can also export/import the whole database for you.
 
@@ -96,7 +94,7 @@ Nothing else. The database needs no setup, no migration, no changes on upload.
 | Live site | `https://starforcebase1198.com` |
 | Downloads page | `https://starforcebase1198.com/download.html` |
 | Admin console | `https://starforcebase1198.com/operator` |
-| Database (Convex Cloud) | `https://lovely-koala-228.convex.cloud` |
-| Convex dashboard | `https://dashboard.convex.dev/t/ronald-brown/starforce-chronicle-main/lovely-koala-228` |
+| Database | Freebuff-managed backend for project `crisp-turtles-fall` |
+| Backend controls | `https://freebuff.com/web/project/crisp-turtles-fall` |
 | Database design (schema) | `src/convex/schema.ts` in the source code |
 | Deployment runbook | `DEPLOYMENT.md` in the source code |

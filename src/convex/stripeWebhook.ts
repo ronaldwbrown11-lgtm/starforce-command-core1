@@ -8,7 +8,7 @@ import { api } from "./_generated/api";
  *
  * Register in the Stripe dashboard at:
  *   https://dashboard.stripe.com/webhooks  →  endpoint:
- *   https://lovely-koala-228.convex.site/stripe-webhook  (events:
+ *   https://<your-project>.convex.site/stripe-webhook  (events:
  *   checkout.session.completed, customer.subscription.deleted)
  *   (Convex HTTP routes live on the `.convex.site` domain, not the static site.)
  */

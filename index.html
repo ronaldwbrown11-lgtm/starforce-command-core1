@@ -62,6 +62,42 @@
 </head>
 
 <body>
+  <div id="boot-fallback" role="status" aria-live="polite">
+    <style>
+      #boot-fallback {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 2rem;
+        box-sizing: border-box;
+        background: #050a14;
+        color: #d9f7ff;
+        font: 16px/1.6 system-ui, sans-serif;
+        text-align: center;
+      }
+      #boot-fallback > div {
+        max-width: 34rem;
+        padding: 2rem;
+        border: 1px solid rgba(0,229,255,.35);
+        border-radius: 12px;
+        background: rgba(10,22,40,.9);
+      }
+      #boot-fallback strong {
+        display: block;
+        margin-bottom: .5rem;
+        color: #00e5ff;
+        letter-spacing: .16em;
+        text-transform: uppercase;
+        font-size: .75rem;
+      }
+      #boot-fallback p { margin: .5rem 0 0; color: #a9bbdd; }
+    </style>
+    <div>
+      <strong>Star Force 1198</strong>
+      <div>Starting command interface…</div>
+      <p>If this message remains, refresh the page or contact the site operator. No database credentials are required in your browser.</p>
+    </div>
+  </div>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>

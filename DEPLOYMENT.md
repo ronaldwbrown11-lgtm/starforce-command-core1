@@ -12,7 +12,7 @@ default).
 | Layer    | Tech                      | Where it runs                          |
 | -------- | ------------------------- | -------------------------------------- |
 | Frontend | React 19 + Vite SPA       | Static host serving `dist/`            |
-| Backend  | Convex (queries/mutations/actions, DB, auth, file storage, cron) | Convex Cloud (already deployed) |
+| Backend  | Convex (queries/mutations/actions, DB, auth, file storage, cron) | Freebuff-managed Convex deployment associated with this project |
 | Edge HTTP| `src/convex/http.ts`      | Convex HTTP routes (`/stripe-webhook`, auth routes) |
 
 The frontend is a pure static build: no Node server required at runtime.
@@ -62,7 +62,7 @@ download.html stay stable no matter how often that page is edited:
 
 | Var                     | Required | Purpose                                   |
 | ----------------------- | -------- | ----------------------------------------- |
-| `VITE_CONVEX_URL`       | ✅       | Convex backend URL (e.g. `https://<project>.convex.cloud`) |
+| `VITE_CONVEX_URL`       | ✅       | Freebuff supplies the public Convex backend URL during the project build; do not replace it with another project URL |
 | `VITE_VLY_APP_ID`       | —        | Freebuff error monitoring project id      |
 | `VITE_VLY_MONITORING_URL` | —      | Freebuff error ingestion endpoint         |
 
@@ -72,7 +72,9 @@ platform manages secrets there; never commit them)
 | Var                     | Required | Purpose                                   |
 | ----------------------- | -------- | ----------------------------------------- |
 | `CONVEX_SITE_URL`       | ✅ (auto)| Auth provider domain; set by Convex automatically |
-| `RESEND_API_KEY`        | for email| Transactional email (magic links use the Freebuff OTP relay; story/ticket verdicts use Resend) |
+| `FREEBUFF_OTP_RELAY_KEY` | for OTP auth | Backend-only credential for the Freebuff-managed OTP relay; never commit or expose it |
+| `FREEBUFF_OTP_RELAY_URL` | —        | Optional OTP relay URL; defaults to `https://auth.freebuff.app/send_otp` |
+| `RESEND_API_KEY`        | fallback | Transactional email fallback (story/ticket verdicts use Resend; direct OTP fallback requires a verified sender domain) |
 | `STRIPE_SECRET_KEY`     | for billing | Membership checkout (`sk_...`)           |
 | `STRIPE_WEBHOOK_SECRET` | for billing | Signature verification for `/stripe-webhook` (`whsec_...`) |
 | `SITE_URL`              | —        | Absolute site URL in emails; defaults to `https://starforcebase1198.com` |
@@ -97,9 +99,10 @@ SPA fallback (serve `index.html` for unknown paths) so client routes like
 | **Netlify** | Build `bun run build`, publish `dist/`, add `/* /index.html 200` redirect rule |
 | **Cloudflare Pages** | Build `bun run build`, output `dist/`, add a `_redirects` file: `/* /index.html 200` |
 
-**Convex never moves** — it stays on Convex Cloud; only the static frontend
-is hosted. For a production Convex deployment: `npx convex deploy`, then set
-the server env vars on that deployment in the Convex dashboard.
+**This project is intentionally staying on Freebuff hosting and its associated
+backend. Do not resume a Convex migration or enter a separate Convex URL/admin
+key. Hostinger should receive the static bundle produced by the Freebuff project,
+with the Freebuff-provided `VITE_CONVEX_URL` embedded at build time.
 
 ## 5. One-time service setup
 
@@ -107,7 +110,7 @@ the server env vars on that deployment in the Convex dashboard.
 1. Create a Stripe account → API keys tab → copy `sk_test_...` / `sk_live_...`
    into Convex env as `STRIPE_SECRET_KEY`.
 2. Stripe dashboard → **Webhooks** → add endpoint:
-   `https://lovely-koala-228.convex.site/stripe-webhook`
+   the `.convex.site` URL shown by the Freebuff project's backend configuration
    (Convex serves HTTP routes on the `.convex.site` domain — NOT the static
    site domain; a webhook pointed at `starforcebase1198.com` would get the
    SPA instead of Convex.)
@@ -115,20 +118,20 @@ the server env vars on that deployment in the Convex dashboard.
 3. Copy the webhook signing secret (`whsec_...`) into `STRIPE_WEBHOOK_SECRET`.
 4. Test with a checkout from `/membership` (test card `4242 4242 4242 4242`).
 
-### Resend (email)
-1. Create a Resend account → add & verify domain `starforcebase1198.com`.
-2. Copy `re_...` API key into `RESEND_API_KEY`.
-3. `EMAIL_FROM` default already matches the verified domain.
+### Authentication email delivery
+1. Leave the Freebuff migration paused; OTP authentication uses the Freebuff-managed relay when `FREEBUFF_OTP_RELAY_KEY` is present in the Convex backend environment.
+2. If Freebuff has not auto-provisioned that backend variable, add the existing relay credential through the project's server-side Keys / API keys settings. Never place it in the frontend, Hostinger files, or source control.
+3. The direct Resend fallback requires `RESEND_API_KEY` and a verified sender domain. It is not the primary OTP path for this Freebuff-hosted project.
+4. `EMAIL_FROM` defaults to `Star Force 1198 <no-reply@starforcebase1198.com>` for the Resend fallback.
 
 ### Seed data (optional, one-time)
-Run `seed:seedDemo` with `{"clear": true}` from the Convex dashboard
-Functions tab, or `npx convex run seed:seedDemo '{"clear": true}'` — loads
-stories, lore, missions (with briefings), groups, forum threads, demo users
-and an operator account.
+Run `seed:seedDemo` using the Freebuff project's backend tools if seed data
+is needed. Do not run it against a separate Convex project — that would create
+a second, disconnected dataset.
 
 ## 6. Post-deploy checklist
 
-- [ ] Sign-up → magic-link email arrives (Freebuff OTP relay works out of the box; Resend key powers story/support verdicts)
+- [ ] Sign-up → magic-link email arrives through the Freebuff-associated backend
 - [ ] Membership checkout completes and tier upgrades (webhook granted) + cancellation reverts to Free
 - [ ] `/missions`, report-in, and `/operator/reports` review flow works on the live domain
 - [ ] `https://starforcebase1198.com/sitemap.xml` and `/robots.txt` resolve

@@ -30,6 +30,7 @@ import type * as economy from "../economy.js";
 import type * as email from "../email.js";
 import type * as events from "../events.js";
 import type * as faqs from "../faqs.js";
+import type * as fleetRecords from "../fleetRecords.js";
 import type * as groupSpace from "../groupSpace.js";
 import type * as groups from "../groups.js";
 import type * as http from "../http.js";
@@ -88,6 +89,7 @@ declare const fullApi: ApiFromModules<{
   email: typeof email;
   events: typeof events;
   faqs: typeof faqs;
+  fleetRecords: typeof fleetRecords;
   groupSpace: typeof groupSpace;
   groups: typeof groups;
   http: typeof http;

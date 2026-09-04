@@ -78,10 +78,8 @@ Every time I make changes:
 | Build fails | Check the Actions log. Usually a missing env variable — add `VITE_CONVEX_URL` as a repo Variable (not Secret) in Settings → Secrets and variables → Actions → Variables tab. |
 | I want to preview before deploy | GitHub Actions creates a log of every deploy. You can also set up a second branch (e.g. `staging`) that deploys to a subdomain. |
 
-## Your Convex URL (for the Variables tab)
+## Convex URL (for the Variables tab)
 
-```
-VITE_CONVEX_URL = https://lovely-koala-228.convex.cloud
-```
+If you build outside Freebuff, copy the public `VITE_CONVEX_URL` shown in the Freebuff project build configuration. It must be the public `https://*.convex.cloud` URL for this project. Never use a Freebuff project URL, admin key, or deploy key in the browser bundle.
 
-Add this in your repo → Settings → Secrets and variables → Actions → **Variables** tab → New repository variable.
+Add the public URL in your repo → Settings → Secrets and variables → Actions → **Variables** tab → New repository variable.

@@ -479,7 +479,7 @@ function LoreItemEditorModal({ initial, onClose }: { initial: LoreDraft; onClose
               label="Subdomain URL"
               value={form.databaseUrl}
               onChange={(v) => setForm((f) => ({ ...f, databaseUrl: v }))}
-              placeholder="https://fleet.starforce.local"
+              placeholder="https://fleetregistry.starforcebase1198.com"
             />
             <StatusPill variant="gold">Embedded via subdomain · frontend mounted from its own URL</StatusPill>
           </div>
