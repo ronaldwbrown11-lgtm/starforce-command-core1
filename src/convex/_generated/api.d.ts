@@ -26,6 +26,7 @@ import type * as content from "../content.js";
 import type * as contests from "../contests.js";
 import type * as cronJobs from "../cronJobs.js";
 import type * as digest from "../digest.js";
+import type * as digestActions from "../digestActions.js";
 import type * as digestData from "../digestData.js";
 import type * as discordBridge from "../discordBridge.js";
 import type * as discordBridgeActions from "../discordBridgeActions.js";
@@ -92,6 +93,7 @@ declare const fullApi: ApiFromModules<{
   contests: typeof contests;
   cronJobs: typeof cronJobs;
   digest: typeof digest;
+  digestActions: typeof digestActions;
   digestData: typeof digestData;
   discordBridge: typeof discordBridge;
   discordBridgeActions: typeof discordBridgeActions;

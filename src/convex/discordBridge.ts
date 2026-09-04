@@ -46,12 +46,32 @@ export async function postDiscordAnnouncement(
   title: string,
   body: string,
 ): Promise<{ posted: boolean; reason?: string }> {
-  const webhook = process.env.DISCORD_WEBHOOK_URL;
-  if (!webhook) return { posted: false, reason: "DISCORD_WEBHOOK_URL not configured" };
+  // trim(): env values pasted from dashboards can carry a trailing newline,
+  // which would make the URL unparseable and fail with a cryptic error.
+  const webhook = (process.env.DISCORD_WEBHOOK_URL ?? "").trim();
+  if (!webhook) {
+    return { posted: false, reason: "DISCORD_WEBHOOK_URL not configured" };
+  }
+  if (!/^https:\/\/(?:discord|discordapp)\.com\/api\/webhooks\//i.test(webhook)) {
+    return {
+      posted: false,
+      reason:
+        "DISCORD_WEBHOOK_URL is set but does not look like a Discord webhook " +
+        "(expected https://discord.com/api/webhooks/...). Re-copy the full URL " +
+        "from Server Settings → Integrations → Webhooks.",
+    };
+  }
   try {
     const res = await fetch(webhook, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        // Discord rejects API calls that carry no recognizable User-Agent;
+        // Convex's Node fetch sends none by default, so set one explicitly.
+        "User-Agent":
+          "StarForceBase1198/1.0 (announcement mirror; Ultra Force Command)",
+        Accept: "application/json",
+      },
       body: JSON.stringify({
         username: "Star Force Base 1198",
         embeds: [
@@ -65,7 +85,25 @@ export async function postDiscordAnnouncement(
       }),
     });
     if (!res.ok) {
-      return { posted: false, reason: `webhook responded ${res.status}` };
+      // Surface Discord's own error text (e.g. "Unknown Webhook") so the
+      // operator console shows the actionable cause, not a bare status code.
+      let detail = "";
+      try {
+        const text = (await res.text()).trim();
+        if (text) {
+          try {
+            const j = JSON.parse(text) as { message?: string; code?: number };
+            if (j.message) {
+              detail = `: ${j.message}${j.code != null ? ` (code ${j.code})` : ""}`;
+            }
+          } catch {
+            detail = `: ${text.slice(0, 140)}`;
+          }
+        }
+      } catch {
+        // Body read failed — keep the bare status.
+      }
+      return { posted: false, reason: `webhook responded ${res.status}${detail}` };
     }
     return { posted: true };
   } catch (e) {
@@ -77,13 +115,19 @@ export async function postDiscordAnnouncement(
 export const bridgeStatus = query({
   args: {},
   handler: async () => {
-    const configured = !!process.env.DISCORD_WEBHOOK_URL;
+    const webhook = (process.env.DISCORD_WEBHOOK_URL ?? "").trim();
+    const configured = !!webhook;
+    const looksValid = /^https:\/\/(?:discord|discordapp)\.com\/api\/webhooks\//i.test(
+      webhook,
+    );
     return {
       configured,
       mode: "webhook",
-      note: configured
-        ? "Announcements mirror to Discord."
-        : "DISCORD_WEBHOOK_URL not configured — mirroring is off.",
+      note: !configured
+        ? "DISCORD_WEBHOOK_URL not configured — mirroring is off."
+        : looksValid
+          ? "Announcements mirror to Discord."
+          : "DISCORD_WEBHOOK_URL is set but does not look like a Discord webhook URL — re-copy it from Integrations → Webhooks.",
     };
   },
 });

@@ -1,4 +1,5 @@
 import { internalQuery } from "./_generated/server";
+import { requireOperatorCapability } from "./admin";
 
 // =========================================================================
 // Weekly digest data (Tier 2 — #20)
@@ -10,6 +11,20 @@ import { internalQuery } from "./_generated/server";
 
 const WEEK_MS = 7 * 86_400_000;
 const MAX_SUBSCRIBERS = 500;
+
+// Operator gate for the digest action surface (digestActions.ts). Runs in a
+// query context because actions have no db/operator context of their own;
+// never export as public.
+export const requireDigestOperator = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+    ]);
+    return { me };
+  },
+});
 
 export const weeklyDigestData = internalQuery({
   args: {},

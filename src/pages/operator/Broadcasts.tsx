@@ -4,7 +4,7 @@ import { useState } from "react";
 import { OperatorShell } from "@/components/operator/OperatorShell";
 import { HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { toast } from "sonner";
-import { Megaphone, Send, Webhook } from "lucide-react";
+import { Mail, Megaphone, Send, Webhook } from "lucide-react";
 import { TIER_ORDER, tierLabel, tierPillVariant } from "@/lib/tiers";
 
 const OP_ROLES = [
@@ -25,6 +25,7 @@ export default function OperatorBroadcasts() {
   const bridge = useQuery(api.discordBridge.bridgeStatus);
   const sendBroadcast = useMutation(api.admin.sendBroadcast);
   const testBridge = useAction(api.discordBridgeActions.testBridgeConnection);
+  const sendDigestNow = useAction(api.digestActions.sendDigestNow);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [audienceType, setAudienceType] = useState<"all" | "tier" | "opRole">(
@@ -38,6 +39,7 @@ export default function OperatorBroadcasts() {
   >("operator");
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [digesting, setDigesting] = useState(false);
 
   const audience: Audience =
     audienceType === "all"
@@ -85,6 +87,31 @@ export default function OperatorBroadcasts() {
       toast.error("Test failed — check the bridge setup below.");
     } finally {
       setTesting(false);
+    }
+  }
+
+  async function handleSendDigest() {
+    setDigesting(true);
+    try {
+      const res = await sendDigestNow();
+      if (!res.ok && res.reason === "not_configured") {
+        toast.error("Digest not configured — RESEND_API_KEY is missing in Keys.");
+        return;
+      }
+      if (res.sent === 0 && !res.failed) {
+        toast.info(
+          "Digest ran — no verified subscribers yet. Members who verify their email will be included on Monday.",
+        );
+        return;
+      }
+      toast.success(
+        `Digest sent to ${res.sent} subscriber${res.sent === 1 ? "" : "s"}${res.failed ? ` — ${res.failed} failed` : ""}.`,
+        { duration: 6000 },
+      );
+    } catch {
+      toast.error("Digest send failed.");
+    } finally {
+      setDigesting(false);
     }
   }
 
@@ -207,6 +234,39 @@ export default function OperatorBroadcasts() {
               </ol>
             </div>
           )}
+        </HoloCard>
+      </section>
+
+      <section aria-labelledby="digest-status" className="mb-8">
+        <HoloCard>
+          <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2
+              id="digest-status"
+              className="flex items-center gap-2 text-xl font-semibold"
+            >
+              <Mail className="h-5 w-5 text-uf-cyan" aria-hidden />
+              Weekly fleet digest
+            </h2>
+            <StatusPill variant="default">Cron · Mondays 14:00 UTC</StatusPill>
+          </header>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-2xl text-sm text-uf-muted">
+              Every Monday, verified members who haven't opted out receive an
+              email roundup of the week's stories, lore, missions, events, and
+              forum threads. Use the button to send a digest right now and
+              confirm delivery end-to-end.
+            </p>
+            <NeonButton
+              variant="default"
+              loading={digesting}
+              disabled={digesting}
+              onClick={handleSendDigest}
+              className="shrink-0"
+            >
+              <Send className="h-4 w-4" aria-hidden />
+              Send digest now
+            </NeonButton>
+          </div>
         </HoloCard>
       </section>
 
