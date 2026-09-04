@@ -16,6 +16,7 @@ import { toast } from "sonner";
 
 const STEP_HINTS: Record<string, string> = {
   profile: "Set a callsign, rank, and home fleet so the roster knows you.",
+  ship: "Pick a hull — fighters to supercapitals — and join its formation.",
   group: "Groups are where missions, threads, and real-time ops happen.",
   react: "Signal a story — reactions earn XP and feed the archives.",
   report: "Run an open operation and log what the fleet observed.",
@@ -91,7 +92,7 @@ export function CadetQuestPanel({ forceShow = false }: { forceShow?: boolean }) 
               Your first mission directive
             </h2>
             <p className="text-uf-muted text-sm mt-1 max-w-[62ch]">
-              Five steps. Real actions, no busywork — each one unlocks the XP,
+              Six steps. Real actions, no busywork — each one unlocks the XP,
               Star Credits, and vault systems you'll live in as a pilot.
               {status.completedCount > 0 && !status.allDone && (
                 <>
@@ -132,7 +133,7 @@ export function CadetQuestPanel({ forceShow = false }: { forceShow?: boolean }) 
           <div className="uf-progress__bar" style={{ width: `${percent}%` }} />
         </div>
 
-        <ol className="mt-4 grid gap-2 list-none p-0 m-0 sm:grid-cols-2 lg:grid-cols-5">
+        <ol className="mt-4 grid gap-2 list-none p-0 m-0 sm:grid-cols-2 lg:grid-cols-3">
           {status.steps.map((step, idx) => {
             const isNext = idx === nextIndex && !status.allDone;
             return (

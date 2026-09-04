@@ -6,6 +6,7 @@ import { SiteShell, HoloCard, NeonButton } from "@/components/uf";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { Rocket } from "lucide-react";
+import { ShipAssignmentFlow } from "@/components/ships/ShipAssignmentFlow";
 
 // Canonical rank ladder (mirrors the server validator in convex/users.ts and
 // the thresholds used by social:rankProgress).
@@ -103,8 +104,9 @@ export default function PilotOnboarding() {
               <span className="uf-eyebrow">Pilot orientation</span>
               <h2 className="text-2xl md:text-3xl mt-2">Report for duty.</h2>
               <p className="text-uf-muted text-sm mt-2 max-w-[52ch]">
-                Three quick choices and you're in the rotation. You can change
-                all of this later from your account page.
+                A few quick choices and you're in the rotation — including your
+                ship assignment. You can change all of this later from your
+                account page.
               </p>
             </div>
             <button
@@ -234,6 +236,17 @@ export default function PilotOnboarding() {
                 </div>
               )}
             </fieldset>
+          </div>
+
+          {/* Ship assignment — part of orientation, cosmetic + identity only */}
+          <div className="mt-8">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <span className="uf-eyebrow">Step 2 · Ship assignment</span>
+              <span className="text-uf-muted text-xs">
+                Optional — you can assign a hull later from your account deck.
+              </span>
+            </div>
+            <ShipAssignmentFlow />
           </div>
 
           <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-3 justify-between">

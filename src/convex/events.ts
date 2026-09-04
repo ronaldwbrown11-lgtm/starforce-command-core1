@@ -2,6 +2,21 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireOperatorCapability } from "./admin";
+import { TIER_ORDER, type TierId } from "../lib/tiers";
+
+// Command-tier hosting (clearance layer): members at Command clearance or
+// higher may submit events, but they land as "proposed" until an operator
+// approves them (flips the status to "scheduled"). Operators post directly.
+const HOSTING_MIN_TIER: TierId = "command";
+
+function tierIndex(tier: string | null | undefined): number {
+  if (!tier) return 0;
+  return TIER_ORDER.indexOf(tier as TierId);
+}
+
+export function canHostEvents(userTier: string | null | undefined): boolean {
+  return tierIndex(userTier) >= tierIndex(HOSTING_MIN_TIER);
+}
 
 // =========================================================================
 // Site-wide events calendar (#7)
@@ -44,7 +59,8 @@ export const listUpcomingEvents = query({
       .withIndex("by_scheduled", (q) => q.gte("scheduledAt", now - 6 * 60 * 60 * 1000))
       .take(args.limit ?? 25);
     const out = events
-      .filter((e) => e.status !== "cancelled")
+      // Proposed events stay hidden from the public calendar until approved.
+      .filter((e) => e.status !== "cancelled" && e.status !== "proposed")
       .map((e) => ({
         _id: e._id,
         title: e.title,
@@ -76,11 +92,29 @@ export const createCalendarEvent = mutation({
     link: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { me } = await requireOperatorCapability(ctx, [
-      "operator",
-      "senior_operator",
-      "community_moderator",
-    ]);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Sign in to schedule an event.");
+    const me = await ctx.db.get(userId);
+    if (!me) throw new Error("Account not found.");
+
+    // Two valid paths: operators post directly, or Command-clearance members
+    // submit a proposal that operators approve.
+    let isOperator = false;
+    try {
+      await requireOperatorCapability(ctx, [
+        "operator",
+        "senior_operator",
+        "community_moderator",
+      ]);
+      isOperator = true;
+    } catch {
+      isOperator = false;
+    }
+    const memberHost = !isOperator && canHostEvents(me.tier ?? null);
+    if (!isOperator && !memberHost) {
+      throw new Error("Command clearance or higher is required to host operations.");
+    }
+
     const title = args.title.trim();
     const description = args.description.trim();
     if (!title || !description) throw new Error("Title and description are required.");
@@ -90,6 +124,7 @@ export const createCalendarEvent = mutation({
     if (!Number.isFinite(args.scheduledAt) || args.scheduledAt < Date.now() - 86_400_000) {
       throw new Error("Pick a valid start time.");
     }
+    const status = isOperator ? "scheduled" : "proposed";
     const id = await ctx.db.insert("calendarEvents", {
       title,
       description,
@@ -98,15 +133,15 @@ export const createCalendarEvent = mutation({
       endsAt: args.endsAt,
       location: args.location?.trim() || undefined,
       link: args.link?.trim() || undefined,
-      status: "scheduled",
-      createdBy: me,
+      status,
+      createdBy: me._id,
       createdAt: Date.now(),
     });
     await ctx.db.insert("auditLog", {
-      actorId: me,
-      action: "calendar.create",
+      actorId: me._id,
+      action: isOperator ? "calendar.create" : "calendar.propose",
       target: `calendarEvent:${id}`,
-      meta: JSON.stringify({ title }),
+      meta: JSON.stringify({ title, proposed: !isOperator }),
       createdAt: Date.now(),
     });
     return id;
@@ -121,7 +156,7 @@ export const setEventStatus = mutation({
       "senior_operator",
       "community_moderator",
     ]);
-    if (!["scheduled", "live", "ended", "cancelled"].includes(args.status)) {
+    if (!["proposed", "scheduled", "live", "ended", "cancelled"].includes(args.status)) {
       throw new Error("Invalid status.");
     }
     await ctx.db.patch(args.id, { status: args.status });
@@ -133,5 +168,41 @@ export const setEventStatus = mutation({
       createdAt: Date.now(),
     });
     return { ok: true };
+  },
+});
+
+// Proposed events awaiting operator approval (Command-tier member hosting).
+export const listProposedEvents = query({
+  args: {},
+  handler: async (ctx) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+      "community_moderator",
+    ]);
+    const events = await ctx.db.query("calendarEvents").collect();
+    const proposers = await Promise.all(
+      events.map(async (e) => {
+        const u = await ctx.db.get(e.createdBy);
+        return u?.displayName ?? u?.email?.split("@")[0] ?? "Unknown pilot";
+      }),
+    );
+    return events
+      .filter((e) => e.status === "proposed")
+      .map((e, i) => ({
+        _id: e._id,
+        title: e.title,
+        description: e.description,
+        kind: e.kind,
+        kindLabel: eventKindLabel(e.kind),
+        scheduledAt: e.scheduledAt,
+        endsAt: e.endsAt ?? null,
+        location: e.location ?? null,
+        link: e.link ?? null,
+        status: e.status,
+        proposer: proposers[i],
+        createdAt: e.createdAt,
+      }))
+      .sort((a, b) => a.scheduledAt - b.scheduledAt);
   },
 });

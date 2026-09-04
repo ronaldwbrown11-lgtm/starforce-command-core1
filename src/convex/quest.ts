@@ -6,17 +6,18 @@ import { applyXpGain, grantCredits } from "./economy";
 // Cadet Induction quest (#38)
 //
 // A guided first-week mission that teaches new members the loop that keeps
-// the fleet alive: build a profile, join a group, react to a story, file a
-// field report, and earn a badge. Completion is *derived* from the member's
-// real activity (no fake checkboxes), so the panel updates reactively the
-// moment each step is genuinely done. Completing all five pays a one-time
-// XP + Star Credits bonus and a feed entry.
+// the fleet alive: build a profile, assign a ship, join a group, react to a
+// story, file a field report, and earn a badge. Completion is *derived* from
+// the member's real activity (no fake checkboxes), so the panel updates
+// reactively the moment each step is genuinely done. Completing all six pays
+// a one-time XP + Star Credits bonus and a feed entry.
 // =========================================================================
 
 export const QUEST_REWARD = { xp: 150, credits: 25 } as const;
 
 export const QUEST_STEPS = [
   { key: "profile", label: "Set up your pilot profile", href: "/account", cta: "Open profile" },
+  { key: "ship", label: "Assign your starship", href: "/account", cta: "Pick a hull" },
   { key: "group", label: "Join a fleet group", href: "/groups", cta: "Browse groups" },
   { key: "react", label: "React to a story", href: "/stories", cta: "Open stories" },
   { key: "report", label: "File a field report", href: "/missions", cta: "Pick a mission" },
@@ -49,6 +50,7 @@ export const getQuestStatus = query({
 
     const done: Record<string, boolean> = {
       profile: profileDone,
+      ship: !!user.shipClass,
       group: memberships.length > 0,
       react: reactions.length > 0,
       report: reports.length > 0,
@@ -99,6 +101,7 @@ export const claimQuestReward = mutation({
     const allDone =
       !!user.displayName &&
       !!(user.bio || user.rank || user.fleet || user.avatarStorageId || user.flair) &&
+      !!user.shipClass &&
       memberships.length > 0 &&
       reactions.length > 0 &&
       reports.length > 0 &&

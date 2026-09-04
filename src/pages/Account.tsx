@@ -6,6 +6,8 @@ import { SiteShell, PageHero, HoloCard, NeonButton, StatusPill } from "@/compone
 import { ProfileEditor } from "@/components/ProfileEditor";
 import PilotOnboarding from "@/components/PilotOnboarding";
 import { CadetQuestPanel } from "@/components/widgets/CadetQuestPanel";
+import { ShipDashboard } from "@/components/ships/ShipDashboard";
+import { ShipProfileCard } from "@/components/ships/ShipProfileCard";
 import { ServiceDossierPanel } from "@/components/widgets/ServiceDossierPanel";
 import { useAuth } from "@/hooks/use-auth";
 import { RankProgress } from "@/components/widgets/RankProgress";
@@ -126,6 +128,19 @@ export default function Account() {
           </div>
         )}
         {isAuthenticated && (
+          <div className="mb-5">
+            <ShipDashboard
+              user={{
+                shipClass: user?.shipClass,
+                shipRole: user?.shipRole,
+                shipGroup: user?.shipGroup,
+                shipName: user?.shipName,
+                shipCompletedMissions: user?.shipCompletedMissions ?? [],
+              }}
+            />
+          </div>
+        )}
+        {isAuthenticated && (
           <div className="uf-grid uf-grid--3">
             <HoloCard>
               <div className="flex items-center gap-3">
@@ -191,6 +206,20 @@ export default function Account() {
                 {user?.rank && <StatusPill variant="info">{user.rank}</StatusPill>}
                 {user?.fleet && <StatusPill variant="violet">{user.fleet}</StatusPill>}
               </div>
+
+              {user?.shipClass ? (
+                <div className="mt-3">
+                  <ShipProfileCard
+                    compact
+                    ship={{
+                      shipClass: user.shipClass,
+                      shipRole: user.shipRole,
+                      shipGroup: user.shipGroup,
+                      shipName: user.shipName,
+                    }}
+                  />
+                </div>
+              ) : null}
 
               {editingIdentity ? (
                 <div className="mt-4">

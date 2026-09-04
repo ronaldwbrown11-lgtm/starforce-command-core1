@@ -94,7 +94,7 @@ export default function StoryDetail() {
               to="/membership"
               className="uf-btn uf-btn--gold mt-6 inline-flex"
             >
-              Go Elite — $19/mo
+              Go Elite — $25/mo
             </Link>
           </div>
         </section>

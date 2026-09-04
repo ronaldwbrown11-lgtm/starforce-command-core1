@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { SiteShell, PageHero, HoloCard, NeonButton, StatusPill } from "@/components/uf";
+import { Link } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { toast } from "sonner";
@@ -185,24 +186,50 @@ export default function SignalVault() {
                       </div>
                       {s.solved ? (
                         <StatusPill variant="success">Decoded</StatusPill>
+                      ) : s.locked ? (
+                        <StatusPill variant="default">
+                          {s.requiredTier ? `${s.requiredTier} clearance` : "Restricted"}
+                        </StatusPill>
                       ) : (
                         <StatusPill variant="warning">Encrypted</StatusPill>
                       )}
                     </div>
 
-                    <pre
-                      className="whitespace-pre-wrap font-mono text-xs leading-relaxed rounded-md border border-[color:var(--uf-border)] bg-[rgba(4,9,18,0.85)] p-3 text-[var(--uf-cyan)] break-words"
-                      aria-label={`Ciphertext for ${s.title}`}
-                    >
-                      {s.ciphertext}
-                    </pre>
+                    {s.locked ? (
+                      <div
+                        className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-[color:var(--uf-border)] bg-[rgba(4,9,18,0.6)] px-3 py-6 text-center"
+                        role="note"
+                      >
+                        <Lock className="h-6 w-6 text-uf-muted" aria-hidden />
+                        <p className="text-uf-muted text-sm max-w-[34ch]">
+                          This signal is sealed behind{" "}
+                          <span className="text-uf-gold">{s.requiredTier ?? "restricted"} clearance</span>.
+                          Raise your membership tier to intercept it.
+                        </p>
+                        <Link
+                          to="/membership"
+                          className="text-xs text-uf-cyan hover:underline underline-offset-4"
+                        >
+                          View membership tiers
+                        </Link>
+                      </div>
+                    ) : (
+                      <>
+                        <pre
+                          className="whitespace-pre-wrap font-mono text-xs leading-relaxed rounded-md border border-[color:var(--uf-border)] bg-[rgba(4,9,18,0.85)] p-3 text-[var(--uf-cyan)] break-words"
+                          aria-label={`Ciphertext for ${s.title}`}
+                        >
+                          {s.ciphertext}
+                        </pre>
 
-                    <p className="text-uf-muted text-xs">
-                      <span className="text-[var(--uf-violet)] font-semibold uppercase tracking-wider text-[10px]">
-                        Intel hint:{" "}
-                      </span>
-                      {s.hint}
-                    </p>
+                        <p className="text-uf-muted text-xs">
+                          <span className="text-[var(--uf-violet)] font-semibold uppercase tracking-wider text-[10px]">
+                            Intel hint:{" "}
+                          </span>
+                          {s.hint}
+                        </p>
+                      </>
+                    )}
 
                     <div className="flex flex-wrap items-center gap-3 text-xs text-uf-muted">
                       <span className="inline-flex items-center gap-1">

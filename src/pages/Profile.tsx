@@ -15,6 +15,7 @@ import { AchievementBadges } from "@/components/widgets/AchievementBadges";
 import { ServiceDossierPanel } from "@/components/widgets/ServiceDossierPanel";
 import { FleetAffiliation } from "@/components/widgets/FleetAffiliation";
 import { Flair } from "@/components/widgets/Flair";
+import { ShipProfileCard } from "@/components/ships/ShipProfileCard";
 import { useAuth } from "@/hooks/use-auth";
 import { tierLabel, tierPillVariant } from "@/lib/tiers";
 import { FRAME_CATALOG } from "@/lib/economy";
@@ -187,6 +188,18 @@ export default function Profile() {
                 <FleetAffiliation fleet={profile.fleet} />
               ) : null}
             </div>
+            {profile.shipClass ? (
+              <div className="mt-4">
+                <ShipProfileCard
+                  ship={{
+                    shipClass: profile.shipClass,
+                    shipRole: profile.shipRole,
+                    shipGroup: profile.shipGroup,
+                    shipName: profile.shipName,
+                  }}
+                />
+              </div>
+            ) : null}
             {profile.bio ? (
               <p className="text-uf-muted text-sm mt-4 line-clamp-4">
                 {profile.bio}

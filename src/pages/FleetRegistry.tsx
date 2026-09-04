@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { SiteShell, PageHero, GlassPanel, StatusPill } from "@/components/uf";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { ShipRegistry } from "@/components/ships/ShipRegistry";
 
 // The fleet registry lives in the dedicated subdomain application
 // (Star Force Fleet Database — vessel records, specifications, armament,
@@ -32,6 +33,7 @@ export default function FleetRegistry() {
       />
 
       <section className="uf-section max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12">
+        <ShipRegistry className="mb-8" />
         <GlassPanel accent="cyan" className="rounded-xl overflow-hidden p-0">
           {/* Console chrome — decorative brackets */}
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">

@@ -4,6 +4,21 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireOperatorCapability } from "./admin";
 import { applyXpGain, grantCredits } from "./economy";
 import type { Id } from "./_generated/dataModel";
+import { TIER_ORDER, type TierId } from "../lib/tiers";
+
+// Clearance layer: signals can be gated to a tier. Helpers shared by the
+// list / solve / create paths so the gate can never be bypassed client-side.
+function tierIndex(tier: string | null | undefined): number {
+  if (!tier) return 0;
+  return TIER_ORDER.indexOf(tier as TierId);
+}
+
+export function signalLockedFor(
+  viewerTier: string | null | undefined,
+  requiredTier: string | null | undefined,
+): boolean {
+  return !!requiredTier && tierIndex(requiredTier) > tierIndex(viewerTier);
+}
 
 // =========================================================================
 // Signal Vault (#4 — Mini-ARGs)
@@ -25,6 +40,7 @@ export const listSignals = query({
   args: { campaignId: v.optional(v.id("argCampaigns")) },
   handler: async (ctx, args) => {
     const me = await getAuthUserId(ctx);
+    const viewer = me ? await ctx.db.get(me) : null;
     let signals = await ctx.db
       .query("signals")
       .withIndex("by_active", (q) => q.eq("active", true))
@@ -36,17 +52,24 @@ export const listSignals = query({
         (s: { campaignId?: Id<"argCampaigns"> }) => s.campaignId === args.campaignId,
       );
     }
-    return signals.map((s) => ({
-      _id: s._id,
-      title: s.title,
-      ciphertext: s.ciphertext,
-      hint: s.hint,
-      rewardXp: s.rewardXp ?? DEFAULT_REWARD_XP,
-      rewardCredits: s.rewardCredits ?? DEFAULT_REWARD_CREDITS,
-      solved: !!me && s.solvedBy.includes(me),
-      campaignId: s.campaignId ?? null,
-      createdAt: s.createdAt,
-    }));
+    return signals.map((s) => {
+      const locked = signalLockedFor(viewer?.tier ?? null, s.tierRequired ?? null);
+      return {
+        _id: s._id,
+        title: s.title,
+        // Locked signals stay visible (they advertise the clearance) but the
+        // ciphertext and hint are withheld until the viewer qualifies.
+        ciphertext: locked ? "" : s.ciphertext,
+        hint: locked ? "" : s.hint,
+        rewardXp: s.rewardXp ?? DEFAULT_REWARD_XP,
+        rewardCredits: s.rewardCredits ?? DEFAULT_REWARD_CREDITS,
+        solved: !!me && s.solvedBy.includes(me),
+        locked,
+        requiredTier: s.tierRequired ?? null,
+        campaignId: s.campaignId ?? null,
+        createdAt: s.createdAt,
+      };
+    });
   },
 });
 
@@ -58,6 +81,14 @@ export const solveSignal = mutation({
 
     const signal = await ctx.db.get(args.signalId);
     if (!signal || !signal.active) throw new Error("Signal not found.");
+
+    // Clearance gate — enforced server-side, never trusted from the client.
+    const me = await ctx.db.get(userId);
+    if (signalLockedFor(me?.tier ?? null, signal.tierRequired ?? null)) {
+      throw new Error(
+        "Clearance denied — this signal requires a higher membership tier.",
+      );
+    }
 
     const normalized = normalizeAnswer(args.answer);
     if (!normalized) throw new Error("Enter a decrypted answer.");
@@ -105,6 +136,8 @@ export const createSignal = mutation({
     plaintext: v.string(),
     rewardXp: v.optional(v.number()),
     rewardCredits: v.optional(v.number()),
+    // Clearance gate: tierRequired locks the signal to that tier or higher.
+    tierRequired: v.optional(v.string()),
     campaignId: v.optional(v.id("argCampaigns")),
   },
   handler: async (ctx, args) => {
@@ -120,6 +153,9 @@ export const createSignal = mutation({
     if (!title || !ciphertext || !hint || !plaintext) {
       throw new Error("Title, ciphertext, hint, and answer are required.");
     }
+    if (args.tierRequired && !TIER_ORDER.includes(args.tierRequired as TierId)) {
+      throw new Error("Unknown clearance tier.");
+    }
     const id = await ctx.db.insert("signals", {
       title,
       ciphertext,
@@ -129,6 +165,7 @@ export const createSignal = mutation({
       rewardCredits: args.rewardCredits,
       solvedBy: [],
       active: true,
+      tierRequired: (args.tierRequired as TierId | undefined) ?? undefined,
       campaignId: args.campaignId ?? undefined,
       createdBy: me,
       createdAt: Date.now(),

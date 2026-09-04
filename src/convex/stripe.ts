@@ -25,8 +25,8 @@ import Stripe from "stripe";
 const TIER_PRICING: Record<string, { name: string; unitAmount: number }> = {
   cadet: { name: "Star Force Cadet", unitAmount: 500 },
   officer: { name: "Star Force Officer", unitAmount: 1200 },
-  command: { name: "Star Force Command", unitAmount: 2500 },
-  elite: { name: "Star Force Elite", unitAmount: 1900 },
+  command: { name: "Star Force Command", unitAmount: 1900 },
+  elite: { name: "Star Force Elite", unitAmount: 2500 },
   gia_agent: { name: "GIA Agent", unitAmount: 4900 },
 };
 

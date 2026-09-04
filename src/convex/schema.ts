@@ -103,6 +103,16 @@ const schema = defineSchema(
       flair: v.optional(v.string()),
       frame: v.optional(v.string()), // equipped profile frame id
       frames: v.optional(v.array(v.string())), // owned frame ids
+
+      // Ultra Force ship assignment — cosmetic + identity only, never a
+      // gameplay mechanic. Editable any time; switching ships preserves
+      // per-class mission progress (ids are keyed by ship class).
+      shipCategory: v.optional(v.string()),
+      shipClass: v.optional(v.string()),
+      shipRole: v.optional(v.string()),
+      shipGroup: v.optional(v.string()),
+      shipName: v.optional(v.string()),
+      shipCompletedMissions: v.optional(v.array(v.string())),
       // First-run pilot orientation (rank / fleet / starter mission picker)
       onboarded: v.optional(v.boolean()),
       // Per-tier usage counters
@@ -826,6 +836,9 @@ const schema = defineSchema(
       rewardCredits: v.optional(v.number()),
       solvedBy: v.array(v.id("users")),
       active: v.boolean(),
+      // Clearance-gated signals (clearance layer): only members at or above
+      // this tier can view the ciphertext or submit a decryption.
+      tierRequired: v.optional(tierValidator),
       campaignId: v.optional(v.id("argCampaigns")), // seasonal ARG campaign
       createdBy: v.optional(v.id("users")), // operator who planted the signal
       createdAt: v.number(),

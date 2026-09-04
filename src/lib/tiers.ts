@@ -104,7 +104,7 @@ export const TIERS: Record<TierId, Tier> = {
     name: "Command",
     blurb: "Run bigger operations — series releases, team collaborations, frequent drops.",
     cycles: "/ 30d",
-    priceLabel: "$25.00",
+    priceLabel: "$19.00",
     variant: "violet",
     benefits: [
       "750 AI generations / month",
@@ -125,7 +125,7 @@ export const TIERS: Record<TierId, Tier> = {
     name: "Elite",
     blurb: "First-class access: read story drops before anyone else, export your dossier, and fly with custom flair.",
     cycles: "/ 30d",
-    priceLabel: "$19.00",
+    priceLabel: "$25.00",
     variant: "gold",
     benefits: [
       "Early access to story drops",

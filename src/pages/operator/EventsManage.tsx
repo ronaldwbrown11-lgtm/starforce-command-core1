@@ -21,10 +21,12 @@ const STATUS_VARIANT: Record<string, "info" | "success" | "warning" | "default" 
   live: "success",
   ended: "default",
   cancelled: "danger",
+  proposed: "warning",
 };
 
 export default function OperatorEvents() {
   const data = useQuery(api.events.listUpcomingEvents, {});
+  const proposed = useQuery(api.events.listProposedEvents, {});
   const create = useMutation(api.events.createCalendarEvent);
   const setStatus = useMutation(api.events.setEventStatus);
   const [busy, setBusy] = useState(false);
@@ -174,6 +176,49 @@ export default function OperatorEvents() {
           </div>
         </form>
       </HoloCard>
+
+      <span className="uf-eyebrow">Awaiting approval (Command-tier submissions)</span>
+      {proposed === undefined ? (
+        <div className="uf-skeleton mt-3" style={{ height: 120 }} />
+      ) : proposed.length === 0 ? (
+        <div className="uf-empty mt-3">No proposals in the queue.</div>
+      ) : (
+        <ul className="mt-3 flex flex-col gap-3 list-none p-0 m-0 mb-8">
+          {proposed.map((e) => (
+            <li key={e._id}>
+              <HoloCard className="!p-4 !border-[rgba(251,191,36,0.3)]">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-semibold">{e.title}</h3>
+                      <StatusPill variant="warning">Proposed</StatusPill>
+                      <StatusPill variant="info">{e.kindLabel}</StatusPill>
+                    </div>
+                    <p className="text-uf-muted text-xs mt-1">
+                      {new Date(e.scheduledAt).toLocaleString()}
+                      {e.location ? ` · ${e.location}` : ""}
+                    </p>
+                    <p className="text-uf-muted text-xs mt-0.5">
+                      Proposed by <span className="text-uf-text">{e.proposer}</span>
+                    </p>
+                    {e.description ? (
+                      <p className="text-uf-muted text-sm mt-2 line-clamp-3">{e.description}</p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <NeonButton variant="primary" className="!px-3 !py-1 !text-xs" onClick={() => changeStatus(e._id, "scheduled")}>
+                      Approve
+                    </NeonButton>
+                    <NeonButton variant="danger" className="!px-3 !py-1 !text-xs" onClick={() => changeStatus(e._id, "cancelled")}>
+                      Reject
+                    </NeonButton>
+                  </div>
+                </div>
+              </HoloCard>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <span className="uf-eyebrow">Upcoming events</span>
       {data === undefined ? (

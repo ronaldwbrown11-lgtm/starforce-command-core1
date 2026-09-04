@@ -33,7 +33,8 @@ describe("tier catalog", () => {
     expect(TIERS.free.priceLabel).toBe("Free");
     expect(TIERS.cadet.priceLabel).toBe("$5.00");
     expect(TIERS.officer.priceLabel).toBe("$12.00");
-    expect(TIERS.command.priceLabel).toBe("$25.00");
+    expect(TIERS.command.priceLabel).toBe("$19.00");
+    expect(TIERS.elite.priceLabel).toBe("$25.00");
     expect(TIERS.gia_agent.priceLabel).toBe("$49.00");
   });
 

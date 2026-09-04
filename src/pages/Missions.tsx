@@ -17,6 +17,7 @@ import { usePageMeta } from "@/hooks/use-page-meta";
 import { useAuth } from "@/hooks/use-auth";
 import { TIER_ORDER, tierLabel, type TierId } from "@/lib/tiers";
 import { cn } from "@/lib/utils";
+import { ShipMissions } from "@/components/ships/ShipMissions";
 
 const FILTERS = [
   { id: "", label: "All" },
@@ -87,6 +88,32 @@ export default function Missions() {
       />
 
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+        {user?.shipClass ? (
+          <HoloCard accent="cyan" className="mb-8">
+            <header className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <span className="uf-eyebrow">Mission intelligence · your hull</span>
+                <h2 className="text-xl font-semibold mt-1.5">Ship-class briefings</h2>
+                <p className="text-uf-muted text-sm mt-1">
+                  Operations themed to your {user.shipClass}. Logged runs bank XP
+                  and Star Credits on your ship record.
+                </p>
+              </div>
+              <Link
+                to="/account"
+                className="text-xs text-uf-cyan hover:underline underline-offset-4"
+              >
+                Manage ship
+              </Link>
+            </header>
+            <div className="mt-4">
+              <ShipMissions
+                shipClass={user.shipClass}
+                completed={user.shipCompletedMissions ?? []}
+              />
+            </div>
+          </HoloCard>
+        ) : null}
         {/* Ops stats strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8" aria-label="Mission overview">
           <HoloCard className="!p-4">
