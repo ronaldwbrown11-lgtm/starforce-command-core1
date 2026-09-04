@@ -16,6 +16,7 @@ const META: Record<
   cadet: { aiCap: 100, storageGbCap: 5, maxUploadMbCap: 50 },
   officer: { aiCap: 300, storageGbCap: 15, maxUploadMbCap: 100 },
   command: { aiCap: 750, storageGbCap: 40, maxUploadMbCap: 200 },
+  elite: { aiCap: 1200, storageGbCap: 60, maxUploadMbCap: 300 },
   gia_agent: { aiCap: 2000, storageGbCap: 100, maxUploadMbCap: 500 },
 };
 

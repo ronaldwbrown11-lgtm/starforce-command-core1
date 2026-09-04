@@ -7,8 +7,15 @@ import { ScrollReveal, ScaleReveal } from "@/hooks/use-scroll-reveal";
 import { TrendingTags } from "@/components/widgets/TrendingTags";
 import { ContinueReading } from "@/components/widgets/ContinueReading";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { useAuth } from "@/hooks/use-auth";
+import { hasTier, type TierId } from "@/lib/tiers";
 
 export default function Stories() {
+  const { user: viewer } = useAuth();
+  const hasEarlyAccess = hasTier(
+    (viewer?.tier ?? "free") as TierId | null | undefined,
+    "elite",
+  );
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [filterFaction, setFilterFaction] = useState("");
@@ -28,6 +35,10 @@ export default function Stories() {
   const filtered = useMemo(() => {
     if (!stories) return undefined;
     return stories.filter((s) => {
+      // Elite early-access drops stay hidden from the public archive.
+      if ((s as { earlyAccess?: boolean }).earlyAccess === true && !hasEarlyAccess) {
+        return false;
+      }
       const sText =
         (s.title + " " + s.excerpt + " " + (s.tags ?? []).join(" ")).toLowerCase();
       if (search && !sText.includes(search.toLowerCase())) return false;

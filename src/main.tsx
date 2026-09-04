@@ -35,6 +35,8 @@ import Missions from "./pages/Missions.tsx";
 import MissionDetail from "./pages/MissionDetail.tsx";
 import SignalVault from "./pages/SignalVault.tsx";
 import Events from "./pages/Events.tsx";
+import Contests from "./pages/Contests.tsx";
+import ContestDetail from "./pages/ContestDetail.tsx";
 import Leaderboard from "./pages/Leaderboard.tsx";
 import Changelog from "./pages/Changelog.tsx";
 import ToolsAssistant from "./pages/ToolsAssistant.tsx";
@@ -91,6 +93,8 @@ import OpDiscoveries from "./pages/operator/Discoveries.tsx";
 import OpAppearance from "./pages/operator/Appearance.tsx";
 import OpSocialLinks from "./pages/operator/SocialLinks.tsx";
 import OpEvents from "./pages/operator/EventsManage.tsx";
+import OpContests from "./pages/operator/ContestsManage.tsx";
+import OpArg from "./pages/operator/ArgManage.tsx";
 import OpLog from "./pages/operator/LogManage.tsx";
 import OpChangelog from "./pages/operator/ChangelogManage.tsx";
 import { OperatorGuard } from "./components/operator/OperatorGuard.tsx";
@@ -171,6 +175,18 @@ function RouteSyncer() {
 // of leaving visitors with a blank screen.
 document.getElementById("boot-fallback")?.remove();
 
+// PWA offline reading (progressive enhancement): register the service
+// worker only in production builds — the Freebuff dev preview must never
+// be intercepted. The worker caches article routes (stories/lore/map/vault)
+// after successful fetches; the app shell itself is never cached.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Offline support is best-effort — never block the app on it.
+    });
+  });
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <InstrumentationProvider>
@@ -197,6 +213,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/missions/:slug" element={<MissionDetail />} />
               <Route path="/vault" element={<SignalVault />} />
               <Route path="/events" element={<Events />} />
+              <Route path="/contests" element={<Contests />} />
+              <Route path="/contests/:slug" element={<ContestDetail />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/changelog" element={<Changelog />} />
               <Route path="/tools/assistant" element={<ToolsAssistant />} />
@@ -252,6 +270,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/operator/appearance" element={<OperatorGuard><OpAppearance /></OperatorGuard>} />
               <Route path="/operator/social-links" element={<OperatorGuard><OpSocialLinks /></OperatorGuard>} />
               <Route path="/operator/events" element={<OperatorGuard><OpEvents /></OperatorGuard>} />
+              <Route path="/operator/contests" element={<OperatorGuard><OpContests /></OperatorGuard>} />
+              <Route path="/operator/arg" element={<OperatorGuard><OpArg /></OperatorGuard>} />
               <Route path="/operator/log" element={<OperatorGuard><OpLog /></OperatorGuard>} />
               <Route path="/operator/changelog" element={<OperatorGuard><OpChangelog /></OperatorGuard>} />
 

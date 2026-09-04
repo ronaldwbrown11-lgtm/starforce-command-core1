@@ -184,7 +184,18 @@ export const leaveGroup = mutation({
 });
 
 export const createThread = mutation({
-  args: { forumId: v.string(), title: v.string(), content: v.string() },
+  args: {
+    forumId: v.string(),
+    title: v.string(),
+    content: v.string(),
+    // Optional quick-reaction poll attached to the thread (#39).
+    poll: v.optional(
+      v.object({
+        question: v.string(),
+        options: v.array(v.string()),
+      }),
+    ),
+  },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Sign in required.");
@@ -192,6 +203,31 @@ export const createThread = mutation({
     const content = args.content.trim();
     if (!title) throw new Error("Thread title cannot be empty.");
     if (!content) throw new Error("Thread message cannot be empty.");
+
+    // Validate the poll shape before creating the thread.
+    let pollSpec: { question: string; options: string[] } | null = null;
+    if (args.poll) {
+      const question = args.poll.question.trim();
+      const options = args.poll.options
+        .map((o) => o.trim())
+        .filter((o) => o.length > 0);
+      if (!question) throw new Error("Poll question cannot be empty.");
+      if (question.length > 200) {
+        throw new Error("Poll question must be 200 characters or fewer.");
+      }
+      if (options.length < 2 || options.length > 6) {
+        throw new Error("Polls need between 2 and 6 options.");
+      }
+      for (const o of options) {
+        if (o.length > 80) {
+          throw new Error("Poll options must be 80 characters or fewer.");
+        }
+      }
+      if (new Set(options.map((o) => o.toLowerCase())).size !== options.length) {
+        throw new Error("Poll options must be unique.");
+      }
+      pollSpec = { question, options };
+    }
 
     // Derive a URL-safe slug from the title, then ensure uniqueness.
     const base =
@@ -221,6 +257,16 @@ export const createThread = mutation({
       lastActivityAt: Date.now(),
       createdAt: Date.now(),
     });
+
+    if (pollSpec) {
+      await ctx.db.insert("forumPolls", {
+        threadId: id,
+        createdBy: userId,
+        question: pollSpec.question,
+        options: pollSpec.options,
+        createdAt: Date.now(),
+      });
+    }
     return id;
   },
 });
@@ -335,5 +381,99 @@ export const addReply = mutation({
       }
     }
     return id;
+  },
+});
+
+// ---- Quick-reaction polls (#39) ------------------------------------------
+
+export const pollByThread = query({
+  args: { threadId: v.id("forumThreads") },
+  handler: async (ctx, args) => {
+    const me = await getAuthUserId(ctx);
+    const poll = await ctx.db
+      .query("forumPolls")
+      .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
+      .first();
+    if (!poll) return null;
+
+    const votes = await ctx.db
+      .query("forumPollVotes")
+      .withIndex("by_poll", (q) => q.eq("pollId", poll._id))
+      .collect();
+    const counts = poll.options.map(() => 0);
+    let myVoteIndex: number | null = null;
+    for (const vote of votes) {
+      counts[vote.optionIndex] = (counts[vote.optionIndex] ?? 0) + 1;
+      if (me && vote.userId === me) myVoteIndex = vote.optionIndex;
+    }
+    const author = await ctx.db.get(poll.createdBy);
+    return {
+      _id: poll._id,
+      question: poll.question,
+      options: poll.options,
+      counts,
+      total: votes.length,
+      myVoteIndex,
+      isAuthor: me === poll.createdBy,
+      createdAt: poll.createdAt,
+      authorName: author?.displayName ?? author?.name ?? "Unknown pilot",
+    };
+  },
+});
+
+export const voteOnPoll = mutation({
+  args: { pollId: v.id("forumPolls"), optionIndex: v.number() },
+  handler: async (ctx, args) => {
+    const me = await getAuthUserId(ctx);
+    if (!me) throw new Error("Sign in required.");
+    const poll = await ctx.db.get(args.pollId);
+    if (!poll) throw new Error("Poll not found.");
+    if (!Number.isInteger(args.optionIndex) || args.optionIndex < 0) {
+      throw new Error("Invalid option.");
+    }
+    if (args.optionIndex >= poll.options.length) {
+      throw new Error("Invalid option.");
+    }
+
+    const existing = await ctx.db
+      .query("forumPollVotes")
+      .withIndex("by_poll_user", (q) =>
+        q.eq("pollId", args.pollId).eq("userId", me),
+      )
+      .first();
+    if (existing) {
+      return { ok: true, voted: false, alreadyVoted: true };
+    }
+
+    await ctx.db.insert("forumPollVotes", {
+      pollId: args.pollId,
+      userId: me,
+      optionIndex: args.optionIndex,
+      createdAt: Date.now(),
+    });
+
+    // Every vote pays the thread author +2 XP so polls feed the leaderboard
+    // (self-votes excluded).
+    if (poll.createdBy !== me) {
+      const author = await ctx.db.get(poll.createdBy);
+      if (author) {
+        await ctx.db.patch(poll.createdBy, { xp: (author.xp ?? 0) + 2 });
+        await ctx.db.insert("auditLog", {
+          actorId: me,
+          action: "xp.grant",
+          target: `user:${poll.createdBy}`,
+          meta: JSON.stringify({ source: "poll_vote", amount: 2 }),
+          createdAt: Date.now(),
+        });
+      }
+    }
+
+    const votes = await ctx.db
+      .query("forumPollVotes")
+      .withIndex("by_poll", (q) => q.eq("pollId", args.pollId))
+      .collect();
+    const counts = poll.options.map(() => 0);
+    for (const vote of votes) counts[vote.optionIndex] += 1;
+    return { ok: true, voted: true, alreadyVoted: false, counts, total: votes.length };
   },
 });

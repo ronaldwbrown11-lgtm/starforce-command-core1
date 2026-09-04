@@ -7,6 +7,7 @@ import { MemberSpotlight } from "@/components/widgets/MemberSpotlight";
 import { CaptainLogPanel } from "@/components/widgets/CaptainLogPanel";
 import { Link } from "react-router";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { LiveOpsBanner } from "@/components/widgets/LiveOpsBanner";
 
 export default function Community() {
   usePageMeta({
@@ -25,7 +26,8 @@ export default function Community() {
         secondary={{ label: "Browse Groups", href: "/groups", variant: "ghost" }}
       />
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
-        <div className="mb-6 flex items-center justify-between gap-3">
+        <LiveOpsBanner />
+        <div className="mt-6 mb-6 flex items-center justify-between gap-3">
           <OnlineUsers />
           <Link to="/forums">
             <NeonButton variant="ghost">Visit the forums</NeonButton>

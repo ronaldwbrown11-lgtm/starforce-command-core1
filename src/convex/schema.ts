@@ -19,12 +19,13 @@ export type Role = Infer<typeof roleValidator>;
 
 // Membership tiers — canonical list lives in src/lib/tiers.ts.
 // Keep schema and frontend in sync.
-export const TIERS = ["free", "cadet", "officer", "command", "gia_agent"] as const;
+export const TIERS = ["free", "cadet", "officer", "command", "elite", "gia_agent"] as const;
 export const tierValidator = v.union(
   v.literal("free"),
   v.literal("cadet"),
   v.literal("officer"),
   v.literal("command"),
+  v.literal("elite"),
   v.literal("gia_agent"),
 );
 export type TierId = Infer<typeof tierValidator>;
@@ -112,6 +113,18 @@ const schema = defineSchema(
       // Stripe billing links (self-serve membership)
       stripeCustomerId: v.optional(v.string()),
       stripeSubscriptionId: v.optional(v.string()),
+
+      // Cadet Induction quest (#38): claim timestamp for the one-time
+      // completion reward + dismissal timestamp for the banner.
+      questClaimedAt: v.optional(v.number()),
+      questDismissedAt: v.optional(v.number()),
+
+      // Discord presence bridge (integration placeholder — needs a bot/webhook
+      // configured): username of the linked Discord account + verification
+      // timestamps. Kept separate from identity verification.
+      discordUsername: v.optional(v.string()),
+      discordLinkedAt: v.optional(v.number()),
+      discordVerifiedAt: v.optional(v.number()),
     })
       .index("email", ["email"])
       .searchIndex("search_display_name", { searchField: "displayName" })
@@ -141,6 +154,10 @@ const schema = defineSchema(
       // Operator-curated featured surfaces
       featured: v.optional(v.boolean()),
       featuredOrder: v.optional(v.number()),
+      // Elite early-access drop (#elite): story is live but only readable by
+      // Elite-tier members until operators flip it public (no separate flag —
+      // operators clear `earlyAccess` when the drop goes wide).
+      earlyAccess: v.optional(v.boolean()),
       coverStorageId: v.optional(v.id("_storage")),
       coverMeta: v.optional(
         v.object({
@@ -672,13 +689,19 @@ const schema = defineSchema(
       .index("by_user_discovery", ["userId", "discoveryId"]),
 
     // Faction claims on the Star Atlas (#30) — one claim per sector name;
-    // a later claim by another faction replaces the previous holder.
+    // a later claim by another faction replaces the previous holder. Claims
+    // can be personal (claimedBy) or made on behalf of a group the claimant
+    // belongs to (groupId + groupName) — group ownership.
     sectorClaims: defineTable({
       sector: v.string(),
       faction: v.string(),
       claimedBy: v.id("users"),
+      groupId: v.optional(v.id("groups")),
+      groupName: v.optional(v.string()),
       createdAt: v.number(),
-    }).index("by_sector", ["sector"]),
+    })
+      .index("by_sector", ["sector"])
+      .index("by_group", ["groupId"]),
 
     // Lore Assistant usage log (#28) — one row per generation, used for
     // the daily per-tier allowance (free 3, paid 25+).
@@ -803,9 +826,12 @@ const schema = defineSchema(
       rewardCredits: v.optional(v.number()),
       solvedBy: v.array(v.id("users")),
       active: v.boolean(),
+      campaignId: v.optional(v.id("argCampaigns")), // seasonal ARG campaign
       createdBy: v.optional(v.id("users")), // operator who planted the signal
       createdAt: v.number(),
-    }).index("by_active", ["active"]),
+    })
+      .index("by_active", ["active"])
+      .index("by_campaign", ["campaignId"]),
 
     vessels: defineTable({
       designation: v.string(), // e.g. "SFSBT 8001"
@@ -935,6 +961,123 @@ const schema = defineSchema(
       payload: v.optional(v.string()),
       createdAt: v.number(),
     }).index("by_vessel", ["vesselId"]),
+
+    // Quick-reaction polls on forum threads (#39) — one poll per thread.
+    // Votes award the thread author XP (+2 each) so polls feed the
+    // leaderboard; each member may vote once per poll.
+    forumPolls: defineTable({
+      threadId: v.id("forumThreads"),
+      createdBy: v.id("users"),
+      question: v.string(),
+      options: v.array(v.string()),
+      createdAt: v.number(),
+    }).index("by_thread", ["threadId"]),
+
+    forumPollVotes: defineTable({
+      pollId: v.id("forumPolls"),
+      userId: v.id("users"),
+      optionIndex: v.number(),
+      createdAt: v.number(),
+    })
+      .index("by_poll", ["pollId"])
+      .index("by_poll_user", ["pollId", "userId"]),
+
+    // Member-created lore contests (#40): themed canon contests with an
+    // open submission window; operators judge finalists and announce
+    // winners, who receive XP + Star Credits. Contests replace serialized
+    // story drops as the recurring "content event".
+    contests: defineTable({
+      title: v.string(),
+      slug: v.string(),
+      description: v.string(), // what members are asked to create
+      prompt: v.optional(v.string()),
+      rules: v.optional(v.string()),
+      status: v.string(), // upcoming / open / voting / closed / announced
+      startsAt: v.number(),
+      endsAt: v.number(), // submission deadline
+      judgingEndsAt: v.optional(v.number()),
+      createdBy: v.id("users"),
+      rewardXp: v.optional(v.number()),
+      rewardCredits: v.optional(v.number()),
+      winnerCount: v.optional(v.number()),
+      createdAt: v.number(),
+    })
+      .index("by_slug", ["slug"])
+      .index("by_ends", ["endsAt"])
+      .index("by_status", ["status"]),
+
+    contestSubmissions: defineTable({
+      contestId: v.id("contests"),
+      authorId: v.id("users"),
+      title: v.string(),
+      body: v.string(),
+      status: v.string(), // submitted / finalist / winner
+      awardedAt: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_contest", ["contestId"])
+      .index("by_author", ["authorId"]),
+
+    // ---- Deep service records (member personnel data) -------------------
+    // Deliberately SEPARATE from the lore personnel database: this table
+    // holds player-facing fleet service data (ship assignment, tour history,
+    // narrative dossier) keyed to Convex user accounts. It is never merged
+    // with or shared through the lore library / personnel lore tables.
+    serviceDossiers: defineTable({
+      userId: v.id("users"),
+      // Current ship assignment (fleet vessel the pilot is posted to).
+      shipDesignation: v.optional(v.string()),
+      shipName: v.optional(v.string()),
+      shipRole: v.optional(v.string()),
+      // Division / branch within the fleet (e.g. "Tactical", "Science").
+      division: v.optional(v.string()),
+      // Deployment tour history — one entry per posting.
+      tours: v.optional(
+        v.array(
+          v.object({
+            id: v.string(),
+            vesselDesignation: v.optional(v.string()),
+            vesselName: v.optional(v.string()),
+            title: v.optional(v.string()),
+            sector: v.optional(v.string()),
+            startedAt: v.number(),
+            endedAt: v.optional(v.number()),
+            summary: v.optional(v.string()),
+          }),
+        ),
+      ),
+      // Short narrative section shown on the public dossier.
+      narrative: v.optional(v.string()),
+      // Whether the dossier is visible on the public profile (default true).
+      publicVisible: v.optional(v.boolean()),
+      updatedAt: v.number(),
+    }).index("by_user", ["userId"]),
+
+    // ---- Seasonal ARG campaigns (#arg) ------------------------------
+    // The Signal Vault as a compounding, season-driven campaign: each season
+    // has named phases that unlock on a schedule, and active signals belong
+    // to a campaign so lore compounds instead of drifting.
+    argCampaigns: defineTable({
+      season: v.number(),
+      title: v.string(),
+      tagline: v.string(),
+      status: v.string(), // upcoming / active / concluded
+      startsAt: v.number(),
+      endsAt: v.number(),
+      phases: v.array(
+        v.object({
+          key: v.string(),
+          title: v.string(),
+          unlockAt: v.number(),
+          blurb: v.string(),
+        }),
+      ),
+      createdBy: v.id("users"),
+      createdAt: v.number(),
+    })
+      .index("by_status", ["status"])
+      .index("by_season", ["season"]),
   },
   {
     schemaValidation: false,

@@ -99,7 +99,8 @@ const TIER_RANK: Record<TierId, number> = {
   cadet: 1,
   officer: 2,
   command: 3,
-  gia_agent: 4,
+  elite: 4,
+  gia_agent: 5,
 };
 
 function useTierSwitch() {
@@ -319,7 +320,7 @@ export default function Membership() {
         <HoloCard className="!p-0 overflow-x-auto">
           <table className="uf-data-grid" style={{ minWidth: 760 }}>
             <caption className="uf-sr-only">
-              Feature comparison across all 5 membership tiers
+              Feature comparison across all 6 membership tiers
             </caption>
             <thead>
               <tr>

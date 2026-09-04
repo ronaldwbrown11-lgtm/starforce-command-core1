@@ -11,6 +11,7 @@ import {
 } from "@/components/uf";
 import { useAuth } from "@/hooks/use-auth";
 import { NotificationsPanel } from "@/components/widgets/NotificationsPanel";
+import { CadetQuestPanel } from "@/components/widgets/CadetQuestPanel";
 
 import { usePageMeta } from "@/hooks/use-page-meta";
 const PAGE_SIZE = 20;
@@ -126,6 +127,7 @@ export default function Activity() {
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
         <div className="uf-grid uf-grid--3">
           <div className="lg:col-span-2 flex flex-col gap-4">
+            {isAuthenticated && <CadetQuestPanel />}
             {isAuthenticated &&
               myReports !== undefined &&
               myReports !== null &&

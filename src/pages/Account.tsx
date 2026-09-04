@@ -5,6 +5,8 @@ import { useState } from "react";
 import { SiteShell, PageHero, HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { ProfileEditor } from "@/components/ProfileEditor";
 import PilotOnboarding from "@/components/PilotOnboarding";
+import { CadetQuestPanel } from "@/components/widgets/CadetQuestPanel";
+import { ServiceDossierPanel } from "@/components/widgets/ServiceDossierPanel";
 import { useAuth } from "@/hooks/use-auth";
 import { RankProgress } from "@/components/widgets/RankProgress";
 import { StarCreditsCard } from "@/components/widgets/StarCreditsCard";
@@ -14,7 +16,7 @@ import { tierLabel, tierPillVariant, type TierId } from "@/lib/tiers";
 import { FRAME_CATALOG } from "@/lib/economy";
 import { TierUsageWidget } from "@/components/usage/TierUsageWidget";
 import { StorageManager } from "@/components/widgets/StorageManager";
-import { Camera, ChevronDown, LogOut, Send } from "lucide-react";
+import { Camera, ChevronDown, LogOut, Mail, MessageCircle, Send } from "lucide-react";
 
 import { usePageMeta } from "@/hooks/use-page-meta";
 export default function Account() {
@@ -23,6 +25,31 @@ export default function Account() {
   const [signingOut, setSigningOut] = useState(false);
   const claimAdmin = useMutation(api.users.devPromoteSelf);
   const setContactEmail = useMutation(api.users.setMyContactEmail);
+  const setEmailPrefs = useMutation(api.users.setEmailPrefs);
+  const [digestBusy, setDigestBusy] = useState(false);
+  const discordStatus = useQuery(api.discordBridge.bridgeStatus);
+  const linkDiscord = useMutation(api.discordBridge.linkDiscordAccount);
+  const unlinkDiscord = useMutation(api.discordBridge.unlinkDiscord);
+  const [discordDraft, setDiscordDraft] = useState(user?.discordUsername ?? "");
+  const [discordBusy, setDiscordBusy] = useState(false);
+  const digestOptedIn = !user?.emailOptOut;
+  const toggleDigest = async () => {
+    setDigestBusy(true);
+    try {
+      await setEmailPrefs({ digestOptOut: digestOptedIn });
+      toast.success(
+        digestOptedIn
+          ? "Weekly digest paused — you can switch it back anytime."
+          : "Weekly digest enabled — transmissions resume next cycle.",
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Couldn't update your digest preference.",
+      );
+    } finally {
+      setDigestBusy(false);
+    }
+  };
   const [contactDraft, setContactDraft] = useState(user?.contactEmail ?? "");
   const [contactSaving, setContactSaving] = useState(false);
   const [contactError, setContactError] = useState<string | null>(null);
@@ -94,6 +121,11 @@ export default function Account() {
             </p>
           </HoloCard>
         ) : (
+          <div className="mb-5">
+            <CadetQuestPanel />
+          </div>
+        )}
+        {isAuthenticated && (
           <div className="uf-grid uf-grid--3">
             <HoloCard>
               <div className="flex items-center gap-3">
@@ -280,10 +312,142 @@ export default function Account() {
                 <li><Link to="/operator" className="text-uf-cyan">Operator console</Link></li>
               </ul>
             </HoloCard>
+            <HoloCard>
+              <span className="uf-eyebrow flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5" aria-hidden />
+                Fleet digest
+              </span>
+              <h2 className="text-lg font-semibold mt-2">Weekly canon digest</h2>
+              <p className="text-uf-muted text-sm mt-1">
+                A short weekly transmission: new stories, lore entries, contest
+                deadlines, and scheduled operations — one email, no noise.
+              </p>
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] p-3">
+                <div>
+                  <p className="text-sm font-medium">
+                    {digestOptedIn ? "Digest enabled" : "Digest paused"}
+                  </p>
+                  <p className="text-uf-muted text-[11px]">
+                    {digestOptedIn
+                      ? "You're on the weekly transmission list."
+                      : "You won't receive weekly recap emails."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={digestOptedIn}
+                  aria-label="Toggle weekly digest email"
+                  disabled={digestBusy}
+                  onClick={toggleDigest}
+                  className={
+                    "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-colors disabled:opacity-50 cursor-pointer " +
+                    (digestOptedIn
+                      ? "border-[rgba(0,229,255,0.5)] bg-[rgba(0,229,255,0.25)]"
+                      : "border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.8)]")
+                  }
+                >
+                <span
+                  aria-hidden
+                  className={
+                    "inline-block h-5 w-5 rounded-full transition-transform " +
+                    (digestOptedIn
+                      ? "translate-x-[26px] shadow-[0_0_10px_rgba(0,229,255,0.6)]"
+                      : "translate-x-0.5")
+                  }
+                  style={{
+                    background: digestOptedIn ? "var(--uf-cyan)" : "var(--uf-muted)",
+                  }}
+                />
+                </button>
+              </div>
+            </HoloCard>
+            <HoloCard>
+              <span className="uf-eyebrow flex items-center gap-1.5">
+                <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+                Discord bridge
+              </span>
+              <h2 className="text-lg font-semibold mt-2">Presence & announcements</h2>
+              <p className="text-uf-muted text-sm mt-1">
+                Link the Discord handle you use in the community so operators
+                can verify you. Fleet announcements mirror to the Discord
+                server when the bridge is configured.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <StatusPill variant={discordStatus?.configured ? "success" : "default"}>
+                  {discordStatus?.configured
+                    ? "Announcement bridge connected"
+                    : "Bridge not configured"}
+                </StatusPill>
+                {user?.discordVerifiedAt ? (
+                  <StatusPill variant="gold">Verified on Discord</StatusPill>
+                ) : user?.discordUsername ? (
+                  <StatusPill variant="warning">Awaiting operator verification</StatusPill>
+                ) : null}
+              </div>
+              <form
+                className="mt-4 flex flex-col sm:flex-row gap-2"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setDiscordBusy(true);
+                  try {
+                    await linkDiscord({ username: discordDraft.trim() });
+                    toast.success("Discord handle linked — an operator will verify it.");
+                  } catch (err) {
+                    toast.error(
+                      err instanceof Error ? err.message : "Couldn't link the handle.",
+                    );
+                  } finally {
+                    setDiscordBusy(false);
+                  }
+                }}
+              >
+                <label htmlFor="discord-username" className="sr-only">
+                  Discord username
+                </label>
+                <input
+                  id="discord-username"
+                  value={discordDraft}
+                  onChange={(e) => setDiscordDraft(e.target.value)}
+                  placeholder="your_discord_handle"
+                  className="flex-1 min-w-0 rounded-md border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.6)] px-3 py-2 text-sm text-uf-text placeholder:text-uf-muted/60 focus:border-[rgba(0,229,255,0.5)] focus:outline-none"
+                />
+                <NeonButton
+                  variant="primary"
+                  type="submit"
+                  loading={discordBusy}
+                  disabled={!discordDraft.trim() || discordDraft.trim() === (user?.discordUsername ?? "")}
+                >
+                  Link handle
+                </NeonButton>
+                {user?.discordUsername ? (
+                  <NeonButton
+                    variant="ghost"
+                    type="button"
+                    loading={discordBusy}
+                    onClick={async () => {
+                      setDiscordBusy(true);
+                      try {
+                        await unlinkDiscord();
+                        setDiscordDraft("");
+                        toast.success("Discord handle removed.");
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : "Couldn't unlink.");
+                      } finally {
+                        setDiscordBusy(false);
+                      }
+                    }}
+                  >
+                    Unlink
+                  </NeonButton>
+                ) : null}
+              </form>
+            </HoloCard>
           </div>
         )}
         {isAuthenticated && (
           <div className="mt-6">
+            <ServiceDossierPanel editable />
             <TierUsageWidget mode="self" initialTier={(user?.tier ?? "free") as TierId} />
             {(user?.tier ?? "free") !== "free" ? (
               <div className="mt-3">

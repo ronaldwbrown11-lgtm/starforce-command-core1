@@ -6,11 +6,16 @@ import { SiteShell, PageHero, HoloCard, NeonButton, StatusPill } from "@/compone
 import { useAuth } from "@/hooks/use-auth";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { toast } from "sonner";
-import { RadioTower, Lock, Unlock, Coins, Zap } from "lucide-react";
+import { RadioTower, Lock, Unlock, Coins, Zap, Clock } from "lucide-react";
+import { useCountdown, countdownLabel } from "@/hooks/use-countdown";
 
 export default function SignalVault() {
   const { isAuthenticated } = useAuth();
-  const signals = useQuery(api.signals.listSignals);
+  const campaign = useQuery(api.arg.activeArgCampaign);
+  const signals = useQuery(
+    api.signals.listSignals,
+    campaign ? { campaignId: campaign._id } : {},
+  );
   const solve = useMutation(api.signals.solveSignal);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -58,7 +63,99 @@ export default function SignalVault() {
             : { label: "Sign in to decrypt", href: "/auth", variant: "primary" }
         }
       />
-      <section className="uf-section max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12">
+      <section className="uf-section max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12 !pt-8">
+        {campaign && (
+          <HoloCard accent="violet" className="!border-[rgba(139,92,246,0.40)] relative overflow-hidden mb-8">
+            <div
+              aria-hidden
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background:
+                  "radial-gradient(640px 240px at 15% 0%, rgba(139,92,246,0.16), transparent 65%)",
+              }}
+            />
+            <div className="relative">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusPill variant="gold">Season {campaign.season}</StatusPill>
+                <StatusPill
+                  variant={
+                    campaign.status === "active"
+                      ? "success"
+                      : campaign.status === "upcoming"
+                        ? "warning"
+                        : "default"
+                  }
+                >
+                  {campaign.status === "active"
+                    ? "Active campaign"
+                    : campaign.status === "upcoming"
+                      ? "Launches soon"
+                      : "Concluded"}
+                </StatusPill>
+                <span className="text-uf-muted text-xs">
+                  {new Date(campaign.startsAt).toLocaleDateString()} →{" "}
+                  {new Date(campaign.endsAt).toLocaleDateString()}
+                </span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-semibold mt-3">
+                {campaign.title}
+              </h2>
+              <p className="text-uf-muted text-sm mt-2 max-w-[70ch]">
+                {campaign.tagline}
+              </p>
+              <div className="mt-5">
+                <h3 className="uf-eyebrow">Campaign timeline</h3>
+                <ol className="mt-2 flex flex-col gap-2 list-none p-0 m-0">
+                  {campaign.phases.map((p, idx) => {
+                    const unlocked = p.status === "unlocked";
+                    return (
+                      <li
+                        key={p.key}
+                        className="flex items-start gap-3 rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] p-3"
+                      >
+                        <span
+                          aria-hidden
+                          className={
+                            "font-mono text-xs w-7 h-7 shrink-0 rounded-md grid place-items-center " +
+                            (unlocked
+                              ? "bg-[rgba(45,255,136,0.12)] text-uf-green"
+                              : "bg-[rgba(0,229,255,0.08)] text-uf-cyan")
+                          }
+                        >
+                          {String(idx + 1).padStart(2, "0")}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold">{p.title}</p>
+                            {unlocked ? (
+                              <StatusPill variant="success">Unlocked</StatusPill>
+                            ) : (
+                              <StatusPill variant="default">Locked</StatusPill>
+                            )}
+                          </div>
+                          <p className="text-uf-muted text-xs mt-1 leading-5">
+                            {p.blurb}
+                          </p>
+                          {unlocked ? (
+                            <p className="text-uf-muted text-[11px] mt-1">
+                              Unlocked {new Date(p.unlockAt).toLocaleString()}
+                            </p>
+                          ) : (
+                            <PhaseCountdown target={p.unlockAt} />
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            </div>
+          </HoloCard>
+        )}
+        <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+          <RadioTower className="h-5 w-5 text-[var(--uf-cyan)]" aria-hidden />
+          {campaign ? `${campaign.title} — active signals` : "Active signals"}
+        </h2>
         {signals === undefined ? (
           <div className="uf-grid uf-grid--2">
             {[0, 1].map((i) => (
@@ -67,8 +164,9 @@ export default function SignalVault() {
           </div>
         ) : signals.length === 0 ? (
           <div className="uf-empty">
-            No active signals. The rift is quiet — check back after the next
-            fleet broadcast.
+            {campaign
+              ? "No signals intercepted for this season yet. The next phase of the campaign will change that."
+              : "No active signals. The rift is quiet — check back after the next fleet broadcast."}
           </div>
         ) : (
           <ul className="uf-grid uf-grid--2 list-none p-0 m-0">
@@ -164,11 +262,25 @@ export default function SignalVault() {
         )}
 
         <p className="text-uf-muted text-xs mt-8 max-w-[720px]">
-          New signals are released with fleet broadcasts. Rewards pay out once
-          per member — decoded answers are logged to your service record and
-          the audit trail.
+          The Vault runs season by season — signals release on the campaign
+          timeline and phase unlocks are scheduled, not faked. Rewards pay out
+          once per member; decoded answers are logged to your service record
+          and the audit trail.
         </p>
       </section>
     </SiteShell>
+  );
+}
+
+function PhaseCountdown({ target }: { target: number }) {
+  const cd = useCountdown(target);
+  return (
+    <p
+      className="text-[11px] text-uf-cyan inline-flex items-center gap-1 mt-1"
+      aria-live="polite"
+    >
+      <Clock className="h-3 w-3" aria-hidden />
+      {cd.expired ? "Unlocking — stand by." : `Unlocks in ${countdownLabel(cd)}`}
+    </p>
   );
 }

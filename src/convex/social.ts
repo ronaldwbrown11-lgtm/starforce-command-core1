@@ -28,6 +28,58 @@ export const activityFeed = query({
   },
 });
 
+// Live "sector chatter" ticker for the landing page: the most recent feed
+// events with human-readable phrases, author names, and deep links.
+export const sectorChatter = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = Math.min(20, Math.max(1, args.limit ?? 12));
+    const recent = await ctx.db
+      .query("activityFeed")
+      .withIndex("by_created")
+      .order("desc")
+      .take(40);
+
+    const verbPhrase: Record<string, string> = {
+      published: "published a story",
+      published_lore: "added a lore entry",
+      commented: "joined the discussion",
+      joined: "joined a group",
+      reacted: "sent a signal",
+      messaged: "sent a transmission",
+      filed_report: "filed a field report",
+      certified_discovery: "charted a new discovery",
+      completed: "completed an objective",
+      entered_contest: "entered a lore contest",
+      won_contest: "won a lore contest",
+    };
+
+    const items: Array<{
+      id: string;
+      name: string;
+      text: string;
+      url: string | null;
+      ts: number;
+    }> = [];
+    for (const row of recent) {
+      if (items.length >= limit) break;
+      const actor = await ctx.db.get(row.actorId);
+      const name = actor?.displayName ?? actor?.name ?? "A pilot";
+      const text =
+        row.summary?.trim() ||
+        (verbPhrase[row.verb] ?? `made a move in the ${row.targetType} sector`);
+      items.push({
+        id: row._id,
+        name,
+        text: text.length > 120 ? `${text.slice(0, 117)}…` : text,
+        url: row.url ?? null,
+        ts: row.createdAt,
+      });
+    }
+    return items;
+  },
+});
+
 export const addComment = mutation({
   args: {
     postId: v.string(),
@@ -607,5 +659,39 @@ export const myInProgressStories = query({
         };
       }),
     ).then((rows) => rows.filter((r): r is NonNullable<typeof r> => r !== null));
+  },
+});
+
+// Live "proof of life" counters for the landing page band: members online
+// right now, total registered members, contribution events in the last 7
+// days (activity feed), and live published content counts. Bounded reads so
+// the widget stays cheap as the fleet grows.
+export const homeLiveCounters = query({
+  args: {},
+  handler: async (ctx) => {
+    const onlineCutoff = Date.now() - 15 * 60 * 1000; // matches onlineCount
+    const weekCutoff = Date.now() - 7 * 86_400_000;
+    const [users, feed, stories, loreEntries, reports] = await Promise.all([
+      ctx.db.query("users").collect(),
+      ctx.db
+        .query("activityFeed")
+        .withIndex("by_created")
+        .order("desc")
+        .take(3000),
+      ctx.db.query("stories").collect(),
+      ctx.db.query("loreEntries").collect(),
+      ctx.db.query("fleetReports").collect(),
+    ]);
+    const members = users.filter(
+      (u) => !u.isAnonymous && (u.displayName || u.email),
+    );
+    return {
+      online: members.filter((u) => (u.lastSeen ?? 0) > onlineCutoff).length,
+      members: members.length,
+      weekActivity: feed.filter((a) => a.createdAt >= weekCutoff).length,
+      storiesPublished: stories.filter((s) => s.status === "published").length,
+      loreCount: loreEntries.length,
+      reportCount: reports.length,
+    };
   },
 });

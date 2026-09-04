@@ -23,6 +23,7 @@ import {
   StatCard,
 } from "@/components/uf";
 import { ScrollReveal, ScaleReveal } from "@/hooks/use-scroll-reveal";
+import { LiveCommandStrip } from "@/components/widgets/LiveCommandStrip";
 import { VOICE } from "@/lib/voice";
 
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -101,6 +102,9 @@ export default function Home() {
           />
         </div>
       </section>
+
+      {/* =========== LIVE COMMAND STRIP (telemetry + sector chatter) ====== */}
+      <LiveCommandStrip />
 
       {/* =========== FEATURED STORIES (3-col) ============ */}
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">

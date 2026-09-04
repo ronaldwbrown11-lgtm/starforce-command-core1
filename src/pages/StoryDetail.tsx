@@ -12,12 +12,16 @@ import { LiveComments } from "@/components/widgets/LiveComments";
 import { Flair } from "@/components/widgets/Flair";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { ShareButtons } from "@/components/ShareButtons";
+import { useAuth } from "@/hooks/use-auth";
+import { hasTier, type TierId } from "@/lib/tiers";
+import { Lock } from "lucide-react";
 
 export default function StoryDetail() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug ?? "";
   const story = useQuery(api.content.storyBySlug, { slug });
   const articleRef = useRef<HTMLElement | null>(null);
+  const { user: viewer } = useAuth();
 
   usePageMeta({
     title: story ? `${story.title} — Star Force 1198` : "Story — Star Force 1198",
@@ -44,6 +48,56 @@ export default function StoryDetail() {
           lead="The transmission you're looking for has gone dark."
           primary={{ label: "Browse stories", href: "/stories", variant: "primary" }}
         />
+      </SiteShell>
+    );
+  }
+
+  // Elite early-access drop: published but restricted to Elite-tier members
+  // until an operator clears the flag (earlyAccess → false) and it goes wide.
+  const isEarlyDrop = story.earlyAccess === true;
+  const hasEarlyAccess = hasTier(
+    (viewer?.tier ?? "free") as TierId | null | undefined,
+    "elite",
+  );
+  if (isEarlyDrop && !hasEarlyAccess) {
+    return (
+      <SiteShell>
+        <PageHero
+          eyebrow={story.series ?? "Early drop"}
+          title={story.title}
+          lead="This transmission is still encrypted for the wider fleet."
+          primary={{ label: "Unlock with Elite", href: "/membership", variant: "primary" }}
+          secondary={{ label: "Back to stories", href: "/stories", variant: "ghost" }}
+        />
+        <section className="uf-section max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12">
+          <div
+            className="rounded-md border p-8 md:p-10 relative overflow-hidden"
+            style={{
+              borderColor: "rgba(230,168,23,0.45)",
+              background:
+                "radial-gradient(560px 240px at 20% 0%, rgba(230,168,23,0.14), transparent 65%), linear-gradient(160deg, rgba(16,24,39,0.55), rgba(5,8,22,0.4))",
+            }}
+          >
+            <span className="uf-eyebrow flex items-center gap-1.5">
+              <Lock className="h-3.5 w-3.5" aria-hidden />
+              Elite early access
+            </span>
+            <h2 className="text-2xl md:text-3xl font-semibold mt-3">
+              This story drops to the fleet soon — Elite reads it first.
+            </h2>
+            <p className="text-uf-muted text-sm mt-3 max-w-[62ch]">
+              {story.excerpt} Elite members get every story drop the moment it
+              lands, plus dossier export and custom flair. The rest of the
+              fleet sees it once the Bridge clears it for wide release.
+            </p>
+            <Link
+              to="/membership"
+              className="uf-btn uf-btn--gold mt-6 inline-flex"
+            >
+              Go Elite — $19/mo
+            </Link>
+          </div>
+        </section>
       </SiteShell>
     );
   }

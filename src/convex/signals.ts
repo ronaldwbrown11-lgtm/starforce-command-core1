@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireOperatorCapability } from "./admin";
 import { grantCredits } from "./economy";
+import type { Id } from "./_generated/dataModel";
 
 // =========================================================================
 // Signal Vault (#4 — Mini-ARGs)
@@ -21,14 +22,20 @@ function normalizeAnswer(value: string): string {
 }
 
 export const listSignals = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { campaignId: v.optional(v.id("argCampaigns")) },
+  handler: async (ctx, args) => {
     const me = await getAuthUserId(ctx);
-    const signals = await ctx.db
+    let signals = await ctx.db
       .query("signals")
       .withIndex("by_active", (q) => q.eq("active", true))
       .order("desc")
       .take(50);
+    // Seasonal campaigns: only surface the active season's signals.
+    if (args.campaignId) {
+      signals = signals.filter(
+        (s: { campaignId?: Id<"argCampaigns"> }) => s.campaignId === args.campaignId,
+      );
+    }
     return signals.map((s) => ({
       _id: s._id,
       title: s.title,
@@ -37,6 +44,7 @@ export const listSignals = query({
       rewardXp: s.rewardXp ?? DEFAULT_REWARD_XP,
       rewardCredits: s.rewardCredits ?? DEFAULT_REWARD_CREDITS,
       solved: !!me && s.solvedBy.includes(me),
+      campaignId: s.campaignId ?? null,
       createdAt: s.createdAt,
     }));
   },
@@ -100,6 +108,7 @@ export const createSignal = mutation({
     plaintext: v.string(),
     rewardXp: v.optional(v.number()),
     rewardCredits: v.optional(v.number()),
+    campaignId: v.optional(v.id("argCampaigns")),
   },
   handler: async (ctx, args) => {
     const { me } = await requireOperatorCapability(ctx, [
@@ -123,6 +132,7 @@ export const createSignal = mutation({
       rewardCredits: args.rewardCredits,
       solvedBy: [],
       active: true,
+      campaignId: args.campaignId ?? undefined,
       createdBy: me,
       createdAt: Date.now(),
     });

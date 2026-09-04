@@ -4,6 +4,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { opRoleValidator, tierValidator } from "./schema";
+import { postDiscordAnnouncement } from "./discordBridge";
 
 // Same gate the rest of the operator surface uses; kept here so this file
 // exposes no inadvertent surface that callers could bypass. Exported so
@@ -81,7 +82,18 @@ export const sendBroadcast = mutation({
       }),
       createdAt: now,
     });
-    return { ok: true, delivered: targets.length };
+
+    // Discord presence bridge: mirror the announcement to the configured
+    // webhook when the operator has set DISCORD_WEBHOOK_URL. Best-effort —
+    // a missing/misconfigured webhook never fails the broadcast itself.
+    let discordMirrored = false;
+    try {
+      const res = await postDiscordAnnouncement(title, body);
+      discordMirrored = res.posted;
+    } catch {
+      discordMirrored = false;
+    }
+    return { ok: true, delivered: targets.length, discordMirrored };
   },
 });
 

@@ -3,10 +3,12 @@ import { api } from "@/convex/_generated/api";
 import { Link, useSearchParams } from "react-router";
 import { SiteShell, PageHero, HoloCard, StatusPill, NeonButton } from "@/components/uf";
 import { ReactionBar } from "@/components/widgets/ReactionBar";
+import { ForumPoll } from "@/components/widgets/ForumPoll";
 import { ScaleReveal } from "@/hooks/use-scroll-reveal";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { useState, type FormEvent } from "react";
+import { Plus, X, Vote } from "lucide-react";
 
 import { usePageMeta } from "@/hooks/use-page-meta";
 const BOARDS = [
@@ -40,6 +42,19 @@ export default function Forums() {
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
   const [creating, setCreating] = useState(false);
+  const [showPoll, setShowPoll] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState("");
+  const [pollOptions, setPollOptions] = useState(["", ""]);
+  const updatePollOption = (index: number, value: string) =>
+    setPollOptions((prev) => prev.map((o, i) => (i === index ? value : o)));
+  const addPollOption = () => {
+    if (pollOptions.length >= 6) return;
+    setPollOptions((prev) => [...prev, ""]);
+  };
+  const removePollOption = (index: number) => {
+    if (pollOptions.length <= 2) return;
+    setPollOptions((prev) => prev.filter((_, i) => i !== index));
+  };
 
   usePageMeta({
     title: "Forums — Star Force Base 1198",
@@ -68,13 +83,29 @@ export default function Forums() {
     if (!newTitle.trim() || !newContent.trim()) return;
     setCreating(true);
     try {
+      const poll =
+        showPoll && pollQuestion.trim()
+          ? {
+              question: pollQuestion.trim(),
+              options: pollOptions.map((o) => o.trim()).filter(Boolean),
+            }
+          : undefined;
+      if (poll && (poll.options.length < 2 || poll.options.length > 6)) {
+        toast.error("Polls need between 2 and 6 options.");
+        setCreating(false);
+        return;
+      }
       await createThread({
         forumId: newForum,
         title: newTitle.trim(),
         content: newContent.trim(),
+        poll,
       });
       setNewTitle("");
       setNewContent("");
+      setShowPoll(false);
+      setPollQuestion("");
+      setPollOptions(["", ""]);
       toast.success("Thread created. It's live in the list below.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create thread.");
@@ -117,6 +148,10 @@ export default function Forums() {
 
               <div className="mt-6">
                 <ReactionBar targetId={detail.thread._id} targetType="thread" />
+              </div>
+
+              <div className="mt-6">
+                <ForumPoll threadId={detail.thread._id} />
               </div>
 
               <h3 className="text-lg font-semibold mt-8 mb-4">
@@ -237,6 +272,78 @@ export default function Forums() {
                     className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
                   />
                 </label>
+                <label className="flex items-center gap-2 text-sm text-uf-muted cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showPoll}
+                    onChange={(e) => {
+                      setShowPoll(e.target.checked);
+                      if (!e.target.checked) {
+                        setPollQuestion("");
+                        setPollOptions(["", ""]);
+                      }
+                    }}
+                    className="h-4 w-4 accent-cyan-400"
+                  />
+                  <Vote className="h-4 w-4 text-uf-cyan" aria-hidden />
+                  Attach a quick-reaction poll (ship-of-the-line votes, canon calls)
+                </label>
+                {showPoll && (
+                  <fieldset className="rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] p-3 flex flex-col gap-2">
+                    <legend className="sr-only">Poll details</legend>
+                    <label className="text-xs uppercase tracking-[0.16em] text-uf-muted flex flex-col gap-1">
+                      Poll question
+                      <input
+                        value={pollQuestion}
+                        onChange={(e) => setPollQuestion(e.target.value)}
+                        maxLength={200}
+                        placeholder="Ship of the line — vote for the next flagship?"
+                        className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
+                      />
+                    </label>
+                    {pollOptions.map((opt, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span
+                          aria-hidden
+                          className="font-mono text-xs text-uf-cyan w-4 text-center shrink-0"
+                        >
+                          {String.fromCharCode(65 + idx)}
+                        </span>
+                        <input
+                          value={opt}
+                          onChange={(e) => updatePollOption(idx, e.target.value)}
+                          maxLength={80}
+                          aria-label={`Poll option ${idx + 1}`}
+                          placeholder={`Option ${idx + 1}`}
+                          className="flex-1 min-w-0 border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removePollOption(idx)}
+                          disabled={pollOptions.length <= 2}
+                          aria-label={`Remove option ${idx + 1}`}
+                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[color:var(--uf-border)] text-uf-muted hover:text-uf-text disabled:opacity-40 cursor-pointer"
+                        >
+                          <X className="h-4 w-4" aria-hidden />
+                        </button>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={addPollOption}
+                        disabled={pollOptions.length >= 6}
+                        className="inline-flex items-center gap-1 text-xs text-uf-cyan hover:underline disabled:opacity-40 cursor-pointer"
+                      >
+                        <Plus className="h-3.5 w-3.5" aria-hidden />
+                        Add option ({pollOptions.length}/6)
+                      </button>
+                      <p className="text-[11px] text-uf-muted">
+                        One vote per pilot — every vote pays you +2 XP.
+                      </p>
+                    </div>
+                  </fieldset>
+                )}
                 <NeonButton type="submit" variant="primary" loading={creating} disabled={!newTitle.trim() || !newContent.trim()}>
                   Create thread
                 </NeonButton>

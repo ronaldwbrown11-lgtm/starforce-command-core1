@@ -13,6 +13,7 @@ export const TIER_IDS = [
   "cadet",
   "officer",
   "command",
+  "elite",
   "gia_agent",
 ] as const;
 
@@ -119,6 +120,28 @@ export const TIERS: Record<TierId, Tier> = {
     flag: "priority",
     cta: { label: "Take Command", href: "/auth" },
   },
+  elite: {
+    id: "elite",
+    name: "Elite",
+    blurb: "First-class access: read story drops before anyone else, export your dossier, and fly with custom flair.",
+    cycles: "/ 30d",
+    priceLabel: "$19.00",
+    variant: "gold",
+    benefits: [
+      "Early access to story drops",
+      "Dossier export (JSON service record)",
+      "Custom profile flair",
+      "1,200 AI generations / month",
+      "60 GB storage",
+      "300 MB max upload",
+      "Featured placement (priority)",
+    ],
+    aiGenerations: 1200,
+    storageGb: 60,
+    maxUploadMb: 300,
+    flag: "priority",
+    cta: { label: "Go Elite", href: "/auth" },
+  },
   gia_agent: {
     id: "gia_agent",
     name: "G.I.A Agent",
@@ -142,7 +165,7 @@ export const TIERS: Record<TierId, Tier> = {
   },
 };
 
-export const TIER_ORDER: TierId[] = ["free", "cadet", "officer", "command", "gia_agent"];
+export const TIER_ORDER: TierId[] = ["free", "cadet", "officer", "command", "elite", "gia_agent"];
 
 export const RANK_THRESHOLDS: Array<{ rank: string; xp: number }> = [
   { rank: "Recruit", xp: 0 },
@@ -182,6 +205,8 @@ export function tierPillVariant(id: TierId | null | undefined) {
       return "violet" as const;
     case "command":
       return "violet" as const;
+    case "elite":
+      return "gold" as const;
     case "gia_agent":
       return "gold" as const;
     default:
@@ -195,6 +220,7 @@ export const TIER_CAPS_FRONTEND = {
   cadet: { aiCap: 100, storageGbCap: 5, maxUploadMbCap: 50 },
   officer: { aiCap: 300, storageGbCap: 15, maxUploadMbCap: 100 },
   command: { aiCap: 750, storageGbCap: 40, maxUploadMbCap: 200 },
+  elite: { aiCap: 1200, storageGbCap: 60, maxUploadMbCap: 300 },
   gia_agent: { aiCap: 2000, storageGbCap: 100, maxUploadMbCap: 500 },
 } as const;
 
@@ -209,6 +235,21 @@ export function getStorageCap(id: TierId | null | undefined): number {
 export function getMaxUploadMb(id: TierId | null | undefined): number {
   if (!id) return TIER_CAPS_FRONTEND.free.maxUploadMbCap;
   return (TIER_CAPS_FRONTEND as Record<string, { maxUploadMbCap: number }>)[id]?.maxUploadMbCap ?? TIER_CAPS_FRONTEND.free.maxUploadMbCap;
+}
+
+/** 0-based tier ladder rank for comparisons (free = 0 … gia_agent = 5). */
+export function tierIndex(id: TierId | null | undefined): number {
+  if (!id) return 0;
+  const idx = TIER_ORDER.indexOf(id);
+  return idx === -1 ? 0 : idx;
+}
+
+/** True when `viewer` has at least `min` tier clearance. */
+export function hasTier(
+  viewer: TierId | null | undefined,
+  min: TierId,
+): boolean {
+  return tierIndex(viewer) >= tierIndex(min);
 }
 
 export function fmtBytes(bytes: number): string {

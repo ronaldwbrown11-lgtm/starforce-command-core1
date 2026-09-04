@@ -463,6 +463,29 @@ export const setMyContactEmail = mutation({
 });
 
 /**
+ * Toggle the weekly fleet digest email (account settings). Audited so the
+ * choice is traceable; digest.ts reads `emailOptOut` when batching.
+ */
+export const setMyEmailOptOut = mutation({
+  args: { optOut: v.boolean() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Sign in required.");
+    }
+    await ctx.db.patch(userId, { emailOptOut: args.optOut || undefined });
+    await ctx.db.insert("auditLog", {
+      actorId: userId,
+      action: "account.digest_pref",
+      target: `user:${userId}`,
+      meta: JSON.stringify({ optOut: args.optOut }),
+      createdAt: Date.now(),
+    });
+    return { ok: true, optOut: args.optOut };
+  },
+});
+
+/**
  * DEV-ONLY: Promote the current signed-in user to admin (role "admin" +
  * opRole "senior_operator"). OTP / anonymous sign-in provisions a users row
  * with no role, so this is the escape hatch to reach the operator console.
@@ -536,5 +559,22 @@ export const updateMyFlair = mutation({
     const flair = args.flair.trim().slice(0, 40);
     await ctx.db.patch(userId, { flair: flair || undefined });
     return { ok: true, flair };
+  },
+});
+
+/**
+ * Opt in/out of the weekly fleet digest email (#20). Digest delivery also
+ * requires a verified sign-in email or a message (contact) email, which is
+ * checked per recipient when the Monday cron runs.
+ */
+export const setEmailPrefs = mutation({
+  args: { digestOptOut: v.boolean() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Sign in required.");
+    const me = await ctx.db.get(userId);
+    if (!me) throw new Error("Account not found.");
+    await ctx.db.patch(userId, { emailOptOut: args.digestOptOut || undefined });
+    return { ok: true, digestOptOut: !!args.digestOptOut };
   },
 });

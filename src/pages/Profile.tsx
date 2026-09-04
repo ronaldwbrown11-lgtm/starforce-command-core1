@@ -12,6 +12,7 @@ import {
 } from "@/components/uf";
 import { ProfileEditor } from "@/components/ProfileEditor";
 import { AchievementBadges } from "@/components/widgets/AchievementBadges";
+import { ServiceDossierPanel } from "@/components/widgets/ServiceDossierPanel";
 import { FleetAffiliation } from "@/components/widgets/FleetAffiliation";
 import { Flair } from "@/components/widgets/Flair";
 import { useAuth } from "@/hooks/use-auth";
@@ -283,6 +284,9 @@ export default function Profile() {
             </HoloCard>
           </div>
         ) : null}
+        <div className="mt-6">
+          <ServiceDossierPanel userId={profile._id} />
+        </div>
         {contributions !== undefined ? (
           <div className="mt-6">
             <ServiceRecord contributions={contributions} />
@@ -375,7 +379,7 @@ function ServiceRecord({ contributions }: { contributions: Contributions }) {
     <HoloCard>
       <header className="flex items-end justify-between gap-3 flex-wrap">
         <div>
-          <span className="uf-eyebrow">Service record</span>
+          <span className="uf-eyebrow">Contributions</span>
           <h2 className="text-2xl font-semibold mt-2">
             Field contributions.
           </h2>

@@ -120,6 +120,8 @@ export const listSectorClaims = query({
           sector: r.sector,
           faction: r.faction,
           createdAt: r.createdAt,
+          groupId: r.groupId ?? null,
+          groupName: r.groupName ?? null,
           claimant: claimant
             ? {
                 displayName: claimant.displayName ?? claimant.name ?? "Anonymous",
@@ -134,9 +136,15 @@ export const listSectorClaims = query({
 
 // Member: claim a sector of the chart for a faction (#30). A later claim by
 // a different faction replaces the previous holder; same-faction re-claims
-// are a no-op. Claims are public and listed on the Star Atlas page.
+// are a no-op. Claims are public and listed on the Star Atlas page, and can
+// be made personally or on behalf of a group the claimant belongs to
+// (groupId → group ownership).
 export const claimSector = mutation({
-  args: { sector: v.string(), faction: v.string() },
+  args: {
+    sector: v.string(),
+    faction: v.string(),
+    groupId: v.optional(v.id("groups")),
+  },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Sign in to claim a sector.");
@@ -145,16 +153,39 @@ export const claimSector = mutation({
     if (!sector) throw new Error("Pick a sector to claim.");
     if (!faction) throw new Error("Pick the faction making the claim.");
 
+    // Group ownership: when claiming for a group, the claimant must be a
+    // member of that group, and the group name is stamped on the claim.
+    const gid = args.groupId;
+    let groupName: string | undefined;
+    if (gid) {
+      const group = await ctx.db.get(gid);
+      if (!group) throw new Error("Group not found.");
+      const membership = await ctx.db
+        .query("groupMembers")
+        .withIndex("by_group", (q) => q.eq("groupId", gid))
+        .filter((q) => q.eq(q.field("userId"), userId))
+        .first();
+      if (!membership) {
+        throw new Error("You must be a member of the group to claim on its behalf.");
+      }
+      groupName = group.name;
+    }
+
     const existing = await ctx.db
       .query("sectorClaims")
       .withIndex("by_sector", (q) => q.eq("sector", sector))
       .first();
     const now = Date.now();
+    const holderLabel = groupName ?? faction;
     if (existing) {
-      if (existing.faction === faction) return { ok: true, replaced: false };
+      if (existing.faction === faction && (existing.groupId ?? null) === (args.groupId ?? null)) {
+        return { ok: true, replaced: false, groupName: groupName ?? null };
+      }
       await ctx.db.patch(existing._id, {
         faction,
         claimedBy: userId,
+        groupId: gid ?? undefined,
+        groupName,
         createdAt: now,
       });
       await ctx.db.insert("activityFeed", {
@@ -163,15 +194,17 @@ export const claimSector = mutation({
         targetType: "sector",
         targetId: sector,
         url: "/maps",
-        summary: `${faction} claimed ${sector}`, // faction names are trusted labels
+        summary: `${holderLabel} claimed ${sector}`, // trusted display labels
         createdAt: now,
       });
-      return { ok: true, replaced: true };
+      return { ok: true, replaced: true, groupName: groupName ?? null };
     }
     await ctx.db.insert("sectorClaims", {
       sector,
       faction,
       claimedBy: userId,
+      groupId: gid ?? undefined,
+      groupName,
       createdAt: now,
     });
     await ctx.db.insert("activityFeed", {
@@ -180,10 +213,10 @@ export const claimSector = mutation({
       targetType: "sector",
       targetId: sector,
       url: "/maps",
-      summary: `${faction} claimed ${sector}`,
+      summary: `${holderLabel} claimed ${sector}`,
       createdAt: now,
     });
-    return { ok: true, replaced: false };
+    return { ok: true, replaced: false, groupName: groupName ?? null };
   },
 });
 
