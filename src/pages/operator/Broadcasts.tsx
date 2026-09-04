@@ -77,7 +77,7 @@ export default function OperatorBroadcasts() {
     try {
       const res = await testBridge();
       if (res.posted) {
-        toast.success("Test transmission posted — check the Discord announcements channel.");
+        toast.success("Test transmission posted — check your Discord channel.");
       } else {
         toast.error(`Discord mirror is off: ${res.reason ?? "unknown"}`);
       }
@@ -125,9 +125,9 @@ export default function OperatorBroadcasts() {
           {bridge?.configured ? (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="max-w-2xl text-sm text-uf-muted">
-                Every broadcast is mirrored to the announcements channel via the
-                configured webhook. Each history row below reports whether the
-                mirror landed.
+                Every broadcast is mirrored to your chosen Discord channel via
+                the configured webhook. Each history row below reports whether
+                the mirror landed.
               </p>
               <NeonButton
                 variant="primary"
@@ -164,8 +164,20 @@ export default function OperatorBroadcasts() {
               <ol className="m-0 flex list-none flex-col gap-2 p-0">
                 {[
                   [
+                    "Pick or create a channel",
+                    "Any text channel works (e.g. #announcements). In Discord, click + next to Text Channels if your server has none yet — a regular text channel is all this needs, no special channel type.",
+                  ],
+                  [
                     "Create the webhook",
-                    "On Discord, open your server → Server Settings → Integrations → Webhooks → New Webhook. Pick the announcements channel and copy the Webhook URL.",
+                    "Server Settings → Integrations → Webhooks → New Webhook. Point it at that channel and copy the Webhook URL (https://discord.com/api/webhooks/…).",
+                  ],
+                  [
+                    "Store it as DISCORD_WEBHOOK_URL",
+                    "Paste the URL into the project's Keys/API keys tab as DISCORD_WEBHOOK_URL (server-side env var, never in the client bundle).",
+                  ],
+                  [
+                    "Verify",
+                    "Return here and press “Test after configuring” — a test transmission posts to the channel when the URL is live.",
                   ],
                   [
                     "Store it as DISCORD_WEBHOOK_URL",
