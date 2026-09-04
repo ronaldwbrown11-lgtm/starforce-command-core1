@@ -1,0 +1,9 @@
+.git
+.DS_Store
+.env.local
+node_modules
+dist
+isolate
+backups
+*.zip
+*.tar.gz

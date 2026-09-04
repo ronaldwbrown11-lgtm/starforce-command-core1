@@ -17,6 +17,40 @@ import { CREDIT_RATES, FRAME_CATALOG, type FrameId } from "../lib/economy";
 
 export { CREDIT_RATES, FRAME_CATALOG };
 
+// ---------------------------------------------------------------------------
+// XP multipliers (identity layer #43) — paid tiers earn XP faster.
+// Multipliers apply at every XP grant site (missions, quests, signals, poll
+// votes). `applyXpGain` reads the member's tier server-side, so the boost
+// can't be faked from the client.
+// ---------------------------------------------------------------------------
+
+export const XP_MULTIPLIERS: Record<string, number> = {
+  free: 1,
+  cadet: 1.25,
+  officer: 1.5,
+  command: 2,
+  elite: 2.5,
+  gia_agent: 3,
+};
+
+export function tierXpMultiplier(tier: string | null | undefined): number {
+  return XP_MULTIPLIERS[tier ?? "free"] ?? 1;
+}
+
+/** Award XP to a member, scaled by their tier's multiplier. Returns XP granted. */
+export async function applyXpGain(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  baseXp: number,
+): Promise<number> {
+  if (!baseXp || baseXp <= 0) return 0;
+  const user = await ctx.db.get(userId);
+  if (!user) return 0;
+  const gained = Math.round(baseXp * tierXpMultiplier(user.tier));
+  await ctx.db.patch(userId, { xp: (user.xp ?? 0) + gained });
+  return gained;
+}
+
 /**
  * Credit a user's Star Credits balance and record the grant in the audit
  * log. Best-effort — a missing user is silently skipped.

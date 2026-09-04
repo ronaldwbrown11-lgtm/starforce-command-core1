@@ -6,6 +6,7 @@ import { NeonButton } from "@/components/uf";
 import { toast } from "sonner";
 import { Camera, Loader2 } from "lucide-react";
 import { Link } from "react-router";
+import { TIER_FLAIR_PRESETS, type TierId } from "@/lib/tiers";
 
 const AVATAR_MAX_BYTES = 4 * 1024 * 1024;
 const AVATAR_MIME = ["image/jpeg", "image/png", "image/webp", "image/avif"];
@@ -30,6 +31,7 @@ export function ProfileEditor({
   onSaved,
   onCancel,
   paidMember = false,
+  tier = null,
 }: {
   initial: ProfileEditorFields;
   submitLabel?: string;
@@ -37,6 +39,8 @@ export function ProfileEditor({
   onCancel?: () => void;
   // Whether the editing member is on a paid tier — unlocks the flair field.
   paidMember?: boolean;
+  // The member's tier — unlocks tier-flavored flair presets.
+  tier?: TierId | null;
 }) {
   const updateProfile = useMutation(api.users.updateProfile);
   const generateUserUploadUrl = useMutation(api.users.generateUserUploadUrl);
@@ -49,6 +53,8 @@ export function ProfileEditor({
   const [saving, setSaving] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const presets =
+    tier && tier !== "free" ? TIER_FLAIR_PRESETS[tier] ?? [] : [];
 
   const handleSave = async () => {
     const name = nameDraft.trim();
@@ -149,13 +155,34 @@ export function ProfileEditor({
       <label className="text-xs uppercase tracking-[0.16em] text-uf-muted flex flex-col gap-1">
         Flair
         {paidMember ? (
-          <input
-            value={flairDraft}
-            onChange={(e) => setFlairDraft(e.target.value)}
-            maxLength={40}
-            placeholder="e.g. Keeper of the Starforge"
-            className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
-          />
+          <>
+            {presets.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Flair presets">
+                {presets.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setFlairDraft(p)}
+                    aria-pressed={flairDraft === p}
+                    className={`text-xs rounded-full border px-2.5 py-1 transition-colors ${
+                      flairDraft === p
+                        ? "border-[rgba(0,229,255,0.6)] bg-[rgba(0,229,255,0.12)] text-uf-text"
+                        : "border-[color:var(--uf-border)] text-uf-muted hover:text-uf-text"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <input
+              value={flairDraft}
+              onChange={(e) => setFlairDraft(e.target.value)}
+              maxLength={40}
+              placeholder="e.g. Keeper of the Starforge — or pick a preset above"
+              className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
+            />
+          </>
         ) : (
           <span className="text-[0.7rem] normal-case tracking-normal text-uf-muted flex items-center gap-1 flex-wrap">
             Custom flair is a paid-member perk.{" "}

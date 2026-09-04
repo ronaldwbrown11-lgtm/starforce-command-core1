@@ -41,6 +41,11 @@ const BADGE_LABELS: Record<string, string> = {
   temporal_investigator: "Temporal Investigator",
   fleet_commander: "Fleet Commander",
   founders_crest: "Founder's Crest",
+  tier_cadet: "Academy Cadet",
+  tier_officer: "Fleet Officer",
+  tier_command: "High Command",
+  tier_elite: "Elite Division",
+  tier_gia_agent: "G.I.A Agent",
 };
 
 const BADGE_BLURBS: Record<string, string> = {
@@ -60,7 +65,28 @@ const BADGE_BLURBS: Record<string, string> = {
   temporal_investigator: "You certified a discovery from the sector map.",
   fleet_commander: "You reached one hundred verified contributions.",
   founders_crest: "You are a charter member of Star Force Base 1198.",
+  tier_cadet: "You were promoted to Cadet clearance at the Academy.",
+  tier_officer: "You earned a commission as a Fleet Officer.",
+  tier_command: "You were elevated to High Command.",
+  tier_elite: "You joined the Elite Division.",
+  tier_gia_agent: "You were inducted into the Galactic Intelligence Agency.",
 };
+
+// Membership-tier badges (#43): one permanent honor per paid tier, awarded
+// on promotion. Downgrading does not strip them — they read as service
+// history, not current clearance.
+export const TIER_BADGE: Record<string, string> = {
+  cadet: "tier_cadet",
+  officer: "tier_officer",
+  command: "tier_command",
+  elite: "tier_elite",
+  gia_agent: "tier_gia_agent",
+};
+
+export function tierBadgeId(tier: string | null | undefined): string | null {
+  if (!tier || tier === "free") return null;
+  return TIER_BADGE[tier] ?? null;
+}
 
 /**
  * Award a set of badges to a user idempotently. Returns the ids that were
@@ -131,6 +157,8 @@ export async function evaluateAchievements(
   if (ageDays >= 100) want.add("centurion");
   if (ageDays >= 365) want.add("veteran");
   if (user.role === "admin" || user.opRole) want.add("moderator");
+  const tb = tierBadgeId(user.tier);
+  if (tb) want.add(tb);
 
   await awardAchievements(ctx, userId, [...want]);
 }

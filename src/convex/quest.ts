@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { grantCredits } from "./economy";
+import { applyXpGain, grantCredits } from "./economy";
 
 // =========================================================================
 // Cadet Induction quest (#38)
@@ -110,8 +110,8 @@ export const claimQuestReward = mutation({
     const now = Date.now();
     const xp = QUEST_REWARD.xp;
     const credits = QUEST_REWARD.credits;
+    await applyXpGain(ctx, me, xp);
     await ctx.db.patch(me, {
-      xp: (user.xp ?? 0) + xp,
       questClaimedAt: now,
     });
     await grantCredits(ctx, me, credits, "quest_induction");

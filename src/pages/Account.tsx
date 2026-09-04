@@ -204,6 +204,7 @@ export default function Account() {
                       avatarStorageId: user?.avatarStorageId,
                     }}
                     paidMember={(user?.tier ?? "free") !== "free"}
+                    tier={user?.tier ?? "free"}
                     submitLabel="Save identity"
                     onSaved={() => setEditingIdentity(false)}
                     onCancel={() => setEditingIdentity(false)}

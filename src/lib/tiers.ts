@@ -167,6 +167,18 @@ export const TIERS: Record<TierId, Tier> = {
 
 export const TIER_ORDER: TierId[] = ["free", "cadet", "officer", "command", "elite", "gia_agent"];
 
+// Tier-flavored flair presets (identity layer #43): curated call-sign
+// suffixes each paid tier can claim with one click in the dossier editor.
+// Custom flair remains available to all paid tiers.
+export const TIER_FLAIR_PRESETS: Record<TierId, string[]> = {
+  free: [],
+  cadet: ["Academy Cadet", "Hull Technician", "Signal Runner"],
+  officer: ["Fleet Officer", "Tactical Analyst", "Wing Commander", "Navigator"],
+  command: ["High Command", "Fleet Admiral", "Task Force Lead", "Shipwright"],
+  elite: ["Elite Operator", "Shadow Pilot", "Ghost Protocol", "Black Ops"],
+  gia_agent: ["G.I.A Agent", "Deep Cover", "Cipher", "Station Chief"],
+};
+
 export const RANK_THRESHOLDS: Array<{ rank: string; xp: number }> = [
   { rank: "Recruit", xp: 0 },
   { rank: "Aspirant", xp: 500 },

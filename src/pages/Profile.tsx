@@ -204,6 +204,7 @@ export default function Profile() {
                     avatarStorageId: profile.avatarStorageId,
                   }}
                   paidMember={(me?.tier ?? "free") !== "free"}
+                  tier={me?.tier ?? "free"}
                   submitLabel="Save dossier"
                   onSaved={() => setEditingProfile(false)}
                   onCancel={() => setEditingProfile(false)}

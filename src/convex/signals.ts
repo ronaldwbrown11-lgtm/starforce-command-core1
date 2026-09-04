@@ -2,7 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireOperatorCapability } from "./admin";
-import { grantCredits } from "./economy";
+import { applyXpGain, grantCredits } from "./economy";
 import type { Id } from "./_generated/dataModel";
 
 // =========================================================================
@@ -73,10 +73,7 @@ export const solveSignal = mutation({
     const xp = signal.rewardXp ?? DEFAULT_REWARD_XP;
     const credits = signal.rewardCredits ?? DEFAULT_REWARD_CREDITS;
 
-    const user = await ctx.db.get(userId);
-    if (user) {
-      await ctx.db.patch(userId, { xp: (user.xp ?? 0) + xp });
-    }
+    await applyXpGain(ctx, userId, xp);
     await ctx.db.patch(args.signalId, { solvedBy: [...signal.solvedBy, userId] });
     await grantCredits(ctx, userId, credits, "signal.solved");
 

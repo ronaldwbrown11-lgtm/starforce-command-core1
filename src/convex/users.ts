@@ -2,6 +2,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
+import { awardAchievements, tierBadgeId } from "./achievements";
 
 /**
  * Get the current signed in user. Returns null if the user is not signed in.
@@ -103,6 +104,9 @@ export const changeMyTier = mutation({
       meta: JSON.stringify({ from, to: target, selfServe: true }),
       createdAt: Date.now(),
     });
+    // Identity layer (#43): promotions earn the tier's permanent badge.
+    const badge = tierBadgeId(target);
+    if (badge) await awardAchievements(ctx, userId, [badge]);
     return { ok: true, from, to: target };
   },
 });
@@ -149,6 +153,9 @@ export const fulfillTier = mutation({
         createdAt: Date.now(),
       });
     }
+    // Identity layer (#43): grant the tier badge on fulfilled upgrades.
+    const badge = tierBadgeId(target);
+    if (badge) await awardAchievements(ctx, args.userId, [badge]);
     return {
       ok: true,
       from,

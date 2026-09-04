@@ -6,7 +6,7 @@ import {
   bumpContribution,
   evaluateAchievements,
 } from "./achievements";
-import { CREDIT_RATES, grantCredits } from "./economy";
+import { applyXpGain, CREDIT_RATES, grantCredits } from "./economy";
 
 // Canonical tier rank (mirrors src/lib/tiers.ts TIER_ORDER). Used to enforce
 // mission clearance server-side so the client lock is not the only gate.
@@ -154,7 +154,7 @@ export const fileMissionReport = mutation({
       createdAt: Date.now(),
     });
 
-    await ctx.db.patch(userId, { xp: (user.xp ?? 0) + xpAwarded });
+    await applyXpGain(ctx, userId, xpAwarded);
 
     // Achievement + economy hooks — filed reports count as verified
     // contributions and earn credits.

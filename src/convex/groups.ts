@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { applyXpGain } from "./economy";
 
 export const listGroups = query({
   args: {
@@ -457,7 +458,7 @@ export const voteOnPoll = mutation({
     if (poll.createdBy !== me) {
       const author = await ctx.db.get(poll.createdBy);
       if (author) {
-        await ctx.db.patch(poll.createdBy, { xp: (author.xp ?? 0) + 2 });
+        await applyXpGain(ctx, poll.createdBy, 2);
         await ctx.db.insert("auditLog", {
           actorId: me,
           action: "xp.grant",

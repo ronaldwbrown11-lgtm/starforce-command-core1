@@ -15,6 +15,11 @@ import {
   ShieldCheck,
   Ship,
   Sparkles,
+  Eye,
+  Gem,
+  GraduationCap,
+  Swords,
+  Telescope,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -123,6 +128,36 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementCatalogEntry> = {
     label: "Founder's Crest",
     description: "Charter member of Star Force Base 1198.",
     tone: "gold",
+  },
+  tier_cadet: {
+    icon: GraduationCap,
+    label: "Academy Cadet",
+    description: "Promoted to Cadet clearance at the Academy.",
+    tone: "cyan",
+  },
+  tier_officer: {
+    icon: Telescope,
+    label: "Fleet Officer",
+    description: "Earned a commission as a Fleet Officer.",
+    tone: "violet",
+  },
+  tier_command: {
+    icon: Swords,
+    label: "High Command",
+    description: "Elevated to High Command.",
+    tone: "gold",
+  },
+  tier_elite: {
+    icon: Gem,
+    label: "Elite Division",
+    description: "Joined the Elite Division.",
+    tone: "gold",
+  },
+  tier_gia_agent: {
+    icon: Eye,
+    label: "G.I.A Agent",
+    description: "Inducted into the Galactic Intelligence Agency.",
+    tone: "violet",
   },
 };
 
