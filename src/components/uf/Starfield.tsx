@@ -5,6 +5,8 @@ type StarfieldProps = {
   className?: string;
   density?: "low" | "medium" | "high";
   hue?: "cyan" | "violet" | "mixed";
+  /** Paint the translucent cyan/violet gradient wash behind the stars. */
+  wash?: boolean;
 };
 
 const DENSITY_MAP: Record<NonNullable<StarfieldProps["density"]>, number> = {
@@ -17,7 +19,12 @@ const DENSITY_MAP: Record<NonNullable<StarfieldProps["density"]>, number> = {
  * Animated starfield background. Two layers (slow/fast) for parallax.
  * Disabled when prefers-reduced-motion is set.
  */
-export function Starfield({ className, density = "medium", hue = "mixed" }: StarfieldProps) {
+export function Starfield({
+  className,
+  density = "medium",
+  hue = "mixed",
+  wash = true,
+}: StarfieldProps) {
   const ref = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -31,11 +38,13 @@ export function Starfield({ className, density = "medium", hue = "mixed" }: Star
       const { clientWidth: w, clientHeight: h } = canvas;
       canvas.width = w;
       canvas.height = h;
-      const grad = ctx.createLinearGradient(0, 0, w, h);
-      grad.addColorStop(0, "rgba(0,229,255,0.10)");
-      grad.addColorStop(1, "rgba(139,92,246,0.08)");
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
+      if (wash) {
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, "rgba(0,229,255,0.10)");
+        grad.addColorStop(1, "rgba(139,92,246,0.08)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+      }
       return;
     }
 
@@ -72,19 +81,21 @@ export function Starfield({ className, density = "medium", hue = "mixed" }: Star
 
     const draw = () => {
       ctx.clearRect(0, 0, w, h);
-      const grad = ctx.createLinearGradient(0, 0, w, h);
-      if (hue === "cyan") {
-        grad.addColorStop(0, "rgba(0,229,255,0.12)");
-        grad.addColorStop(1, "rgba(11,18,32,0.0)");
-      } else if (hue === "violet") {
-        grad.addColorStop(0, "rgba(139,92,246,0.14)");
-        grad.addColorStop(1, "rgba(11,18,32,0.0)");
-      } else {
-        grad.addColorStop(0, "rgba(0,229,255,0.08)");
-        grad.addColorStop(1, "rgba(139,92,246,0.10)");
+      if (wash) {
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        if (hue === "cyan") {
+          grad.addColorStop(0, "rgba(0,229,255,0.12)");
+          grad.addColorStop(1, "rgba(11,18,32,0.0)");
+        } else if (hue === "violet") {
+          grad.addColorStop(0, "rgba(139,92,246,0.14)");
+          grad.addColorStop(1, "rgba(11,18,32,0.0)");
+        } else {
+          grad.addColorStop(0, "rgba(0,229,255,0.08)");
+          grad.addColorStop(1, "rgba(139,92,246,0.10)");
+        }
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
       }
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
 
       for (const s of stars) {
         s.y += s.v;
@@ -107,7 +118,7 @@ export function Starfield({ className, density = "medium", hue = "mixed" }: Star
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
     };
-  }, [density, hue]);
+  }, [density, hue, wash]);
 
   return <canvas ref={ref} aria-hidden="true" className={cn("uf-starfield", className)} />;
 }

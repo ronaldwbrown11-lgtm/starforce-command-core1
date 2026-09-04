@@ -431,10 +431,10 @@ export default function Home() {
             ) : forumThreads.length === 0 ? (
               <Empty label="No threads yet." />
             ) : (
-              forumThreads.map((t) => (
+              forumThreads.map((t, idx) => (
                 <li key={t._id}>
                   <Link to={`/forums?thread=${t.slug}`} className="block">
-                    <HoloCard className="!p-3">
+                    <HoloCard className="!p-3" reveal staggerIndex={idx}>
                       <h4 className="text-base font-semibold">{t.title}</h4>
                       <p className="text-uf-muted text-xs mt-1">
                         {t.replyCount ?? 0} replies ·{" "}
@@ -460,10 +460,10 @@ export default function Home() {
                     (a.latestActivityAt ?? a.createdAt ?? 0),
                 )
                 .slice(0, 3)
-                .map((g) => (
+                .map((g, idx) => (
                   <li key={g._id}>
                     <Link to={`/groups/${g.slug}`} className="block">
-                      <HoloCard className="!p-3">
+                      <HoloCard className="!p-3" reveal staggerIndex={idx}>
                         <h4 className="text-base font-semibold">{g.name}</h4>
                         <p className="text-uf-muted text-xs mt-1">
                           {g.memberCount ?? 0} members · {g.privacy} ·{" "}
@@ -500,7 +500,7 @@ export default function Home() {
                 return (
                   <li key={u._id}>
                     <Link to={`/u/${u._id}`} className="block">
-                      <HoloCard className="!p-3 flex items-center gap-3">
+                      <HoloCard className="!p-3 flex items-center gap-3" reveal staggerIndex={idx}>
                         <span
                           aria-label={`Rank ${idx + 1}`}
                           className="font-mono text-2xl tabular-nums shrink-0 w-9 h-9 rounded-md flex items-center justify-center"

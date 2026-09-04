@@ -52,20 +52,22 @@ const IMAGE_SOURCES: Record<NebulaPalette, ImageSource> = {
   },
 };
 
-// CSS gradient fallback per palette (shown while loading or on error)
+// Layered fallback per palette — shown while imagery loads and whenever the
+// hotlinked source fails. Radial nebula glows over a base field keep the
+// scene feeling deep instead of a flat color fill.
 const FALLBACK_GRADIENTS: Record<NebulaPalette, string> = {
   "cyan-violet":
-    "linear-gradient(135deg, #020A1F 0%, #0F2D55 40%, #0B1A40 100%)",
+    "radial-gradient(1100px 640px at 16% 22%, rgba(0,229,255,0.16), transparent 62%), radial-gradient(900px 560px at 82% 68%, rgba(139,92,246,0.18), transparent 60%), radial-gradient(1500px 1000px at 50% 110%, rgba(9,26,56,0.9), transparent 70%), linear-gradient(160deg, #020A1F 0%, #071530 48%, #0B1A40 100%)",
   "amber-magenta":
-    "linear-gradient(135deg, #1A0802 0%, #4A1A0A 40%, #2A0A18 100%)",
+    "radial-gradient(1100px 640px at 80% 18%, rgba(230,168,23,0.18), transparent 62%), radial-gradient(900px 560px at 18% 72%, rgba(255,61,242,0.15), transparent 60%), radial-gradient(1500px 1000px at 50% 110%, rgba(30,8,26,0.9), transparent 70%), linear-gradient(160deg, #1A0802 0%, #3A1508 45%, #2A0A18 100%)",
   "emerald-cyan":
-    "linear-gradient(135deg, #021A12 0%, #0A3D2A 40%, #021A20 100%)",
+    "radial-gradient(1100px 640px at 14% 32%, rgba(45,255,136,0.14), transparent 62%), radial-gradient(900px 560px at 78% 62%, rgba(0,229,255,0.16), transparent 60%), radial-gradient(1500px 1000px at 50% 110%, rgba(3,24,34,0.9), transparent 70%), linear-gradient(160deg, #021A12 0%, #052E20 45%, #021A20 100%)",
   sapphire:
-    "linear-gradient(135deg, #020A20 0%, #0F2A55 40%, #081830 100%)",
+    "radial-gradient(1100px 640px at 22% 20%, rgba(30,136,229,0.18), transparent 62%), radial-gradient(900px 560px at 78% 72%, rgba(139,92,246,0.16), transparent 60%), radial-gradient(1500px 1000px at 50% 110%, rgba(6,18,44,0.9), transparent 70%), linear-gradient(160deg, #020A20 0%, #08203F 48%, #081830 100%)",
   "magenta-gold":
-    "linear-gradient(135deg, #1A0518 0%, #4A0A38 40%, #1A0A02 100%)",
+    "radial-gradient(1100px 640px at 72% 22%, rgba(255,61,242,0.18), transparent 62%), radial-gradient(900px 560px at 20% 70%, rgba(230,168,23,0.16), transparent 60%), radial-gradient(1500px 1000px at 50% 110%, rgba(28,6,24,0.9), transparent 70%), linear-gradient(160deg, #1A0518 0%, #320A2A 45%, #1A0A02 100%)",
   void:
-    "linear-gradient(135deg, #020408 0%, #0A0F18 40%, #040810 100%)",
+    "radial-gradient(1100px 640px at 30% 18%, rgba(136,153,170,0.12), transparent 62%), radial-gradient(900px 560px at 70% 70%, rgba(0,229,255,0.08), transparent 60%), radial-gradient(1500px 1000px at 50% 110%, rgba(4,8,14,0.95), transparent 70%), linear-gradient(160deg, #020408 0%, #060C16 50%, #040810 100%)",
 };
 
 const INTENSITY_SPEEDS = {

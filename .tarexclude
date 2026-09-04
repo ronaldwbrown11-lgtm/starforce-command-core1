@@ -1,0 +1,12 @@
+./node_modules
+./dist
+./isolate
+./.git
+./backups
+./public/starforce-dist-latest.tar.gz
+./public/starforce-source-latest.tar.gz
+./.env.local
+./.env
+./*.zip
+./*.pdf
+./*.tar.gz

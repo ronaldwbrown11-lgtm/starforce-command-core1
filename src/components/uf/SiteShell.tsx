@@ -7,6 +7,7 @@ import { LOCALES, useI18n } from "@/lib/i18n";
 import { NeonButton } from "./NeonButton";
 import { HeaderNotifications } from "@/components/notifications/HeaderNotifications";
 import { ParallaxBackground } from "./ParallaxBackground";
+import { Starfield } from "./Starfield";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -159,15 +160,72 @@ function MegaMenuDropdown({ group }: { group: NavGroup }) {
   );
 }
 
+type PaletteName =
+  | "cyan-violet"
+  | "amber-magenta"
+  | "emerald-cyan"
+  | "sapphire"
+  | "magenta-gold"
+  | "void";
+
+// Route → background palette. Each section of the site gets its own nebula
+// scene so pages stop feeling like clones of one another. Exact route wins,
+// then the first path segment, then the default.
+const ROUTE_PALETTES: Record<string, PaletteName> = {
+  "/": "cyan-violet",
+  "/stories": "amber-magenta",
+  "/story": "amber-magenta",
+  "/submit": "amber-magenta",
+  "/missions": "amber-magenta",
+  "/mission": "amber-magenta",
+  "/lore": "sapphire",
+  "/blog": "sapphire",
+  "/faqs": "sapphire",
+  "/support": "sapphire",
+  "/resources": "sapphire",
+  "/privacy": "sapphire",
+  "/terms": "sapphire",
+  "/map": "emerald-cyan",
+  "/maps": "emerald-cyan",
+  "/discoveries": "emerald-cyan",
+  "/vault": "magenta-gold",
+  "/videos": "magenta-gold",
+  "/community": "emerald-cyan",
+  "/activity": "emerald-cyan",
+  "/forums": "emerald-cyan",
+  "/members": "emerald-cyan",
+  "/groups": "emerald-cyan",
+  "/group": "emerald-cyan",
+  "/events": "emerald-cyan",
+  "/messages": "emerald-cyan",
+  "/profile": "emerald-cyan",
+  "/u": "emerald-cyan",
+  "/account": "emerald-cyan",
+  "/leaderboard": "amber-magenta",
+  "/changelog": "sapphire",
+  "/membership": "cyan-violet",
+  "/search": "cyan-violet",
+  "/auth": "cyan-violet",
+};
+
+function resolveRoutePalette(pathname: string): PaletteName {
+  const exact = ROUTE_PALETTES[pathname];
+  if (exact) return exact;
+  const segment = pathname.split("/").filter(Boolean)[0];
+  if (segment) return ROUTE_PALETTES[`/${segment}`] ?? "cyan-violet";
+  return "cyan-violet";
+}
+
 export function SiteShell({
   children,
   hideNav = false,
-  bgPalette = "cyan-violet",
+  bgPalette = "auto",
   cinematic = true,
 }: {
   children: React.ReactNode;
   hideNav?: boolean;
-  bgPalette?: "cyan-violet" | "amber-magenta" | "emerald-cyan" | "sapphire" | "magenta-gold" | "void";
+  /** "auto" picks a palette per route; pass a specific name to force one. */
+  bgPalette?: PaletteName | "auto";
   /** Enable cinematic lighting overlays (lens flare, rim light, vignette) */
   cinematic?: boolean;
 }) {
@@ -186,14 +244,27 @@ export function SiteShell({
     return null;
   }, [appearance, pathname]);
 
+  // bgPalette="auto" (the default) resolves per route for visual variety;
+  // an explicit palette prop or an operator-uploaded image always wins.
+  const resolvedPalette = bgPalette === "auto" ? resolveRoutePalette(pathname) : bgPalette;
+
   return (
     <div className="uf-theme min-h-screen flex flex-col relative">
       {!hideNav ? (
         pageBackground?.url ? (
           <PageBackgroundImage url={pageBackground.url} />
         ) : (
-          <ParallaxBackground palette={bgPalette} intensity="medium" />
+          <ParallaxBackground palette={resolvedPalette} intensity="medium" />
         )
+      ) : null}
+      {/* Persistent low-density star layer — no wash so it doesn't mute the nebula */}
+      {!hideNav ? (
+        <Starfield
+          className="pointer-events-none absolute inset-0 z-[1]"
+          density="low"
+          hue="mixed"
+          wash={false}
+        />
       ) : null}
       {cinematic && !hideNav && <CinematicOverlay />}
       {!hideNav ? <Header /> : null}
