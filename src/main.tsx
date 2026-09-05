@@ -79,6 +79,7 @@ import FaqsPage from "./pages/Faqs.tsx";
 import OpBlog from "./pages/operator/BlogManage.tsx";
 import OpFaqs from "./pages/operator/FaqsManage.tsx";
 import OpFactions from "./pages/operator/FactionsManage.tsx";
+import OpGroups from "./pages/operator/GroupsManage.tsx";
 import FleetRegistryPage from "./pages/FleetRegistry.tsx";
 import FleetServiceHistoryPage from "./pages/FleetServiceHistory.tsx";
 import FleetArmamentSheetsPage from "./pages/FleetArmamentSheets.tsx";
@@ -261,6 +262,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/operator/blog" element={<OperatorGuard><OpBlog /></OperatorGuard>} />
               <Route path="/operator/faqs" element={<OperatorGuard><OpFaqs /></OperatorGuard>} />
               <Route path="/operator/factions" element={<OperatorGuard><OpFactions /></OperatorGuard>} />
+              <Route path="/operator/groups" element={<OperatorGuard><OpGroups /></OperatorGuard>} />
               <Route path="/operator/fleet" element={<OperatorGuard><OpFleet /></OperatorGuard>} />
               <Route path="/operator/broadcasts" element={<OperatorGuard><OpBroadcasts /></OperatorGuard>} />
               <Route path="/operator/support" element={<OperatorGuard><OpSupport /></OperatorGuard>} />

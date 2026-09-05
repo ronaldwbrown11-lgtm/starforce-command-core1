@@ -2,6 +2,9 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { applyXpGain } from "./economy";
+import type { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { requireOperatorCapability } from "./admin";
 
 export const listGroups = query({
   args: {
@@ -476,5 +479,197 @@ export const voteOnPoll = mutation({
     const counts = poll.options.map(() => 0);
     for (const vote of votes) counts[vote.optionIndex] += 1;
     return { ok: true, voted: true, alreadyVoted: false, counts, total: votes.length };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Group management (owner + operator). There is no deleteGroup anywhere in the
+// codebase today — owners could transfer or purge members but never dissolve
+// their own group, and operators had no console for add / edit / delete.
+// ---------------------------------------------------------------------------
+
+/**
+ * True when the caller may manage the group: an operator, or the group owner.
+ */
+async function canManageGroup(
+  ctx: MutationCtx,
+  groupId: Id<"groups">,
+): Promise<boolean> {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) return false;
+  const user = await ctx.db.get(userId);
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  const opRole = String(user.opRole ?? "");
+  if (opRole === "operator" || opRole === "senior_operator" || opRole === "community_moderator") {
+    return true;
+  }
+  const member = await ctx.db
+    .query("groupMembers")
+    .withIndex("by_group", (q) => q.eq("groupId", groupId))
+    .filter((q) => q.eq(q.field("userId"), userId))
+    .first();
+  return member?.role === "owner";
+}
+
+function slugifyGroup(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "")
+      .slice(0, 48) || "group"
+  );
+}
+
+/** Edit a group's name / description / category / privacy (owner or operator). */
+export const updateGroup = mutation({
+  args: {
+    id: v.id("groups"),
+    name: v.string(),
+    description: v.string(),
+    category: v.optional(v.string()),
+    privacy: v.union(
+      v.literal("public"),
+      v.literal("private"),
+      v.literal("classified"),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Sign in required.");
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error("Group not found.");
+    if (!(await canManageGroup(ctx, args.id))) {
+      throw new Error("Only the group owner or an operator can edit this group.");
+    }
+    const name = args.name.trim();
+    const description = args.description.trim();
+    if (!name) throw new Error("Group name cannot be empty.");
+    if (!description) throw new Error("Group description cannot be empty.");
+
+    // Re-slug only when the name actually changed, keeping URLs stable.
+    let slug = existing.slug;
+    if (name !== existing.name) {
+      const base = slugifyGroup(name);
+      slug = base;
+      let attempt = 1;
+      while (true) {
+        const collision = await ctx.db
+          .query("groups")
+          .filter((q) => q.eq(q.field("slug"), slug))
+          .first();
+        if (!collision || collision._id === args.id) break;
+        slug = `${base}-${attempt++}`;
+      }
+    }
+
+    await ctx.db.patch(args.id, {
+      name,
+      slug,
+      description,
+      category: args.category || existing.category || "ops",
+      privacy: args.privacy,
+      latestActivityAt: Date.now(),
+    });
+    await ctx.db.insert("auditLog", {
+      actorId: userId,
+      action: "group.update",
+      target: `group:${args.id}`,
+      meta: JSON.stringify({ name, slug, privacy: args.privacy }),
+      createdAt: Date.now(),
+    });
+    return { ok: true, slug };
+  },
+});
+
+/**
+ * Delete a group and cascade its members, chat, posts, events, and signups
+ * (owner or operator).
+ */
+export const deleteGroup = mutation({
+  args: { id: v.id("groups") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Sign in required.");
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error("Group not found.");
+    if (!(await canManageGroup(ctx, args.id))) {
+      throw new Error("Only the group owner or an operator can delete this group.");
+    }
+
+    // Events + their signups first.
+    const events = await ctx.db
+      .query("groupEvents")
+      .withIndex("by_group_created", (q) => q.eq("groupId", args.id))
+      .collect();
+    const eventIds = new Set(events.map((e) => e._id));
+    if (eventIds.size > 0) {
+      const signups = await ctx.db.query("groupEventSignups").collect();
+      for (const s of signups) {
+        if (eventIds.has(s.eventId)) await ctx.db.delete(s._id);
+      }
+    }
+    for (const e of events) await ctx.db.delete(e._id);
+
+    // Messages + posts.
+    const messages = await ctx.db
+      .query("groupMessages")
+      .withIndex("by_group_created", (q) => q.eq("groupId", args.id))
+      .collect();
+    for (const m of messages) await ctx.db.delete(m._id);
+    const posts = await ctx.db
+      .query("groupPosts")
+      .withIndex("by_group_created", (q) => q.eq("groupId", args.id))
+      .collect();
+    for (const p of posts) await ctx.db.delete(p._id);
+
+    // Members, then the group itself.
+    const members = await ctx.db
+      .query("groupMembers")
+      .withIndex("by_group", (q) => q.eq("groupId", args.id))
+      .collect();
+    for (const m of members) await ctx.db.delete(m._id);
+    await ctx.db.delete(args.id);
+
+    await ctx.db.insert("auditLog", {
+      actorId: userId,
+      action: "group.delete",
+      target: `group:${args.id}`,
+      meta: JSON.stringify({ name: existing.name, slug: existing.slug }),
+      createdAt: Date.now(),
+    });
+    return { ok: true };
+  },
+});
+
+/** Operator-only: every group with its owner's name, for the console. */
+export const adminListGroups = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+      "community_moderator",
+    ]);
+    const groups = await ctx.db.query("groups").collect();
+    const members = await ctx.db.query("groupMembers").collect();
+    const ownerOf = new Map<string, Id<"users">>();
+    for (const m of members) {
+      if (m.role === "owner" && !ownerOf.has(m.groupId)) ownerOf.set(m.groupId, m.userId);
+    }
+    const enriched = await Promise.all(
+      groups.map(async (g) => {
+        const ownerId = ownerOf.get(g._id);
+        const owner = ownerId ? await ctx.db.get(ownerId) : null;
+        return {
+          ...g,
+          ownerId,
+          ownerName: owner?.displayName || owner?.name || "unknown",
+          memberCount: g.memberCount ?? 0,
+        };
+      }),
+    );
+    return enriched.sort((a, b) => b.createdAt - a.createdAt);
   },
 });
