@@ -1091,6 +1091,25 @@ const schema = defineSchema(
     })
       .index("by_status", ["status"])
       .index("by_season", ["season"]),
+
+    // Canon faction registry — the groups a member can belong to or align
+    // with (human factions, Orion Triangle bodies, fleet structures, and
+    // species groups). Managed by operators; seeded from the canon catalog.
+    factions: defineTable({
+      name: v.string(),
+      slug: v.string(),
+      category: v.string(), // internal / orion / fleet / species
+      description: v.string(),
+      accent: v.string(),
+      icon: v.optional(v.string()),
+      order: v.number(),
+      active: v.boolean(),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_category", ["category"])
+      .index("by_slug", ["slug"])
+      .index("by_active", ["active"]),
   },
   {
     schemaValidation: false,
