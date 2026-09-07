@@ -1110,6 +1110,21 @@ const schema = defineSchema(
       .index("by_category", ["category"])
       .index("by_slug", ["slug"])
       .index("by_active", ["active"]),
+
+    // Stripe product catalog mirror — maps each membership tier to the
+    // canonical Stripe Product + recurring monthly Price created by the
+    // catalog sync (Operator Console → Billing). Checkout references the
+    // stored Price ID when a row exists, falling back to inline price_data
+    // for tiers that were never synced.
+    stripeCatalog: defineTable({
+      tier: v.string(), // cadet / officer / command / elite / gia_agent
+      productId: v.string(), // prod_...
+      priceId: v.string(), // price_...
+      unitAmount: v.number(), // cents per month
+      currency: v.string(), // e.g. "usd"
+      interval: v.string(), // "month"
+      syncedAt: v.number(),
+    }).index("by_tier", ["tier"]),
   },
   {
     schemaValidation: false,
