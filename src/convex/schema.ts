@@ -485,6 +485,11 @@ const schema = defineSchema(
       role: v.optional(
         v.union(v.literal("owner"), v.literal("moderator"), v.literal("member")),
       ),
+      // Set when the membership was created by the ship-assignment barracks
+      // auto-join (pilot's ship group matched a public community group).
+      // Auto-joined memberships can be clean-swapped when the pilot changes
+      // formation; manual joins never are.
+      autoJoined: v.optional(v.boolean()),
     })
       .index("by_group", ["groupId"])
       .index("by_user", ["userId"]),

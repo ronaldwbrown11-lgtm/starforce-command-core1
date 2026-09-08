@@ -57,6 +57,35 @@ export default function OperatorDashboard() {
           ))}
         </div>
       </section>
+      <section aria-label="Planned fleet features" className="mb-6">
+        <span className="uf-eyebrow">On the drawing board</span>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <HoloCard className="!p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-uf-cyan">Ship Crews</p>
+              <StatusPill variant="info">Planned</StatusPill>
+            </div>
+            <p className="text-uf-muted text-xs mt-1.5">
+              Crew rosters on named hulls — the ship&apos;s captain invites
+              members to berths (~10 per ship), tracked in its own table
+              outside the groups system so moderation tools never touch it.
+              Full spec: ROADMAP.md → Phase 2. Parked by operator decision,
+              2026-09-08.
+            </p>
+          </HoloCard>
+          <HoloCard className="!p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-uf-cyan">Ship-name uniqueness</p>
+              <StatusPill variant="info">Backlog</StatusPill>
+            </div>
+            <p className="text-uf-muted text-xs mt-1.5">
+              Two pilots can currently register the same hull name. Add a
+              case-insensitive server-side check before crews ship — it is the
+              Phase 2 prerequisite and can land on its own anytime.
+            </p>
+          </HoloCard>
+        </div>
+      </section>
       <section className="uf-grid uf-grid--2 mb-6">
         <HoloCard>
           <header className="flex items-center justify-between mb-3">

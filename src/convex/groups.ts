@@ -5,6 +5,7 @@ import { applyXpGain } from "./economy";
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { requireOperatorCapability } from "./admin";
+import { ALL_SHIP_GROUPS } from "../lib/ships";
 
 export const listGroups = query({
   args: {
@@ -671,5 +672,70 @@ export const adminListGroups = query({
       }),
     );
     return enriched.sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
+/**
+ * One-click canon group seeder — creates a public community group for every
+ * ship-group catalog name (src/lib/ships.ts) that doesn't already exist.
+ * Idempotent: matches by normalized name AND slug, so groups you made
+ * yourself are never touched or renamed. Gives the ship-assignment barracks
+ * auto-join real targets from day one.
+ */
+export const seedCanonShipGroups = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+      "community_moderator",
+    ]);
+    const existing = await ctx.db.query("groups").collect();
+    const existingNames = new Set(
+      existing.map((g) => g.name.trim().toLowerCase()),
+    );
+    const existingSlugs = new Set(existing.map((g) => g.slug));
+
+    const now = Date.now();
+    const created: string[] = [];
+    for (const name of ALL_SHIP_GROUPS) {
+      if (existingNames.has(name.trim().toLowerCase())) continue;
+      const base = slugifyGroup(name);
+      let slug = base;
+      let attempt = 1;
+      while (existingSlugs.has(slug)) {
+        slug = `${base}-${attempt++}`;
+      }
+      existingSlugs.add(slug);
+      await ctx.db.insert("groups", {
+        name,
+        slug,
+        description: `Canon ${name} barracks formation. Pilots assigned to this ship group are auto-enrolled here; every pilot is welcome to serve alongside them.`,
+        category: "ship",
+        privacy: "public",
+        memberCount: 0,
+        latestActivityAt: now,
+        createdAt: now,
+      });
+      created.push(name);
+    }
+
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "group.seed_canon",
+      target: "groups:canon-ship-groups",
+      meta: JSON.stringify({
+        created: created.length,
+        names: created,
+        alreadyExisted: ALL_SHIP_GROUPS.length - created.length,
+      }),
+      createdAt: now,
+    });
+    return {
+      ok: true,
+      created: created.length,
+      alreadyExisted: ALL_SHIP_GROUPS.length - created.length,
+      names: created,
+    };
   },
 });

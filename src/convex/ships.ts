@@ -1,6 +1,7 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import {
   ALL_SHIP_GROUPS,
   getShipCategory,
@@ -16,12 +17,121 @@ import { applyXpGain, grantCredits } from "./economy";
 // src/lib/ships.ts so no freeform garbage can land on the user record.
 // =============================================================================
 
+// ---------------------------------------------------------------------------
+// Barracks auto-join (affiliation groups)
+// ---------------------------------------------------------------------------
+// When a pilot confirms a ship assignment with the barracks checkbox enabled,
+// we enroll them in the public community group whose name matches their chosen
+// formation (e.g. ship group "G.I.A." → community group "G.I.A."). If no such
+// group exists, the auto-join skips silently — the affiliation label on their
+// profile still works either way. Auto-joined memberships carry the
+// `autoJoined` flag so a later formation change can clean-swap them out;
+// manual joins and groups the pilot has posted in are never touched.
+
+/**
+ * Find the public community group whose name matches a ship-group catalog
+ * name (case-insensitive). Returns null when there's no match or the group
+ * isn't public — the caller skips silently in that case.
+ */
+async function findBarracksGroup(
+  ctx: MutationCtx,
+  shipGroup: string,
+) {
+  const target = shipGroup.trim().toLowerCase();
+  if (!target) return null;
+  const groups = await ctx.db.query("groups").collect();
+  return (
+    groups.find(
+      (g) => g.privacy === "public" && g.name.trim().toLowerCase() === target,
+    ) ?? null
+  );
+}
+
+/** True when the pilot has authored posts or chat in the group (active). */
+async function hasAuthoredInGroup(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  groupId: Id<"groups">,
+): Promise<boolean> {
+  const posts = await ctx.db
+    .query("groupPosts")
+    .withIndex("by_group_created", (q) => q.eq("groupId", groupId))
+    .collect();
+  if (posts.some((p) => p.authorId === userId)) return true;
+  const messages = await ctx.db
+    .query("groupMessages")
+    .withIndex("by_group_created", (q) => q.eq("groupId", groupId))
+    .collect();
+  return messages.some((m) => m.authorId === userId);
+}
+
+/**
+ * Enroll the pilot in the barracks group for `shipGroup`. No-ops when the
+ * group doesn't exist, isn't public, or the pilot is already a member.
+ */
+async function joinBarracksGroup(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  shipGroup: string,
+): Promise<boolean> {
+  const group = await findBarracksGroup(ctx, shipGroup);
+  if (!group) return false;
+  const existing = await ctx.db
+    .query("groupMembers")
+    .withIndex("by_group", (q) => q.eq("groupId", group._id))
+    .filter((q) => q.eq(q.field("userId"), userId))
+    .first();
+  if (existing) return false;
+  await ctx.db.insert("groupMembers", {
+    groupId: group._id,
+    userId,
+    joinedAt: Date.now(),
+    role: "member",
+    autoJoined: true,
+  });
+  await ctx.db.patch(group._id, {
+    memberCount: (group.memberCount ?? 0) + 1,
+    latestActivityAt: Date.now(),
+  });
+  return true;
+}
+
+/**
+ * Clean-swap: leave the barracks group for a previous formation, but only if
+ * the membership was auto-joined AND the pilot hasn't been active there.
+ * Manual joins are never touched.
+ */
+async function leaveBarracksGroup(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  shipGroup: string,
+): Promise<boolean> {
+  const group = await findBarracksGroup(ctx, shipGroup);
+  if (!group) return false;
+  const membership = await ctx.db
+    .query("groupMembers")
+    .withIndex("by_group", (q) => q.eq("groupId", group._id))
+    .filter((q) => q.eq(q.field("userId"), userId))
+    .first();
+  if (!membership) return false;
+  if (!membership.autoJoined) return false; // manual join — never touched
+  if (await hasAuthoredInGroup(ctx, userId, group._id)) return false;
+  await ctx.db.delete(membership._id);
+  await ctx.db.patch(group._id, {
+    memberCount: Math.max(0, (group.memberCount ?? 0) - 1),
+  });
+  return true;
+}
+
 export const setMyShip = mutation({
   args: {
     shipClass: v.string(),
     shipRole: v.string(),
     shipGroup: v.string(),
     shipName: v.optional(v.string()),
+    // Wizard consent: enroll in the formation's barracks community group
+    // when a matching public group exists (checked by default).
+    enrollBarracks: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -43,6 +153,7 @@ export const setMyShip = mutation({
       throw new Error("Ship name must be 60 characters or fewer.");
     }
 
+    const oldGroup = me.shipGroup ?? null;
     const category = getShipCategory(args.shipClass);
     await ctx.db.patch(userId, {
       shipClass: args.shipClass,
@@ -51,6 +162,19 @@ export const setMyShip = mutation({
       shipGroup: args.shipGroup,
       shipName: shipName || undefined,
     });
+
+    // Smart switching: leaving the previous formation's barracks only when
+    // the membership was auto-joined and the pilot hasn't been active there.
+    let leftBarracks = false;
+    if (oldGroup && oldGroup !== args.shipGroup) {
+      leftBarracks = await leaveBarracksGroup(ctx, userId, oldGroup);
+    }
+    // Consent-gated enrollment in the new formation's barracks group.
+    const joinedBarracks =
+      args.enrollBarracks === true
+        ? await joinBarracksGroup(ctx, userId, args.shipGroup)
+        : false;
+
     await ctx.db.insert("auditLog", {
       actorId: userId,
       action: "ship.assign",
@@ -60,6 +184,9 @@ export const setMyShip = mutation({
         shipRole: args.shipRole,
         shipGroup: args.shipGroup,
         shipName: shipName || null,
+        enrollBarracks: args.enrollBarracks === true,
+        joinedBarracks,
+        leftBarracks,
       }),
       createdAt: Date.now(),
     });

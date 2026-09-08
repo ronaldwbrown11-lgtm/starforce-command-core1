@@ -54,6 +54,10 @@ export function ShipAssignmentFlow({
   const [role, setRole] = useState<string | null>(initial?.shipRole ?? null);
   const [group, setGroup] = useState<string | null>(initial?.shipGroup ?? null);
   const [shipName, setShipName] = useState(initial?.shipName ?? "");
+  // Consent for the barracks auto-join — checked by default so the pilot sees
+  // exactly what happens before it happens; unchecking keeps the lightweight
+  // behavior (affiliation label only, no group membership).
+  const [enrollBarracks, setEnrollBarracks] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const canContinue =
@@ -83,7 +87,13 @@ export function ShipAssignmentFlow({
     setSaving(true);
     try {
       const name = shipName.trim();
-      await setMyShip({ shipClass, shipRole: role, shipGroup: group, shipName: name || undefined });
+      await setMyShip({
+        shipClass,
+        shipRole: role,
+        shipGroup: group,
+        shipName: name || undefined,
+        enrollBarracks,
+      });
       toast.success(`${name ? `“${name}” ` : ""}${shipClass} assigned — welcome aboard.`);
       onDone?.({ shipClass, shipRole: role, shipGroup: group, shipName: name || undefined });
     } catch (err) {
@@ -245,7 +255,12 @@ export function ShipAssignmentFlow({
                           type="button"
                           role="option"
                           aria-selected={active}
-                          onClick={() => setGroup(active ? null : g)}
+                          onClick={() => {
+                            setGroup(active ? null : g);
+                            // A new formation restores the default consent so
+                            // a previous opt-out doesn't silently carry over.
+                            setEnrollBarracks(true);
+                          }}
                           className={
                             "rounded-full border px-3.5 py-1.5 text-sm transition-colors cursor-pointer " +
                             (active
@@ -292,6 +307,25 @@ export function ShipAssignmentFlow({
                 Cosmetic + identity only — the assignment never changes gameplay
                 mechanics. You can switch ships anytime without losing progress.
               </p>
+              <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.45)] p-3">
+                <input
+                  type="checkbox"
+                  checked={enrollBarracks}
+                  onChange={(e) => setEnrollBarracks(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-[#00e5ff]"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-uf-text">
+                    Enroll me in the {group} barracks group
+                  </span>
+                  <span className="mt-0.5 block text-xs text-uf-muted">
+                    If a public community group named “{group}” exists, you'll be
+                    added as a member so you can chat with your formation.
+                    Otherwise nothing changes — your formation badge shows either
+                    way, and you can leave the group anytime.
+                  </span>
+                </span>
+              </label>
             </div>
           )}
         </div>

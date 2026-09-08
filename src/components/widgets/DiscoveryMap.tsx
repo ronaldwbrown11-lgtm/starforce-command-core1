@@ -25,14 +25,6 @@ const HUES = [
   { line: "rgba(255,77,109,0.55)", glow: "var(--uf-red)" },
 ];
 
-const FLEETS = [
-  "Terran Reach",
-  "Outer Belt",
-  "Sol system-Gemini",
-  "Darkspire Expanse",
-  "Coreward",
-];
-
 // Anti-clutter limits.
 const DRAW_CAP = 60; // only the most recent N charted systems are drawn
 const CLUSTER_R = 22; // viewBox units — systems closer than this group together
@@ -67,6 +59,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   const sectors = useQuery(api.content.sectors);
   const discoveries = useQuery(api.discoveries.listDiscoveries);
   const missions = useQuery(api.content.listMissions, {});
+  const factions = useQuery(api.factions.listAll);
   const propose = useMutation(api.discoveries.proposeDiscovery);
   const vote = useMutation(api.discoveries.voteDiscovery);
 
@@ -504,8 +497,8 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                   className="rounded-md border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.6)] px-3 py-2 text-sm text-uf-text focus:border-[rgba(0,229,255,0.5)] focus:outline-none"
                 >
                   <option value="">No claim</option>
-                  {FLEETS.map((f) => (
-                    <option key={f} value={f}>{f}</option>
+                  {(factions?.items ?? []).map((f) => (
+                    <option key={f.slug} value={f.name}>{f.name}</option>
                   ))}
                 </select>
               </label>

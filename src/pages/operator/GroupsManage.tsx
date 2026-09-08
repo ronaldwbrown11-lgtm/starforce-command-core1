@@ -4,7 +4,7 @@ import { api } from "@/convex/_generated/api";
 import { OperatorShell } from "@/components/operator/OperatorShell";
 import { HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Search, Users, Lock, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Users, Lock, Eye, Rocket } from "lucide-react";
 
 const CATEGORIES = [
   { value: "faction", label: "Faction (Ultra Force, G.I.A., Starforge, Chrono Monks)" },
@@ -34,6 +34,8 @@ export default function OperatorGroups() {
   const createGroup = useMutation(api.groups.createGroup);
   const updateGroup = useMutation(api.groups.updateGroup);
   const deleteGroup = useMutation(api.groups.deleteGroup);
+  const seedCanonShipGroups = useMutation(api.groups.seedCanonShipGroups);
+  const [seeding, setSeeding] = useState(false);
 
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
@@ -98,6 +100,22 @@ export default function OperatorGroups() {
     } catch (e: any) { toast.error(e.message); }
   }
 
+  async function seedCanon() {
+    setSeeding(true);
+    try {
+      const res = await seedCanonShipGroups();
+      if (res.created > 0) {
+        toast.success(`Created ${res.created} canon ship group${res.created === 1 ? "" : "s"} — ${res.alreadyExisted} already existed.`);
+      } else {
+        toast.info(`All ${res.alreadyExisted} canon ship groups already exist — nothing to create.`);
+      }
+    } catch (e: any) {
+      toast.error(e.message ?? "Seeding failed.");
+    } finally {
+      setSeeding(false);
+    }
+  }
+
   const filtered = useMemo(() => {
     const q = filter.toLowerCase();
     if (!q) return items;
@@ -119,9 +137,14 @@ export default function OperatorGroups() {
               Every fleet group on the platform — {items.length} total · create, edit, or dissolve groups.
             </p>
           </div>
-          <NeonButton onClick={() => startEdit()} aria-label="Add a new group">
-            <Plus className="h-4 w-4" aria-hidden /> Add group
-          </NeonButton>
+          <div className="flex flex-wrap gap-2">
+            <NeonButton variant="ghost" loading={seeding} onClick={() => void seedCanon()} title="Create a public group for every canon ship formation that doesn't exist yet (idempotent — your own groups are never touched)">
+              <Rocket className="h-4 w-4" aria-hidden /> Create canon ship groups
+            </NeonButton>
+            <NeonButton onClick={() => startEdit()} aria-label="Add a new group">
+              <Plus className="h-4 w-4" aria-hidden /> Add group
+            </NeonButton>
+          </div>
         </div>
 
         {editing !== undefined && (

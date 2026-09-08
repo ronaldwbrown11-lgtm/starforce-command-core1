@@ -10,18 +10,12 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
 import { Compass, Crosshair, Flag, Route, Users } from "lucide-react";
 
-const FACTION_NAMES = [
-  "Ultra Force",
-  "G.I.A.",
-  "Starforge Union",
-  "Chrono Monks",
-] as const;
-
 export default function StarAtlas() {
   const { isAuthenticated } = useAuth();
   const sectors = useQuery(api.content.sectors);
   const claims = useQuery(api.discoveries.listSectorClaims);
   const claimSector = useMutation(api.discoveries.claimSector);
+  const factions = useQuery(api.factions.listAll);
   const myMemberships = useQuery(api.groups.myGroupMemberships);
   const allGroups = useQuery(api.groups.listGroups, {});
   const [claimSectorName, setClaimSectorName] = useState("");
@@ -186,9 +180,9 @@ export default function StarAtlas() {
                     className="rounded-md border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.6)] px-3 py-2 text-sm text-uf-text focus:border-[rgba(0,229,255,0.5)] focus:outline-none"
                   >
                     <option value="">Pick your faction…</option>
-                    {FACTION_NAMES.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
+                    {(factions?.items ?? []).map((f) => (
+                      <option key={f.slug} value={f.name}>
+                        {f.name}
                       </option>
                     ))}
                   </select>
