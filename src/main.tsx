@@ -19,44 +19,12 @@ import "./types/global.d.ts";
 // Eager imports (no React.lazy): the whole app ships as one self-contained
 // bundle, so there are no per-page dynamic module fetches that can fail when
 // the dev server blips. Reliability over code-splitting.
-import Home from "./pages/Home.tsx";
-import Privacy from "./pages/Privacy.tsx";
-import Terms from "./pages/Terms.tsx";
-import AuthPage from "./pages/Auth.tsx";
+//
+// Public page routes live in the shared catalog (src/lib/pageCatalog.tsx) so
+// the router and the operator Appearance console can never drift apart:
+// adding a page there registers its route AND its background slot.
+import { PUBLIC_ROUTES } from "./lib/pageCatalog.tsx";
 import NotFound from "./pages/NotFound.tsx";
-import Stories from "./pages/Stories.tsx";
-import SearchPage from "./pages/Search.tsx";
-import Lore from "./pages/Lore.tsx";
-import LoreDatabase from "./pages/LoreDatabase.tsx";
-import Maps from "./pages/Maps.tsx";
-import StarAtlas from "./pages/StarAtlas.tsx";
-import Videos from "./pages/Videos.tsx";
-import Missions from "./pages/Missions.tsx";
-import MissionDetail from "./pages/MissionDetail.tsx";
-import SignalVault from "./pages/SignalVault.tsx";
-import Events from "./pages/Events.tsx";
-import Contests from "./pages/Contests.tsx";
-import ContestDetail from "./pages/ContestDetail.tsx";
-import Leaderboard from "./pages/Leaderboard.tsx";
-import Changelog from "./pages/Changelog.tsx";
-import ToolsAssistant from "./pages/ToolsAssistant.tsx";
-import EmbedStory from "./pages/EmbedStory.tsx";
-import Community from "./pages/Community.tsx";
-import Forums from "./pages/Forums.tsx";
-import Resources from "./pages/Resources.tsx";
-import Membership from "./pages/Membership.tsx";
-import Support from "./pages/Support.tsx";
-import Activity from "./pages/Activity.tsx";
-import Members from "./pages/Members.tsx";
-import Groups from "./pages/Groups.tsx";
-import GroupDetail from "./pages/GroupDetail.tsx";
-import Account from "./pages/Account.tsx";
-import Submit from "./pages/Submit.tsx";
-import StoryDetail from "./pages/StoryDetail.tsx";
-import LoreDetail from "./pages/LoreDetail.tsx";
-import LoreSubmit from "./pages/LoreSubmit.tsx";
-import Profile from "./pages/Profile.tsx";
-import Messages from "./pages/Messages.tsx";
 
 import OpDashboard from "./pages/operator/Dashboard.tsx";
 import OpModeration from "./pages/operator/Moderation.tsx";
@@ -73,18 +41,11 @@ import OpAudit from "./pages/operator/Audit.tsx";
 import OpReferences from "./pages/operator/References.tsx";
 import OpFeatured from "./pages/operator/Featured.tsx";
 import OpTeam from "./pages/operator/Team.tsx";
-import BlogPage from "./pages/Blog.tsx";
-import BlogDetailPage from "./pages/BlogDetail.tsx";
-import FaqsPage from "./pages/Faqs.tsx";
 import OpBlog from "./pages/operator/BlogManage.tsx";
 import OpFaqs from "./pages/operator/FaqsManage.tsx";
 import OpFactions from "./pages/operator/FactionsManage.tsx";
 import OpGroups from "./pages/operator/GroupsManage.tsx";
 import OpBilling from "./pages/operator/Billing.tsx";
-import FleetRegistryPage from "./pages/FleetRegistry.tsx";
-import FleetServiceHistoryPage from "./pages/FleetServiceHistory.tsx";
-import FleetArmamentSheetsPage from "./pages/FleetArmamentSheets.tsx";
-import FleetBlackBoxFilesPage from "./pages/FleetBlackBoxFiles.tsx";
 import OpFleet from "./pages/operator/FleetManage.tsx";
 import OpBroadcasts from "./pages/operator/Broadcasts.tsx";
 import OpSupport from "./pages/operator/Support.tsx";
@@ -200,50 +161,11 @@ createRoot(document.getElementById("root")!).render(
           <RouteSyncer />
           <AppErrorBoundary>
             <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/auth" element={<AuthPage redirectAfterAuth="/account" />} />
-              <Route path="/stories" element={<Stories />} />
-              <Route path="/stories/:slug" element={<StoryDetail />} />
-              <Route path="/search" element={<SearchPage />} />
-              <Route path="/lore" element={<Lore />} />
-              <Route path="/maps" element={<Maps />} />
-              <Route path="/map" element={<StarAtlas />} />
-              <Route path="/lore/databases/:slug" element={<LoreDatabase />} />
-              <Route path="/lore/submit" element={<LoreSubmit />} />
-              <Route path="/lore/:slug" element={<LoreDetail />} />
-              <Route path="/videos" element={<Videos />} />
-              <Route path="/missions" element={<Missions />} />
-              <Route path="/missions/:slug" element={<MissionDetail />} />
-              <Route path="/vault" element={<SignalVault />} />
-              <Route path="/events" element={<Events />} />
-              <Route path="/contests" element={<Contests />} />
-              <Route path="/contests/:slug" element={<ContestDetail />} />
-              <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route path="/changelog" element={<Changelog />} />
-              <Route path="/tools/assistant" element={<ToolsAssistant />} />
-              <Route path="/embed/story/:slug" element={<EmbedStory />} />
-              <Route path="/community" element={<Community />} />
-              <Route path="/forums" element={<Forums />} />
-              <Route path="/resources" element={<Resources />} />
-              <Route path="/membership" element={<Membership />} />
-              <Route path="/blog" element={<BlogPage />} />
-              <Route path="/blog/:slug" element={<BlogDetailPage />} />
-              <Route path="/faqs" element={<FaqsPage />} />
-              <Route path="/fleet-registry" element={<FleetRegistryPage />} />
-              <Route path="/fleet-registry/service-histories" element={<FleetServiceHistoryPage />} />
-              <Route path="/fleet-registry/armament-sheets" element={<FleetArmamentSheetsPage />} />
-              <Route path="/fleet-registry/black-box-files" element={<FleetBlackBoxFilesPage />} />
-              <Route path="/support" element={<Support />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/activity" element={<Activity />} />
-              <Route path="/members" element={<Members />} />
-              <Route path="/groups" element={<Groups />} />
-              <Route path="/groups/:slug" element={<GroupDetail />} />
-              <Route path="/account" element={<Account />} />
-              <Route path="/submit" element={<Submit />} />
-              <Route path="/u/:id" element={<Profile />} />
-              <Route path="/messages" element={<Messages />} />
+              {/* Public routes come from the shared catalog so every page
+                  automatically gets an Appearance background slot too. */}
+              {PUBLIC_ROUTES.map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
 
               <Route path="/operator" element={<OperatorGuard><OpDashboard /></OperatorGuard>} />
               <Route path="/operator/moderation" element={<OperatorGuard><OpModeration /></OperatorGuard>} />

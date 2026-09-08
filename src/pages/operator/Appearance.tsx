@@ -5,34 +5,20 @@ import type { BackgroundInfo, CardCatalogEntry } from "@/convex/siteAppearance";
 import { OperatorShell } from "@/components/operator/OperatorShell";
 import { HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { CoverPicker } from "@/components/operator/CoverPicker";
+import { PUBLIC_ROUTES } from "@/lib/pageCatalog";
 import { toast } from "sonner";
 import { Check, ExternalLink, ImagePlus, Loader2, Palette, Trash2, Upload } from "lucide-react";
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB — backgrounds are wallpaper-sized
 const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 
-// The public pages an operator can restyle. Detail pages (e.g. "/stories/:slug")
-// automatically inherit the background of their section (e.g. "/stories").
-const PAGES: { path: string; label: string }[] = [
-  { path: "/", label: "Home" },
-  { path: "/stories", label: "Stories" },
-  { path: "/lore", label: "Lore" },
-  { path: "/maps", label: "Maps" },
-  { path: "/videos", label: "Videos" },
-  { path: "/missions", label: "Missions" },
-  { path: "/community", label: "Community" },
-  { path: "/forums", label: "Forums" },
-  { path: "/members", label: "Members" },
-  { path: "/groups", label: "Groups" },
-  { path: "/submit", label: "Submit" },
-  { path: "/resources", label: "Resources" },
-  { path: "/membership", label: "Membership" },
-  { path: "/support", label: "Support" },
-  { path: "/activity", label: "Activity" },
-  { path: "/account", label: "Account" },
-  { path: "/search", label: "Search" },
-  { path: "/messages", label: "Messages" },
-];
+// Restyle-able pages come from the shared public page catalog, so any page
+// added there automatically gets a background slot here. Detail pages (e.g.
+// "/stories/:slug") are marked appearance:false in the catalog and inherit
+// their section's background (e.g. "/stories") instead.
+const PAGES: { path: string; label: string }[] = PUBLIC_ROUTES.filter(
+  (route) => route.appearance !== false,
+).map((route) => ({ path: route.path, label: route.label }));
 
 export default function OperatorAppearance() {
   const appearance = useQuery(api.siteAppearance.getAppearance);
