@@ -6,14 +6,11 @@ import { ScrollReveal } from "@/hooks/use-scroll-reveal";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { Search, ChevronDown, ChevronUp, HelpCircle, MessageSquare } from "lucide-react";
 import { Link } from "react-router";
+import { FAQ_CATEGORY_LABELS, FAQ_CATEGORY_KEYS } from "@/lib/faqSeed";
 
 const FAQ_CATEGORIES = [
   { id: "", label: "All" },
-  { id: "general", label: "General" },
-  { id: "membership", label: "Membership" },
-  { id: "content", label: "Content & Submissions" },
-  { id: "technical", label: "Technical" },
-  { id: "account", label: "Account" },
+  ...FAQ_CATEGORY_KEYS.map((key) => ({ id: key, label: FAQ_CATEGORY_LABELS[key] })),
 ];
 
 function FaqItem({ q, a }: { q: string; a: string }) {
@@ -132,7 +129,9 @@ export default function Faqs() {
           Object.entries(grouped).map(([category, catItems], gIdx) => (
             <ScrollReveal key={category} staggerIndex={gIdx}>
               <div className="mb-8">
-                <h2 className="text-lg font-semibold text-uf-text mb-3 capitalize">{category}</h2>
+                <h2 className="text-lg font-semibold text-uf-text mb-3">
+                  {FAQ_CATEGORY_LABELS[category as keyof typeof FAQ_CATEGORY_LABELS] ?? category}
+                </h2>
                 <div className="flex flex-col gap-3">
                   {catItems.map((item) => (
                     <FaqItem key={item._id} q={item.question} a={item.answer} />
