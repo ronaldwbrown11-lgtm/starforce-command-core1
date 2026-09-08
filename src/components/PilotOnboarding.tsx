@@ -19,20 +19,32 @@ const RANKS: Array<{ id: string; blurb: string }> = [
   { id: "Admiral", blurb: "20,000 XP — commands the fleet" },
 ];
 
-// Canonical factions, matched to what lore/stories use as their fleet tags.
-const FLEETS = [
-  "Terran Reach",
-  "Outer Belt",
-  "Sol system-Gemini",
-  "Darkspire Expanse",
-  "Coreward",
-] as const;
+// Fallback faction catalog (canon seed names) — used only if the factions
+// table query hasn't resolved or is empty. The live list is the operator-
+// managed factions table, so newly created factions appear automatically.
+const FALLBACK_FACTIONS = [
+  "Ultra Force",
+  "Orion Triangle Coalition",
+  "Free Traders Guild",
+  "Velkarian Ascendancy",
+  "G.I.A.",
+];
 
 export default function PilotOnboarding() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const complete = useMutation(api.users.completeOnboarding);
   const missions = useQuery(api.content.listMissions, {});
+  const factionsData = useQuery(api.factions.listAll);
+  // Operator-managed factions table drives the affiliation picker; falls back
+  // to the canon seed names so the picker is never empty on first paint.
+  const factionChoices = useMemo(
+    () =>
+      (factionsData?.items ?? []).length > 0
+        ? (factionsData?.items ?? []).map((f) => f.name)
+        : FALLBACK_FACTIONS,
+    [factionsData],
+  );
   const [displayName, setDisplayName] = useState("");
   const [rank, setRank] = useState<string | null>(null);
   const [fleet, setFleet] = useState<string | null>(null);
@@ -170,7 +182,7 @@ export default function PilotOnboarding() {
             <fieldset className="md:col-span-2">
               <legend className="uf-eyebrow">Fleet affiliation</legend>
               <div className="mt-3 flex flex-wrap gap-2">
-                {FLEETS.map((f) => {
+                {factionChoices.map((f) => {
                   const active = fleet === f;
                   return (
                     <button

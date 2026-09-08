@@ -512,6 +512,10 @@ export default function Account() {
             <div className="mt-4">
               <StorageManager />
             </div>
+            {/* Dev-only claim tool — visible to operators/admins only. The
+                backend mutation is also gated by DISABLE_DEV_ADMIN, but the
+                panel itself should never render for regular members. */}
+            {user?.role === "admin" || user?.opRole ? (
             <details
               className="mt-6 group rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] overflow-hidden"
               aria-label="Developer access"
@@ -551,6 +555,7 @@ export default function Account() {
                 </NeonButton>
               </div>
             </details>
+            ) : null}
           </div>
         )}
       </section>
