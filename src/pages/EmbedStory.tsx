@@ -34,6 +34,12 @@ export default function EmbedStory() {
 
   const href = `https://starforcebase1198.com/stories/${story.slug}`;
 
+  // In production this route is served by the static card (public/embed.html
+  // via .htaccess). This component stays as the in-app fallback for dev
+  // previews. The outbound link must open in a new tab: from inside an iframe
+  // a same-window navigation escapes the frame, lands the parent on the full
+  // SPA, and the RouteSyncer postMessage storm on this route is what made
+  // embeds "error out" on refresh/page changes.
   return (
     <div
       className="min-h-screen bg-[#0A0A0C] text-[#F5F9FF] flex items-center justify-center p-4"
@@ -66,6 +72,8 @@ export default function EmbedStory() {
         </p>
         <a
           href={href}
+          target="_blank"
+          rel="noopener noreferrer"
           className="inline-block mt-1 rounded-md px-4 py-2 text-center text-sm font-semibold text-[#0A0A0C] bg-[#00E5FF] hover:bg-[#33ECFF] transition-colors"
         >
           Read the full transmission

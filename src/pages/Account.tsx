@@ -88,6 +88,15 @@ export default function Account() {
   const displayName = user?.displayName ?? user?.email?.split("@")[0] ?? "Recruit";
   const initials = displayName.charAt(0).toUpperCase();
 
+  // Operator clearance — mirrors OperatorGuard's role list. Gates both the
+  // quick-action console link and the dev claim panel below.
+  const isOperator =
+    user?.role === "admin" ||
+    !!user?.opRole &&
+      ["operator", "senior_operator", "story_editor", "lore_archivist", "community_moderator"].includes(
+        user.opRole,
+      );
+
   // First-run gate: brand-new members (no identity set, never onboarded)
   // get the one-screen pilot orientation instead of the full account deck.
   const needsOnboarding =
@@ -339,7 +348,9 @@ export default function Account() {
                 <li><Link to="/members" className="text-uf-cyan">Member directory</Link></li>
                 <li><Link to="/groups" className="text-uf-cyan">My groups</Link></li>
                 <li><Link to="/support" className="text-uf-cyan">Open support ticket</Link></li>
-                <li><Link to="/operator" className="text-uf-cyan">Operator console</Link></li>
+                {isOperator ? (
+                  <li><Link to="/operator" className="text-uf-cyan">Operator console</Link></li>
+                ) : null}
               </ul>
             </HoloCard>
             <HoloCard>
@@ -515,7 +526,7 @@ export default function Account() {
             {/* Dev-only claim tool — visible to operators/admins only. The
                 backend mutation is also gated by DISABLE_DEV_ADMIN, but the
                 panel itself should never render for regular members. */}
-            {user?.role === "admin" || user?.opRole ? (
+            {isOperator ? (
             <details
               className="mt-6 group rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] overflow-hidden"
               aria-label="Developer access"

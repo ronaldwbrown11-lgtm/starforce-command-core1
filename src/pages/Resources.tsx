@@ -72,9 +72,25 @@ export default function Resources() {
                 <h3 className="text-lg font-semibold">{r.title}</h3>
                 <p className="text-uf-muted text-sm mt-2">{r.description}</p>
                 {r.url ? (
-                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="uf-btn uf-btn--ghost mt-3">Open resource</a>
+                  <a
+                    href={r.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="uf-btn uf-btn--ghost mt-3"
+                  >
+                    Open resource ↗
+                    <span className="sr-only"> (opens in a new tab)</span>
+                  </a>
                 ) : (
-                  <p className="text-xs text-uf-muted/50 mt-3 font-mono uppercase tracking-wider">Awaiting transmission</p>
+                  <div className="mt-3 rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] px-3 py-2">
+                    <p className="text-xs font-mono uppercase tracking-wider text-uf-muted">
+                      Document pending
+                    </p>
+                    <p className="text-[11px] text-uf-muted/80 mt-0.5">
+                      This record is registered but its file hasn't been
+                      uploaded yet — check back soon.
+                    </p>
+                  </div>
                 )}
               </HoloCard>
             ))}

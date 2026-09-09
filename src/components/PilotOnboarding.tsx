@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { Rocket } from "lucide-react";
 import { ShipAssignmentFlow } from "@/components/ships/ShipAssignmentFlow";
+import { SEED_FACTIONS } from "@/lib/factions";
 
 // Canonical rank ladder (mirrors the server validator in convex/users.ts and
 // the thresholds used by social:rankProgress).
@@ -19,16 +20,11 @@ const RANKS: Array<{ id: string; blurb: string }> = [
   { id: "Admiral", blurb: "20,000 XP — commands the fleet" },
 ];
 
-// Fallback faction catalog (canon seed names) — used only if the factions
-// table query hasn't resolved or is empty. The live list is the operator-
-// managed factions table, so newly created factions appear automatically.
-const FALLBACK_FACTIONS = [
-  "Ultra Force",
-  "Orion Triangle Coalition",
-  "Free Traders Guild",
-  "Velkarian Ascendancy",
-  "G.I.A.",
-];
+// Fallback faction names — mirrors the canon seed catalog in src/lib/factions
+// (the same source the factions table is seeded from), used only if the
+// factions table query hasn't resolved or is empty. The live list is the
+// operator-managed factions table, so newly created factions appear
+// automatically once the operator saves them.
 
 export default function PilotOnboarding() {
   const { isAuthenticated } = useAuth();
@@ -42,7 +38,7 @@ export default function PilotOnboarding() {
     () =>
       (factionsData?.items ?? []).length > 0
         ? (factionsData?.items ?? []).map((f) => f.name)
-        : FALLBACK_FACTIONS,
+        : SEED_FACTIONS.map((f) => f.name),
     [factionsData],
   );
   const [displayName, setDisplayName] = useState("");

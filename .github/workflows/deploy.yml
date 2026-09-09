@@ -25,6 +25,18 @@ jobs:
         env:
           VITE_CONVEX_URL: ${{ vars.VITE_CONVEX_URL }}
 
+      - name: Inject Convex URL into static embed card
+        env:
+          VITE_CONVEX_URL: ${{ vars.VITE_CONVEX_URL }}
+        run: |
+          if [ ! -f dist/embed.html ]; then
+            echo "dist/embed.html missing — /embed/story/* would 404"
+            exit 1
+          fi
+          URL="${VITE_CONVEX_URL:-https://lovely-koala-228.convex.cloud}"
+          sed -i "s|__CONVEX_URL__|${URL}|g" dist/embed.html
+          echo "embed.html queries ${URL}"
+
       - name: Refresh live sitemap
         env:
           VITE_CONVEX_URL: ${{ vars.VITE_CONVEX_URL }}

@@ -10,6 +10,7 @@ import {
 } from "./achievements";
 import { CREDIT_RATES, grantCredits } from "./economy";
 import { enforceRateLimit } from "./rateLimit";
+import { staticImageFor } from "./staticCovers";
 
 // =========================================================================
 // Lore Library — bibles (PDF/DOC/TXT), image galleries, and subdomain-
@@ -108,6 +109,8 @@ function slugify(s: string) {
 }
 
 type LibraryRow = {
+  slug?: string | null | undefined;
+  loreType?: string | null | undefined;
   fileStorageId?: string | null | undefined;
   coverStorageId?: string | null | undefined;
 };
@@ -117,11 +120,27 @@ async function decorate<T extends LibraryRow>(
   rows: T[],
 ) {
   return Promise.all(
-    rows.map(async (r) => ({
-      ...r,
-      fileUrl: r.fileStorageId ? await ctx.storage.getUrl(r.fileStorageId) : null,
-      coverUrl: r.coverStorageId ? await ctx.storage.getUrl(r.coverStorageId) : null,
-    })),
+    rows.map(async (r) => {
+      const fileUrl = r.fileStorageId
+        ? await ctx.storage.getUrl(r.fileStorageId)
+        : null;
+      const isImage = r.loreType === "image";
+      return {
+        ...r,
+        fileUrl,
+        // Card thumbnails: dedicated cover first, then the static site-host
+        // plate (no Convex egress), then for image items the attached image
+        // itself — image plates ARE their own cover when no separate
+        // thumbnail was uploaded. Without this fallback the grid renders
+        // glass cards with no preview even though the image exists.
+        coverUrl:
+          (r.coverStorageId
+            ? await ctx.storage.getUrl(r.coverStorageId)
+            : null) ??
+          staticImageFor(r.slug) ??
+          (isImage ? fileUrl : null),
+      };
+    }),
   );
 }
 
