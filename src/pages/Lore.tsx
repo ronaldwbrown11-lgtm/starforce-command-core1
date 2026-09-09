@@ -245,9 +245,12 @@ function ImageGrid({ items, loading }: { items: any[]; loading: boolean }) {
                   <div
                     className="h-44 w-full bg-cover bg-center"
                     style={{
-                      backgroundImage: img.coverUrl ? `url(${img.coverUrl})` : undefined,
-                      background: img.coverUrl
-                        ? undefined
+                      // Single style key only: the `background` shorthand resets
+                      // background-image, so mixing it with backgroundImage here
+                      // silently wiped the tile in every browser. Gradients are
+                      // valid background-image values, so the fallback lives here too.
+                      backgroundImage: img.coverUrl
+                        ? `url(${img.coverUrl})`
                         : "linear-gradient(135deg, var(--uf-void), #12284d)",
                     }}
                     role="img"
