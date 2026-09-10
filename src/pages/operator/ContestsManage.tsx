@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from "react";
+import { useState, useRef, type FormEvent } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { OperatorShell } from "@/components/operator/OperatorShell";
+import { CoverPicker, readImageDimensions } from "@/components/operator/CoverPicker";
 import { HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { toast } from "sonner";
 import {
@@ -33,6 +34,8 @@ type ContestRow = {
   rewardXp: number | null;
   rewardCredits: number | null;
   winnerCount: number;
+  coverStorageId: string | null;
+  coverUrl: string | null;
   canEnter: boolean;
   entryCount: number;
 };
@@ -50,6 +53,8 @@ export default function ContestsManage() {
 
   // ---- create form state ----
   const create = useMutation(api.contests.createContest);
+  const generateUploadUrl = useMutation(api.assets.generateUploadUrl);
+  const attachCover = useMutation(api.contests.attachContestCover);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [prompt, setPrompt] = useState("");
@@ -60,8 +65,14 @@ export default function ContestsManage() {
   const [rewardCredits, setRewardCredits] = useState("50");
   const [winnerCount, setWinnerCount] = useState("1");
   const [creating, setCreating] = useState(false);
+  // Board-card image chosen pre-launch; uploaded to storage right after
+  // createContest returns the new id so the card ships with its plate.
+  const [boardFile, setBoardFile] = useState<File | null>(null);
+  const [boardPreview, setBoardPreview] = useState<string | null>(null);
+  const boardFileRef = useRef<HTMLInputElement>(null);
 
   const [expanded, setExpanded] = useState<Id<"contests"> | null>(null);
+  const [coverFor, setCoverFor] = useState<Id<"contests"> | null>(null);
   const entries = useQuery(
     api.contests.listContestEntries,
     expanded ? { contestId: expanded } : "skip",
@@ -91,6 +102,38 @@ export default function ContestsManage() {
         rewardCredits: Number(rewardCredits) || undefined,
         winnerCount: Number(winnerCount) || undefined,
       });
+      if (boardFile) {
+        try {
+          const url = await generateUploadUrl({ purpose: "contest_cover" });
+          const up = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": boardFile.type },
+            body: boardFile,
+          });
+          if (!up.ok) throw new Error(`Upload failed: ${up.status}`);
+          const { storageId } = (await up.json()) as { storageId: string };
+          const dims = await readImageDimensions(boardFile).catch(() => null);
+          await attachCover({
+            id: res.id,
+            storageId: storageId as never,
+            meta: {
+              mimeType: boardFile.type,
+              byteSize: boardFile.size,
+              width: dims?.w,
+              height: dims?.h,
+              altText:
+                boardFile.name.replace(/[^a-zA-Z0-9._-]+/g, " ").trim().slice(0, 80) ||
+                undefined,
+            },
+          });
+        } catch (coverErr) {
+          toast.error(
+            coverErr instanceof Error
+              ? `Contest launched, but the board image failed: ${coverErr.message}`
+              : "Contest launched, but the board image failed to attach.",
+          );
+        }
+      }
       toast.success(`Contest launched — /contests/${res.slug}`);
       setTitle("");
       setDescription("");
@@ -98,6 +141,8 @@ export default function ContestsManage() {
       setRules("");
       setStartsAt(toLocalInput(Date.now()));
       setEndsAt(toLocalInput(Date.now() + 7 * 86_400_000));
+      setBoardFile(null);
+      setBoardPreview(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't create the contest.");
     } finally {
@@ -255,6 +300,66 @@ export default function ContestsManage() {
                 className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)] text-uf-text"
               />
             </label>
+            <div className="md:col-span-2">
+              <span className="text-xs uppercase tracking-[0.14em] text-uf-muted">
+                Board card image (optional — shown on the public /contests card)
+              </span>
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start">
+                {boardPreview ? (
+                  <img
+                    src={boardPreview}
+                    alt="Board card image preview"
+                    className="h-24 w-40 shrink-0 rounded-md object-cover border border-[color:var(--uf-border)]"
+                  />
+                ) : (
+                  <div
+                    aria-hidden
+                    className="h-24 w-40 shrink-0 rounded-md border border-dashed border-[color:var(--uf-border)] grid place-items-center text-uf-muted text-[11px] uppercase tracking-[0.16em]"
+                  >
+                    No image
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <input
+                    ref={boardFileRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif"
+                    aria-label="Choose board card image"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      setBoardFile(file);
+                      setBoardPreview(file ? URL.createObjectURL(file) : null);
+                      e.target.value = "";
+                    }}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="uf-btn uf-btn--ghost text-xs"
+                      onClick={() => boardFileRef.current?.click()}
+                    >
+                      {boardFile ? "Change image" : "Choose image"}
+                    </button>
+                    {boardFile ? (
+                      <button
+                        type="button"
+                        className="uf-btn uf-btn--ghost text-xs"
+                        onClick={() => {
+                          setBoardFile(null);
+                          setBoardPreview(null);
+                        }}
+                      >
+                        Clear
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className="text-uf-muted text-[11px] uppercase tracking-[0.16em]">
+                    JPEG · PNG · WebP · AVIF · ≤ 5 MB — attaches on launch
+                  </p>
+                </div>
+              </div>
+            </div>
             <div className="md:col-span-2 flex items-center justify-end">
               <NeonButton type="submit" variant="primary" loading={creating} disabled={!title.trim() || !description.trim()}>
                 <Rocket className="h-4 w-4 mr-1" aria-hidden /> Launch contest
@@ -311,6 +416,14 @@ export default function ContestsManage() {
                       <button
                         type="button"
                         className="uf-btn uf-btn--ghost"
+                        onClick={() => setCoverFor(coverFor === c._id ? null : c._id)}
+                        aria-expanded={coverFor === c._id}
+                      >
+                        {c.coverStorageId ? "Board image ✓" : "Add board image"}
+                      </button>
+                      <button
+                        type="button"
+                        className="uf-btn uf-btn--ghost"
                         onClick={() => setExpanded(open ? null : c._id)}
                         aria-expanded={open}
                       >
@@ -356,6 +469,21 @@ export default function ContestsManage() {
                       {c.canEnter ? "Members can enter right now" : "Entry window shut by the clock"}
                     </span>
                   </div>
+
+                  {coverFor === c._id && (
+                    <div className="mt-4 border-t border-[color:var(--uf-border)] pt-4">
+                      <CoverPicker
+                        kind="contest"
+                        rowId={c._id}
+                        currentStorageId={c.coverStorageId}
+                        currentUrl={c.coverUrl}
+                      />
+                      <p className="text-uf-muted text-xs mt-2">
+                        The board image replaces the plain glass card on
+                        /contests — upload JPEG/PNG/WebP/AVIF (≤ 5 MB).
+                      </p>
+                    </div>
+                  )}
 
                   {open && (
                     <div className="mt-4 border-t border-[color:var(--uf-border)] pt-4">

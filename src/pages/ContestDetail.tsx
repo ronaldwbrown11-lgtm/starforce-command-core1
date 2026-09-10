@@ -142,6 +142,17 @@ export default function ContestDetail() {
             secondary={{ label: "All contests", href: "/contests", variant: "ghost" }}
           />
           <section className="uf-section max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-8">
+            {contest.coverUrl ? (
+              <figure className="mb-6 overflow-hidden rounded-md border border-[color:var(--uf-border)]">
+                <img
+                  src={contest.coverUrl}
+                  alt={`${contest.title} mission plate`}
+                  loading="lazy"
+                  decoding="async"
+                  className="block w-full max-h-72 object-cover bg-[rgba(16,24,39,0.85)]"
+                />
+              </figure>
+            ) : null}
             <HoloCard className="mb-6 !border-[rgba(0,229,255,0.28)]">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2">

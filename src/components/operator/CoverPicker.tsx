@@ -7,7 +7,7 @@ import { ImagePlus, Loader2, Trash2, Upload } from "lucide-react";
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 
-type CoverKind = "story" | "lore" | "transmission";
+type CoverKind = "story" | "lore" | "transmission" | "contest";
 
 export function CoverPicker({
   kind,
@@ -34,6 +34,8 @@ export function CoverPicker({
   const removeLoreCover = useMutation(api.assets.removeLoreCover);
   const attachTransmissionCover = useMutation(api.assets.attachTransmissionCover);
   const removeTransmissionCover = useMutation(api.assets.removeTransmissionCover);
+  const attachContestCover = useMutation(api.contests.attachContestCover);
+  const removeContestCover = useMutation(api.contests.removeContestCover);
 
   async function attach(
     storageId: string,
@@ -50,12 +52,14 @@ export function CoverPicker({
       await attachStoryCover({ id: rowId as any, storageId: storageId as any, meta });
     } else if (kind === "lore") {
       await attachLoreCover({ id: rowId as any, storageId: storageId as any, meta });
-    } else {
+    } else if (kind === "transmission") {
       await attachTransmissionCover({
         id: rowId as any,
         storageId: storageId as any,
         meta,
       });
+    } else {
+      await attachContestCover({ id: rowId as any, storageId: storageId as any, meta });
     }
   }
 
@@ -65,7 +69,8 @@ export function CoverPicker({
       setBusy(true);
       if (kind === "story") await removeStoryCover({ id: rowId as any });
       else if (kind === "lore") await removeLoreCover({ id: rowId as any });
-      else await removeTransmissionCover({ id: rowId as any });
+      else if (kind === "transmission") await removeTransmissionCover({ id: rowId as any });
+      else await removeContestCover({ id: rowId as any });
       toast.success("Cover removed.");
       onChange?.();
     } catch (e) {
@@ -161,10 +166,12 @@ export function CoverPicker({
         </figure>
       ) : (
         <div
-          className="rounded-md border border-dashed border-[color:var(--uf-border)] h-44 grid place-items-center text-uf-muted text-xs uppercase tracking-[0.16em]"
+          className="rounded-md border border-dashed border-[color:var(--uf-border)] h-44 grid place-items-center text-uf-muted text-xs uppercase tracking-[0.16em] px-4 text-center"
           aria-label="No cover image"
         >
-          No cover image · operator-attached
+          {kind === "contest"
+            ? "No board image · shown on the /contests card"
+            : "No cover image · operator-attached"}
         </div>
       )}
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -219,7 +226,7 @@ export function CoverPicker({
   );
 }
 
-async function readImageDimensions(
+export async function readImageDimensions(
   file: File,
 ): Promise<{ w: number; h: number } | null> {
   return new Promise((resolve) => {

@@ -1010,6 +1010,18 @@ const schema = defineSchema(
       description: v.string(), // what members are asked to create
       prompt: v.optional(v.string()),
       rules: v.optional(v.string()),
+      // Board card plate — operator-uploaded image shown on the /contests
+      // grid card and the contest detail page. Same shape as story/lore covers.
+      coverStorageId: v.optional(v.id("_storage")),
+      coverMeta: v.optional(
+        v.object({
+          mimeType: v.string(),
+          byteSize: v.number(),
+          width: v.optional(v.number()),
+          height: v.optional(v.number()),
+          altText: v.optional(v.string()),
+        }),
+      ),
       status: v.string(), // upcoming / open / voting / closed / announced
       startsAt: v.number(),
       endsAt: v.number(), // submission deadline

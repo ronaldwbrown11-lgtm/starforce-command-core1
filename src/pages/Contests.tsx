@@ -26,6 +26,7 @@ type ContestRow = {
   rewardXp: number | null;
   rewardCredits: number | null;
   winnerCount: number;
+  coverUrl: string | null;
   canEnter: boolean;
   entryCount: number;
 };
@@ -104,6 +105,19 @@ export default function Contests() {
             {sorted.map((contest, idx) => (
               <ScaleReveal key={contest._id} staggerIndex={idx}>
                 <HoloCard className="h-full flex flex-col">
+                  {contest.coverUrl ? (
+                    <figure
+                      className="-mt-3 -mx-3 mb-3 rounded-t-md overflow-hidden border-b border-[color:var(--uf-border)]"
+                    >
+                      <img
+                        src={contest.coverUrl}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="block w-full h-40 object-cover bg-[rgba(16,24,39,0.85)]"
+                      />
+                    </figure>
+                  ) : null}
                   <ContestStatus c={contest} />
                   <h3 className="text-xl font-semibold mt-3">{contest.title}</h3>
                   <p className="text-uf-muted text-sm mt-2 line-clamp-3">

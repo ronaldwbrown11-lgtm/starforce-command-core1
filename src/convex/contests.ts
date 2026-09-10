@@ -26,6 +26,24 @@ export const CONTEST_JURY_CAPS = [
 const ENTRY_MAX_TITLE = 120;
 const ENTRY_MAX_BODY = 6000;
 
+// Contest board plates reuse the global cover guards (JPEG/PNG/WebP/AVIF ≤ 5 MB)
+// from assets.ts so every operator-uploaded image on the site plays by the
+// same rules.
+import { COVER_MAX_BYTES, COVER_MIME_TYPES, type CoverMeta } from "./assets";
+
+function validateContestCoverMeta(meta: CoverMeta) {
+  if (meta.byteSize > COVER_MAX_BYTES) {
+    throw new Error(
+      `Image too large (${(meta.byteSize / (1024 * 1024)).toFixed(1)} MB; max ${COVER_MAX_BYTES / (1024 * 1024)} MB).`,
+    );
+  }
+  if (!(COVER_MIME_TYPES as readonly string[]).includes(meta.mimeType)) {
+    throw new Error(
+      `Unsupported image type (${meta.mimeType}). Allowed: ${COVER_MIME_TYPES.join(", ")}.`,
+    );
+  }
+}
+
 function slugify(s: string): string {
   return (
     s
@@ -58,6 +76,7 @@ function describeContest(
     rewardXp?: number;
     rewardCredits?: number;
     winnerCount?: number;
+    coverStorageId?: Id<"_storage">;
     createdAt: number;
   },
   now = Date.now(),
@@ -83,6 +102,7 @@ function describeContest(
     rewardXp: contest.rewardXp ?? null,
     rewardCredits: contest.rewardCredits ?? null,
     winnerCount: contest.winnerCount ?? 1,
+    coverStorageId: contest.coverStorageId ?? null,
     canEnter: contestOpen(contest, now) && contest.status !== "closed",
     createdAt: contest.createdAt,
   };
@@ -102,10 +122,13 @@ export const listContests = query({
         perContest.set(s.contestId, (perContest.get(s.contestId) ?? 0) + 1);
       }
     }
-    return rows.map((c) => ({
-      ...describeContest(c),
-      entryCount: perContest.get(c._id) ?? 0,
-    }));
+    return Promise.all(
+      rows.map(async (c) => ({
+        ...describeContest(c),
+        entryCount: perContest.get(c._id) ?? 0,
+        coverUrl: c.coverStorageId ? ((await ctx.storage.getUrl(c.coverStorageId)) ?? null) : null,
+      })),
+    );
   },
 });
 
@@ -129,7 +152,12 @@ export const contestBySlug = query({
     const creator = await ctx.db.get(contest.createdBy);
 
     return {
-      contest: describeContest(contest),
+      contest: {
+        ...describeContest(contest),
+        coverUrl: contest.coverStorageId
+          ? ((await ctx.storage.getUrl(contest.coverStorageId)) ?? null)
+          : null,
+      },
       entryCount: entries.length,
       creatorName:
         creator?.displayName ?? creator?.name ?? "Fleet Operator",
@@ -459,6 +487,82 @@ export const judgeEntry = mutation({
   },
 });
 
+// ---- Operator board-card image -------------------------------------------
+
+export const attachContestCover = mutation({
+  args: {
+    id: v.id("contests"),
+    storageId: v.id("_storage"),
+    meta: v.object({
+      mimeType: v.string(),
+      byteSize: v.number(),
+      width: v.optional(v.number()),
+      height: v.optional(v.number()),
+      altText: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      ...CONTEST_JURY_CAPS,
+      "community_moderator",
+    ]);
+    validateContestCoverMeta(args.meta);
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error("Contest not found.");
+    const priorStorageId = existing.coverStorageId;
+    await ctx.db.patch(args.id, {
+      coverStorageId: args.storageId,
+      coverMeta: args.meta,
+    });
+    if (priorStorageId && priorStorageId !== args.storageId) {
+      try {
+        await ctx.storage.delete(priorStorageId);
+      } catch {
+        // Orphan deletion failures are non-fatal — the row update already landed.
+      }
+    }
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "contest.cover_attach",
+      target: `contest:${args.id}`,
+      meta: JSON.stringify({ mimeType: args.meta.mimeType, byteSize: args.meta.byteSize }),
+      createdAt: Date.now(),
+    });
+    return { ok: true };
+  },
+});
+
+export const removeContestCover = mutation({
+  args: { id: v.id("contests") },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      ...CONTEST_JURY_CAPS,
+      "community_moderator",
+    ]);
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error("Contest not found.");
+    const priorStorageId = existing.coverStorageId;
+    await ctx.db.patch(args.id, {
+      coverStorageId: undefined,
+      coverMeta: undefined,
+    });
+    if (priorStorageId) {
+      try {
+        await ctx.storage.delete(priorStorageId);
+      } catch {
+        // ignore
+      }
+    }
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "contest.cover_remove",
+      target: `contest:${args.id}`,
+      createdAt: Date.now(),
+    });
+    return { ok: true };
+  },
+});
+
 export const removeContest = mutation({
   args: { id: v.id("contests") },
   handler: async (ctx, args) => {
@@ -470,6 +574,15 @@ export const removeContest = mutation({
       .withIndex("by_contest", (q) => q.eq("contestId", args.id))
       .collect();
     await Promise.all(entries.map((e) => ctx.db.delete(e._id)));
+    // Garbage-collect the board-card image so deleting a contest never
+    // strands its storage asset.
+    if (contest.coverStorageId) {
+      try {
+        await ctx.storage.delete(contest.coverStorageId);
+      } catch {
+        // ignore
+      }
+    }
     await ctx.db.delete(args.id);
     await ctx.db.insert("auditLog", {
       actorId: me,
