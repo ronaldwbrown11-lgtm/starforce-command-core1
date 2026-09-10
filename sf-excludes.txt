@@ -1,15 +1,36 @@
+# Star Force Base 1198 — source-package exclude list
+# Consumed by scripts/package-source.ts when building
+# public/starforce-source-latest.tar.gz (the file "ship to site.bat" downloads).
+# One pattern per line: a bare segment ("dist") excludes that segment anywhere;
+# "public/foo.php" excludes that exact path; "*.tar.gz" is a glob.
+# Secrets (.env*) are always excluded in code — this list is for bulk/machinery.
+#
+# NOTE: .htaccess, sw.js, manifest.webmanifest, logo.svg and download.html are
+# intentionally NOT excluded — they are part of the site and the source of
+# truth for the deployed app. Earlier versions of this list dropped them,
+# which is how stale/old bundles reached the live site.
+
+# Build output & mirrors — never source
 node_modules
 dist
 isolate
-public/starforce-source-latest.tar.gz
-public/starforce-dist-latest.tar.gz
-public/starforce-source.tar.gz
-public/starforce-source-20260826.tar.gz
-public/download.html
-public/manifest.webmanifest
-public/sw.js
-public/logo.svg
-public/.htaccess
+
+# Downloadable archives — the packer must never pack itself or its siblings.
+# Bare globs apply anywhere (root-level archives included).
+*.tar.gz
+*.tgz
+*.zip
+*.sha256
+public/*.tar.gz
+public/*.zip
+
+# Owner backups and private snapshots (never ship)
+backups
+public/backup-hostinger-dist.zip
+
+# Hostinger-only backend apps deployed separately (kept in repo, not in this
+# package — they upload straight to their subdomains)
+armory-app
 public/fleetregistry-api.php
 public/fleetregistry-config.example.php
 public/fleetregistry-migration-runbook.md
@@ -18,17 +39,30 @@ public/fleetregistry-server.js
 public/fleetregistry-tables.sql
 public/nighthawk-api.example.php
 public/nighthawk-config.example.php
-public/nighthawk-server.js
-public/nighthawk-schema.sql
-public/nighthawk-tables.sql
-public/nighthawk-migration-runbook.md
+public/nighthawk-config.php.example
+public/nighthawk-install.sql
+public/nighthawk-package-manifest.txt
+public/nighthawk-vehicle-database-package.tar.gz
+public/nighthawk/INSTALL.txt
+public/nighthawk/README-INSTALL.txt
+public/nighthawk/config.example.php
+
+# Vly tooling snapshot (not part of the app)
+vly-toolbar-readonly.tsx
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log
+
+# Stray legacy bundle that predates the current build (kept out of packages)
 public/Landing-BGCIpYyy.js
-public/*.tar.gz
+
+# Local env & secrets (belt and braces — also hard-excluded in code)
 .env
 .env.local
 .env.*
 !.env.example
-.DS_Store
-Thumbs.db
-*.log
+
+# Version control
 .git

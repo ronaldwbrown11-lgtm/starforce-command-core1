@@ -54,13 +54,30 @@ Caveat: the dashboard signs in with the Convex account that owns the project. If
 
 ## 3. How changes reach your live site
 
+### The normal way — "ship to site.bat" (automatic)
+
+The studio now repackages the site's source automatically on every build, so
+the ship script can never upload stale code.
+
 1. **Request the change** — tell the development assistant what you want (copy, features, design, data).
-2. **Build & check** — the change is implemented and the platform automatically type-checks it.
-3. **Fresh package** — a new production build is created and the downloads page (`/download.html`) is refreshed with new files and their SHA-256 checksums.
-4. **Download** — get the **Built website (dist) zip** from `/download.html`.
-5. **Verify** — check the SHA-256 (instructions are on the downloads page). It must match exactly.
-6. **Upload** — Hostinger → Files → File Manager → `public_html/` → delete the old `index.html` and `assets/` → upload the zip → **Extract** → confirm `index.html` and `.htaccess` are directly in the folder.
-7. **Test** — open the homepage and a deep link such as `https://starforcebase1198.com/missions`.
+2. **Build & check** — the change is implemented, type-checked, and a fresh package is created automatically (`scripts/package-source.ts`, stamped with a build time and file count in `BUILD-INFO.txt`).
+3. **Run `ship to site.bat`** on your PC (double-click). It downloads the latest package, checks its build stamp, extracts it over your local copy, and pushes it to GitHub.
+4. **GitHub builds and deploys** to Hostinger (~90 seconds). Watch progress in your repo's **Actions** tab.
+5. **Test** — open `https://starforcebase1198.com` and a deep link such as `/missions`. If a page looks old, hard-refresh (Ctrl+Shift+R).
+
+Useful behaviors:
+
+- If the bat says **"Nothing to push — your local repo already matches package …"**, the live site is already current. No action needed.
+- If the bat reports a **network/404 error**, the studio build hasn't finished yet — wait a minute and run it again.
+- Every push's commit message contains the **package build time**, so the Actions log always shows exactly which build went live.
+
+### The manual way — download and upload (still works)
+
+1. **Request the change** as above.
+2. **Download** the **Built website (dist) zip** from `/download.html`.
+3. **Verify** the SHA-256 (instructions are on the downloads page). It must match exactly.
+4. **Upload** — Hostinger → Files → File Manager → `public_html/` → delete the old `index.html` and `assets/` → upload the zip → **Extract** → confirm `index.html` and `.htaccess` are directly in the folder.
+5. **Test** as above.
 
 Nothing else. The database needs no setup, no migration, no changes on upload.
 
@@ -72,6 +89,7 @@ Nothing else. The database needs no setup, no migration, no changes on upload.
 2. **Always verify the SHA-256** before uploading. A mismatched hash means a bad download — re-download.
 3. **Keep the previous verified zip** until the new site is confirmed working. That is your rollback.
 4. **The database is never in the zip.** You cannot break data with an upload.
+5. **Only `ship to site.bat` touches the server via GitHub.** It validates the package's build stamp first and changes nothing when validation fails.
 5. If a new build misbehaves, re-upload the previous verified zip to revert instantly.
 
 ---

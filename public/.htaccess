@@ -10,6 +10,13 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 # A missing asset should be a clear 404, not index.html returned as JavaScript.
 RewriteRule ^assets/ - [L]
 
+# Story embeds: serve the lightweight static card (public/embed.html) for
+# /embed/story/<slug>. The full SPA is heavy, boots auth/router/Convex client
+# and gets torn down by iframe refreshes (the reported "error when changing
+# pages or refreshing" on the embed). The static card has no boot sequence,
+# no session and one fetch, so the embed survives refresh and navigation.
+RewriteRule ^embed/story/([A-Za-z0-9_-]+)/?$ embed.html [L]
+
 # SPA fallback — serve index.html for all client-side routes
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

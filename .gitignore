@@ -18,8 +18,13 @@ dist-ssr
 isolate
 backups
 
-# One-off source download archive for the manual-push workflow
+# Generated source-package artifacts (rebuilt by scripts/package-source.ts)
+BUILD-INFO.txt
 public/starforce-source-latest.tar.gz
+public/starforce-source-latest.tar.gz.sha256
+
+# Legacy stray bundle from the pre-Aug-2026 build
+public/Landing-BGCIpYyy.js
 
 # Editor directories and files
 .vscode/*

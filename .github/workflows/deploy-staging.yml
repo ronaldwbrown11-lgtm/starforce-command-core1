@@ -95,6 +95,9 @@ jobs:
               --exclude-glob .gitignore \
               --exclude-glob components.json \
               --exclude-glob eslint.config.js \
+              --exclude-glob '*.tar.gz' \
+              --exclude-glob '*.zip' \
+              --exclude-glob '*.tgz' \
               dist/ ${{ secrets.FTP_STAGING_PATH }};
             quit;
           "

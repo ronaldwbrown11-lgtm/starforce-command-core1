@@ -56,6 +56,50 @@ download.html stay stable no matter how often that page is edited:
   `public/` and to `dist/`, rebuild, then update the checksums on
   `download.html` only if the archive content actually changed.
 
+### Automated source package (`public/starforce-source-latest.tar.gz`)
+
+`ship to site.bat` (on the owner's PC) downloads this exact file, extracts it
+over the local git repo, and pushes to GitHub — where `deploy.yml` builds and
+uploads `dist/` to Hostinger. The package is **regenerated automatically** by
+`scripts/package-source.ts` every time `bun run build` or `bun run build:ci`
+runs, so it can never go stale:
+
+- Every package carries `BUILD-INFO.txt` (build time, commit, file count).
+  The bat file reads the stamp, refuses packages without one, and writes it
+  into the commit message.
+- The packer self-verifies (the tar member list is checked against the file
+  walk) and hard-fails the build if required files are missing or if secret
+  files (`.env*`) would be included.
+- Exclusions live in `sf-excludes.txt` (bare segment, exact path, or glob).
+  Site-critical files — `.htaccess`, `sw.js`, `manifest.webmanifest`,
+  `logo.svg`, `download.html` — intentionally stay **in** the package.
+- Archives are purged from `dist/`/`isolate/` after each build and the FTP
+  deploy excludes `*.tar.gz` / `*.zip` / `*.tgz`, so Hostinger never receives
+  multi-megabyte downloadables.
+- **Freshness fingerprint:** each run also writes
+  `public/starforce-source-latest.tar.gz.sha256` — a one-line SHA-256 of the
+  archive. The packer syncs this sidecar into `dist/`/`isolate/` so the live
+  site always serves a fingerprint matching the archive it hosts.
+- **Windows tar compatibility:** the packer detects GNU tar vs bsdtar and uses
+  the portable arg set on Windows (member order is deterministic because the
+  file list is sorted in JS before tar runs).
+
+`ship to site.bat` enforces freshness in three layers before touching the
+local checkout:
+
+1. **Fingerprint** — downloads the `.sha256` sidecar and hashes the archive
+   locally; a stale CDN/proxy copy aborts with a mismatch report.
+2. **Build stamp** — reads `BUILD-INFO.txt` out of the archive
+   (`tar -xOzf`); a package without a valid `Built:` stamp aborts.
+3. **Recency gate** — compares the package stamp against the timestamp of the
+   last successful ship (`%LOCALAPPDATA%\starforce-last-ship.txt`); an older
+   package aborts with instructions to rebuild in the sandbox.
+
+If extraction or push fails midway, nothing is committed and the archive
+stays cached in `%TEMP%` for inspection.
+
+Regenerate by hand anytime with `bun run package:source`.
+
 ## 3. Environment variables
 
 ### Client / build-time (Vite — set in your host's build env)

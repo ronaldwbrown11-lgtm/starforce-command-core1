@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && bun run build:isolate",
-    "build:ci": "vite build && bun run build:isolate",
+    "build": "tsc -b && vite build && bun run build:isolate && bun run package:source",
+    "build:ci": "vite build && bun run build:isolate && bun run package:source",
+    "package:source": "bun scripts/package-source.ts",
     "build:isolate": "rm -rf isolate && mkdir -p isolate && cp -r dist/. isolate/",
     "lint": "eslint .",
     "test": "bun test",
