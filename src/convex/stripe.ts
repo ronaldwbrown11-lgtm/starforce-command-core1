@@ -37,6 +37,27 @@ function getStripe(): Stripe {
   return new Stripe(key);
 }
 
+/**
+ * Flatten the shipping address collected on the hosted checkout page into a
+ * single display string for the operator Orders queue.
+ */
+function formatStripeAddress(collectedInformation: unknown): string | undefined {
+  if (!collectedInformation || typeof collectedInformation !== "object") return undefined;
+  const shipping = (collectedInformation as { shipping_details?: unknown }).shipping_details;
+  if (!shipping || typeof shipping !== "object") return undefined;
+  const address = (shipping as { address?: Record<string, string | null> }).address;
+  if (!address) return undefined;
+  const parts = [
+    address.line1,
+    address.line2,
+    [address.city, address.state, address.postal_code].filter(Boolean).join(" "),
+    address.country,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  return parts || undefined;
+}
+
 // ---------------------------------------------------------------------------
 // Product catalog sync (Operator Console → Billing) — DB helpers live in
 // stripeCatalog.ts; this Node module drives the Stripe API side.
@@ -191,26 +212,52 @@ export const processWebhook = action({
       switch (event.type) {
         case "checkout.session.completed": {
           const session = event.data.object as Stripe.Checkout.Session;
-          if (session.mode !== "subscription") break;
-          const userId = session.metadata?.userId;
-          const tier = session.metadata?.tier;
-          if (!userId || !tier) break;
-          const res = await ctx.runMutation(api.users.fulfillTier, {
-            userId: userId as Id<"users">,
-            tier,
-            customerId: typeof session.customer === "string" ? session.customer : undefined,
-            subscriptionId:
-              typeof session.subscription === "string" ? session.subscription : undefined,
-          });
-          // If the user had an older subscription, cancel it so they aren't
-          // double-billed (its later `deleted` event is a no-op thanks to the
-          // stale-subscription guard in revertStripeSubscription).
-          if (res.supersededSubscriptionId) {
-            try {
-              await stripe.subscriptions.cancel(res.supersededSubscriptionId);
-            } catch {
-              // Non-fatal — fulfillment already landed.
+          if (session.mode === "subscription") {
+            const userId = session.metadata?.userId;
+            const tier = session.metadata?.tier;
+            if (!userId || !tier) break;
+            const res = await ctx.runMutation(api.users.fulfillTier, {
+              userId: userId as Id<"users">,
+              tier,
+              customerId: typeof session.customer === "string" ? session.customer : undefined,
+              subscriptionId:
+                typeof session.subscription === "string" ? session.subscription : undefined,
+            });
+            // If the user had an older subscription, cancel it so they aren't
+            // double-billed (its later `deleted` event is a no-op thanks to the
+            // stale-subscription guard in revertStripeSubscription).
+            if (res.supersededSubscriptionId) {
+              try {
+                await stripe.subscriptions.cancel(res.supersededSubscriptionId);
+              } catch {
+                // Non-fatal — fulfillment already landed.
+              }
             }
+            break;
+          }
+          if (session.mode === "payment") {
+            // Requisition Depot purchase — create order + download entitlement.
+            const userId = session.metadata?.userId;
+            const productId = session.metadata?.productId;
+            if (!userId || !productId) break;
+            await ctx.runMutation(internal.store.fulfillStoreOrder, {
+              userId: userId as Id<"users">,
+              productId: productId as Id<"storeProducts">,
+              variant: session.metadata?.variant || undefined,
+              kind: session.metadata?.kind === "physical" ? "physical" : "digital",
+              stripeSessionId: session.id,
+              amountCents: session.amount_total ?? 0,
+              currency: session.currency ?? "usd",
+              shippingName:
+                typeof session.customer_details?.name === "string"
+                  ? session.customer_details.name
+                  : undefined,
+              shippingAddress: formatStripeAddress(
+                (session as unknown as { collected_information?: unknown })
+                  .collected_information ?? null,
+              ),
+            });
+            break;
           }
           break;
         }
@@ -317,6 +364,112 @@ export const createCheckoutSession = action({
       metadata: { userId, tier: args.tier },
       success_url: `${args.origin}/membership?checkout=success`,
       cancel_url: `${args.origin}/membership?checkout=cancelled`,
+    });
+
+    if (!session.url) {
+      throw new Error("Stripe did not return a checkout URL.");
+    }
+    return { url: session.url };
+  },
+});
+
+/**
+ * Start a hosted Stripe checkout for a one-time store purchase (Requisition
+ * Depot). Physical orders collect the shipping address on Stripe's hosted
+ * page; digital orders skip it. Fulfillment happens in processWebhook when
+ * `checkout.session.completed` arrives with mode=payment: an order row and a
+ * download entitlement are created for the buyer.
+ */
+export const createStoreCheckoutSession = action({
+  args: {
+    productId: v.id("storeProducts"),
+    variant: v.optional(v.string()),
+    origin: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Sign in required.");
+    }
+    if (!/^https?:\/\//.test(args.origin)) {
+      throw new Error("Invalid origin.");
+    }
+    const product = await ctx.runQuery(internal.store.getProductForCheckout, {
+      productId: args.productId,
+    });
+    if (!product || product.status !== "active") {
+      throw new Error("This requisition is no longer available.");
+    }
+    if (product.kind === "digital" && !product.fileStorageId) {
+      throw new Error("This download is not published yet — check back soon.");
+    }
+    const variant = args.variant?.trim().slice(0, 40) || undefined;
+    if (variant && !product.variants?.includes(variant)) {
+      throw new Error("Unknown variant selection.");
+    }
+    if (product.kind === "physical" && product.variants?.length && !variant) {
+      throw new Error("Choose an option before requisitioning.");
+    }
+
+    const user = await ctx.runQuery(api.users.currentUser);
+    if (!user) {
+      throw new Error("User not found.");
+    }
+
+    const stripe = getStripe();
+    let customerId = user.stripeCustomerId ?? undefined;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email ?? undefined,
+        name: user.displayName ?? user.name ?? undefined,
+        metadata: { userId },
+      });
+      customerId = customer.id;
+      await ctx.runMutation(api.users.saveStripeCustomer, { customerId });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      customer: customerId,
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "usd",
+            unit_amount: product.priceCents,
+            product_data: {
+              name: product.title,
+              description: product.description.slice(0, 300),
+              // txcd_105030000 = general permanent downloads (digital);
+              // txcd_10502000 = general tangible goods (physical merch).
+              tax_code:
+                product.kind === "digital" ? "txcd_105030000" : "txcd_10502000",
+            },
+          },
+        },
+      ],
+      ...(product.kind === "physical"
+        ? {
+            shipping_address_collection: { allowed_countries: ["US", "CA", "GB", "AU"] },
+            shipping_options: [
+              {
+                shipping_rate_data: {
+                  type: "fixed_amount",
+                  display_name: "Fleet standard shipping",
+                  fixed_amount: { amount: 599, currency: "usd" },
+                },
+              },
+            ],
+          }
+        : {}),
+      metadata: {
+        userId,
+        productId: args.productId,
+        variant: variant ?? "",
+        kind: product.kind,
+      },
+      success_url: `${args.origin}/account?store=success`,
+      cancel_url: `${args.origin}/store?checkout=cancelled`,
     });
 
     if (!session.url) {

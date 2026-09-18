@@ -1142,6 +1142,84 @@ const schema = defineSchema(
       interval: v.string(), // "month"
       syncedAt: v.number(),
     }).index("by_tier", ["tier"]),
+
+    // ---- Requisition Depot (site store) --------------------------------
+    // Digital downloads (lore bibles, atlases) and physical merchandise
+    // (tees, artifacts). Digital files live ONLY in Convex storage and are
+    // reachable solely through entitlement-gated URL minting — the download
+    // rule of the base: a member may download a file only if they created
+    // it (author) or purchased it (entitlement).
+    storeProducts: defineTable({
+      slug: v.string(),
+      title: v.string(),
+      description: v.string(),
+      kind: v.string(), // "digital" | "physical"
+      category: v.string(), // e.g. "Lore Bibles", "Apparel", "Artifacts"
+      priceCents: v.number(),
+      currency: v.optional(v.string()),
+      // Digital product payload (never exposed via public URL).
+      fileStorageId: v.optional(v.id("_storage")),
+      fileMeta: v.optional(
+        v.object({
+          fileName: v.string(),
+          mimeType: v.string(),
+          byteSize: v.number(),
+        }),
+      ),
+      // Physical product options (e.g. sizes / variants) as simple labels.
+      variants: v.optional(v.array(v.string())),
+      // Card image — same shape/guards as covers elsewhere.
+      coverStorageId: v.optional(v.id("_storage")),
+      coverMeta: v.optional(
+        v.object({
+          mimeType: v.string(),
+          byteSize: v.number(),
+          width: v.optional(v.number()),
+          height: v.optional(v.number()),
+          altText: v.optional(v.string()),
+        }),
+      ),
+      status: v.string(), // "active" | "retired"
+      createdBy: v.id("users"),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_slug", ["slug"])
+      .index("by_status", ["status"]),
+
+    storeOrders: defineTable({
+      userId: v.id("users"),
+      productId: v.id("storeProducts"),
+      // Denormalized for operator order history even if a product retires.
+      productTitle: v.string(),
+      variant: v.optional(v.string()),
+      amountCents: v.number(),
+      currency: v.string(),
+      kind: v.string(), // "digital" | "physical"
+      status: v.string(), // "paid" | "fulfilled" | "shipped" | "cancelled"
+      stripeSessionId: v.string(),
+      // Shipping snapshot written by the webhook for physical goods.
+      shippingName: v.optional(v.string()),
+      shippingAddress: v.optional(v.string()),
+      trackingNote: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_user", ["userId"])
+      .index("by_product", ["productId"])
+      .index("by_session", ["stripeSessionId"])
+      .index("by_status", ["status"]),
+
+    // One row per (user, product) purchase — created ONLY by webhook
+    // fulfillment. Download URL minting checks this table.
+    storeEntitlements: defineTable({
+      userId: v.id("users"),
+      productId: v.id("storeProducts"),
+      orderId: v.id("storeOrders"),
+      grantedAt: v.number(),
+    })
+      .index("by_user", ["userId"])
+      .index("by_user_product", ["userId", "productId"]),
   },
   {
     schemaValidation: false,

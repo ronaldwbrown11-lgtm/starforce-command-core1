@@ -18,6 +18,7 @@ import SignalVault from "@/pages/SignalVault";
 import Events from "@/pages/Events";
 import Contests from "@/pages/Contests";
 import ContestDetail from "@/pages/ContestDetail";
+import Store from "@/pages/Store";
 import Leaderboard from "@/pages/Leaderboard";
 import Changelog from "@/pages/Changelog";
 import ToolsAssistant from "@/pages/ToolsAssistant";
@@ -85,6 +86,7 @@ export const PUBLIC_ROUTES: PublicPageRoute[] = [
   { path: "/events", label: "Events", element: <Events /> },
   { path: "/contests", label: "Contests", element: <Contests /> },
   { path: "/contests/:slug", label: "Contest", element: <ContestDetail />, appearance: false },
+  { path: "/store", label: "Requisition Depot", element: <Store /> },
   { path: "/leaderboard", label: "Leaderboard", element: <Leaderboard /> },
   { path: "/changelog", label: "Changelog", element: <Changelog /> },
   { path: "/blog", label: "Blog", element: <BlogPage /> },

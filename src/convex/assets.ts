@@ -51,6 +51,12 @@ export const generateUploadUrl = mutation({
       "story_editor",
       "lore_archivist",
     ]);
+    // Store digital files go through store:generateProductUploadUrl instead —
+    // that one is store-admin gated so members can never mint an upload slot
+    // into the paid-download pipeline.
+    if (args.purpose === "digital_file" || args.purpose === "store_digital_file") {
+      throw new Error("Use the Requisition Depot upload endpoint for store files.");
+    }
     const url = await ctx.storage.generateUploadUrl();
     await ctx.db.insert("auditLog", {
       actorId: me,

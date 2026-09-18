@@ -57,6 +57,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Hub", labelKey: "nav.community", href: "/community", desc: "Central command" },
       { label: "Forums", labelKey: "nav.forums", href: "/forums", desc: "Discussion threads" },
       { label: "Contests", labelKey: "nav.contests", href: "/contests", desc: "Member lore contests" },
+      { label: "Requisition Depot", labelKey: "nav.store", href: "/store", desc: "Lore bibles & merch" },
       { label: "Members", labelKey: "nav.members", href: "/members", desc: "Fleet roster" },
       { label: "Leaderboard", labelKey: "nav.leaderboard", href: "/leaderboard", desc: "Top contributors" },
       { label: "Events", labelKey: "nav.events", href: "/events", desc: "Upcoming ops" },
@@ -649,6 +650,7 @@ function Footer() {
             <li><Link to="/community">Hub</Link></li>
             <li><Link to="/forums">Forums</Link></li>
             <li><Link to="/groups">Groups</Link></li>
+            <li><Link to="/store">Requisition Depot</Link></li>
             <li><Link to="/membership">Membership</Link></li>
           </ul>
         </div>

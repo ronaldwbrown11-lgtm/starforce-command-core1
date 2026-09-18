@@ -7,7 +7,7 @@ import { ImagePlus, Loader2, Trash2, Upload } from "lucide-react";
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 
-type CoverKind = "story" | "lore" | "transmission" | "contest";
+type CoverKind = "story" | "lore" | "transmission" | "contest" | "store";
 
 export function CoverPicker({
   kind,
@@ -36,6 +36,8 @@ export function CoverPicker({
   const removeTransmissionCover = useMutation(api.assets.removeTransmissionCover);
   const attachContestCover = useMutation(api.contests.attachContestCover);
   const removeContestCover = useMutation(api.contests.removeContestCover);
+  const attachStoreCover = useMutation(api.store.attachProductCover);
+  const removeStoreCover = useMutation(api.store.removeProductCover);
 
   async function attach(
     storageId: string,
@@ -58,6 +60,12 @@ export function CoverPicker({
         storageId: storageId as any,
         meta,
       });
+    } else if (kind === "store") {
+      await attachStoreCover({
+        productId: rowId as any,
+        storageId: storageId as any,
+        meta,
+      });
     } else {
       await attachContestCover({ id: rowId as any, storageId: storageId as any, meta });
     }
@@ -70,6 +78,7 @@ export function CoverPicker({
       if (kind === "story") await removeStoryCover({ id: rowId as any });
       else if (kind === "lore") await removeLoreCover({ id: rowId as any });
       else if (kind === "transmission") await removeTransmissionCover({ id: rowId as any });
+      else if (kind === "store") await removeStoreCover({ productId: rowId as any });
       else await removeContestCover({ id: rowId as any });
       toast.success("Cover removed.");
       onChange?.();
@@ -171,7 +180,9 @@ export function CoverPicker({
         >
           {kind === "contest"
             ? "No board image · shown on the /contests card"
-            : "No cover image · operator-attached"}
+            : kind === "store"
+              ? "No card image · shown on the /store card"
+              : "No cover image · operator-attached"}
         </div>
       )}
       <div className="mt-3 flex flex-wrap items-center gap-2">

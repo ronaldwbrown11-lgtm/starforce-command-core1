@@ -18,6 +18,7 @@ import { tierLabel, tierPillVariant, type TierId } from "@/lib/tiers";
 import { FRAME_CATALOG } from "@/lib/economy";
 import { TierUsageWidget } from "@/components/usage/TierUsageWidget";
 import { StorageManager } from "@/components/widgets/StorageManager";
+import { MyRequisitions } from "@/components/widgets/MyRequisitions";
 import { Camera, ChevronDown, LogOut, Mail, MessageCircle, Send } from "lucide-react";
 
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -147,6 +148,18 @@ export default function Account() {
                 shipCompletedMissions: user?.shipCompletedMissions ?? [],
               }}
             />
+          </div>
+        )}
+        {isAuthenticated && (
+          <div className="mb-5">
+            <HoloCard>
+              <h2 className="text-lg font-semibold mt-0">Requisitions</h2>
+              <p className="text-uf-muted text-sm mt-1 mb-4">
+                Owned downloads and depot orders — everything you've requisitioned
+                from the base.
+              </p>
+              <MyRequisitions />
+            </HoloCard>
           </div>
         )}
         {isAuthenticated && (

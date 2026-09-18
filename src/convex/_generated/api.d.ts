@@ -62,6 +62,7 @@ import type * as socialLinks from "../socialLinks.js";
 import type * as staticCovers from "../staticCovers.js";
 import type * as storage from "../storage.js";
 import type * as storageHelper from "../storageHelper.js";
+import type * as store from "../store.js";
 import type * as stripe from "../stripe.js";
 import type * as stripeCatalog from "../stripeCatalog.js";
 import type * as stripeWebhook from "../stripeWebhook.js";
@@ -132,6 +133,7 @@ declare const fullApi: ApiFromModules<{
   staticCovers: typeof staticCovers;
   storage: typeof storage;
   storageHelper: typeof storageHelper;
+  store: typeof store;
   stripe: typeof stripe;
   stripeCatalog: typeof stripeCatalog;
   stripeWebhook: typeof stripeWebhook;
