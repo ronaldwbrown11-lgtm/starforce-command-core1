@@ -4,6 +4,9 @@ import { api } from "./_generated/api";
 
 const SITE = "https://starforcebase1198.com";
 
+// Deploy marker 2026-09-19: re-pushes the function so /store, /contests and
+// /fleet-registry appear in the live sitemap (previous deployment predated them).
+
 const MAX_PER_SECTION = 500;
 
 function escapeXml(s: string): string {
@@ -29,7 +32,7 @@ export const publicSitemapData = query({
   args: {},
   handler: async (ctx) => {
     const out: Array<{
-      kind: "story" | "lore" | "mission" | "blog";
+      kind: "story" | "lore" | "mission" | "blog" | "contest" | "product";
       slug: string;
       lastmod?: number;
     }> = [];
@@ -61,6 +64,18 @@ export const publicSitemapData = query({
     for (const p of posts)
       out.push({ kind: "blog", slug: p.slug, lastmod: p.publishedAt ?? p.updatedAt });
 
+    // ---- Public contests (all listed contests appear on the board) ----
+    const contests = await ctx.db.query("contests").take(MAX_PER_SECTION);
+    for (const c of contests) out.push({ kind: "contest", slug: c.slug, lastmod: c.createdAt });
+
+    // ---- Active store products (retired products stay out of the map) ----
+    const products = await ctx.db
+      .query("storeProducts")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .take(MAX_PER_SECTION);
+    for (const p of products)
+      out.push({ kind: "product", slug: p.slug, lastmod: p.updatedAt });
+
     return out;
   },
 });
@@ -77,6 +92,9 @@ export const generateSitemap = httpAction(async (ctx) => {
   entries.push(urlEntry(SITE + "/missions", now, "0.8", "weekly"));
   entries.push(urlEntry(SITE + "/vault", now, "0.6", "weekly"));
   entries.push(urlEntry(SITE + "/events", now, "0.7", "weekly"));
+  entries.push(urlEntry(SITE + "/contests", now, "0.7", "weekly"));
+  entries.push(urlEntry(SITE + "/store", now, "0.8", "weekly"));
+  entries.push(urlEntry(SITE + "/fleet-registry", now, "0.6", "weekly"));
   entries.push(urlEntry(SITE + "/blog", now, "0.8", "weekly"));
   entries.push(urlEntry(SITE + "/faqs", now, "0.7", "monthly"));
   entries.push(urlEntry(SITE + "/changelog", now, "0.4", "monthly"));
@@ -114,6 +132,12 @@ export const generateSitemap = httpAction(async (ctx) => {
           entries.push(
             urlEntry(`${SITE}/blog/${item.slug}`, isoDay(item.lastmod), "0.6", "weekly"),
           );
+          break;
+        case "contest":
+          entries.push(urlEntry(`${SITE}/contests/${item.slug}`, isoDay(item.lastmod), "0.5", "weekly"));
+          break;
+        case "product":
+          entries.push(urlEntry(`${SITE}/store#${item.slug}`, now, "0.6", "weekly"));
           break;
       }
     }
