@@ -32,7 +32,7 @@ export default function LoreDetail() {
   const metaTitle = libraryItem?.title ?? entry?.title ?? null;
 
   usePageMeta({
-    title: metaTitle ? `${metaTitle} — Star Force 1198` : "Lore — Star Force 1198",
+    title: metaTitle ? `${metaTitle} — Star Force Base 1198` : "Lore — Star Force Base 1198",
     description: libraryItem?.description ?? entry?.excerpt ?? undefined,
     image: (libraryItem && "coverUrl" in libraryItem ? (libraryItem as { coverUrl: string | null }).coverUrl : entry && "coverUrl" in entry ? (entry as { coverUrl: string | null }).coverUrl : null) ?? undefined,
   });
@@ -117,7 +117,7 @@ export default function LoreDetail() {
 
 function LibraryItemView({ item }: { item: LibraryItem }) {
   usePageMeta({
-    title: `${item.title} — Star Force 1198`,
+    title: `${item.title} — Star Force Base 1198`,
     description: item.description ?? undefined,
   });
 

@@ -37,7 +37,7 @@ export default function Leaderboard() {
   const rows = useQuery(api.social.leaderboard, { limit: 50 });
 
   usePageMeta({
-    title: "Fleet Leaderboard — Star Force 1198",
+    title: "Fleet Leaderboard — Star Force Base 1198",
     description:
       "Top Star Force members by XP: ranks, factions, contributions, and badge counts.",
   });

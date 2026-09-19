@@ -22,7 +22,7 @@ export default function SignalVault() {
   const [busy, setBusy] = useState<string | null>(null);
 
   usePageMeta({
-    title: "Signal Vault — Star Force 1198",
+    title: "Signal Vault — Star Force Base 1198",
     description:
       "Intercepted Ultra Force ciphers. Decrypt them to earn Star Credits and XP.",
   });

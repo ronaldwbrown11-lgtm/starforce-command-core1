@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { LucideIcon } from "lucide-react";
+import emblem from "@/assets/logo.svg";
 
 // ---------------------------------------------------------------------------
 // Categorized mega-menu navigation
@@ -379,16 +380,14 @@ function Header() {
     >
       <div className="uf-container flex items-center gap-6 py-4">
         <Link to="/" className="flex items-center gap-2 font-semibold tracking-[0.18em] uppercase text-base">
-          <span
+          <img
+            src={emblem}
+            alt=""
             aria-hidden
-            className="inline-block h-7 w-7 rounded-md"
-            style={{
-              background:
-                "conic-gradient(from 220deg, var(--uf-cyan), var(--uf-violet), var(--uf-magenta), var(--uf-cyan))",
-              boxShadow: "0 0 18px rgba(0,229,255,0.35)",
-            }}
+            className="h-8 w-8"
+            style={{ filter: "drop-shadow(0 0 6px rgba(255,200,80,0.45))" }}
           />
-          <span className="hidden sm:inline">Star Force 1198</span>
+          <span className="hidden sm:inline">Star Force Base 1198</span>
         </Link>
         <nav aria-label="Primary" className="hidden lg:flex items-center gap-1 ml-auto">
           {NAV_GROUPS.map((group) => (
@@ -623,8 +622,14 @@ function Footer() {
       <div className="uf-container py-12 grid gap-8 md:grid-cols-4">
         <div>
           <div className="flex items-center gap-2 font-semibold tracking-[0.18em] uppercase text-uf-text">
-            <Shield className="h-5 w-5" style={{ color: "var(--uf-cyan)" }} />
-            Star Force 1198
+            <img
+              src={emblem}
+              alt=""
+              aria-hidden
+              className="h-6 w-6"
+              style={{ filter: "drop-shadow(0 0 5px rgba(255,200,80,0.4))" }}
+            />
+            Star Force Base 1198
           </div>
           <p className="mt-3 text-uf-muted max-w-xs">
             A working command center for story, lore, and the people who keep the

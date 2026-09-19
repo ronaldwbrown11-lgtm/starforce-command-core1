@@ -60,7 +60,7 @@ export default function LoreDatabase() {
   const item = useQuery(api.loreLibrary.loreLibraryBySlug, { slug });
 
   usePageMeta({
-    title: item ? `${item.title} — Star Force 1198` : "Lore database — Star Force 1198",
+    title: item ? `${item.title} — Star Force Base 1198` : "Lore database — Star Force Base 1198",
     description: item?.description ?? undefined,
   });
 

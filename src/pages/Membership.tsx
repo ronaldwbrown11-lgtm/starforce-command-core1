@@ -157,7 +157,7 @@ export default function Membership() {
     jsonLd: {
       "@type": "Product",
       name: "Star Force Membership",
-      description: "Tiered membership for the Star Force 1198 community",
+      description: "Tiered membership for the Star Force Base 1198 community",
       offers: TIER_ORDER.map((id) => ({
         "@type": "Offer",
         name: TIERS[id].name,

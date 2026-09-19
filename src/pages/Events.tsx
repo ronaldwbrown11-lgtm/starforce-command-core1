@@ -125,7 +125,7 @@ export default function Events() {
   };
 
   usePageMeta({
-    title: "Operations Calendar — Star Force 1198",
+    title: "Operations Calendar — Star Force Base 1198",
     description:
       "Lore Lab writing sessions, faction meetings, story arcs, live Q&As, and countdowns for major lore releases.",
   });

@@ -24,7 +24,7 @@ export default function StoryDetail() {
   const { user: viewer } = useAuth();
 
   usePageMeta({
-    title: story ? `${story.title} — Star Force 1198` : "Story — Star Force 1198",
+    title: story ? `${story.title} — Star Force Base 1198` : "Story — Star Force Base 1198",
     description: story?.excerpt ?? undefined,
     image: (story && "coverUrl" in story ? (story as { coverUrl: string | null }).coverUrl : null) ?? undefined,
   });

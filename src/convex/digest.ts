@@ -17,7 +17,7 @@ import { Resend } from "resend";
 
 const SITE_URL = process.env.SITE_URL ?? "https://starforcebase1198.com";
 const FROM =
-  process.env.EMAIL_FROM ?? "Star Force 1198 <no-reply@starforcebase1198.com>";
+  process.env.EMAIL_FROM ?? "Star Force Base 1198 <no-reply@starforcebase1198.com>";
 
 function escapeHtml(s: string): string {
   return s
@@ -55,7 +55,7 @@ function digestHtml(data: {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0A0A0C;padding:32px 16px">
       <tr><td align="center">
         <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;border:1px solid #1E2430;border-radius:12px;overflow:hidden;background:#111214">
-          <tr><td style="padding:20px 28px;border-bottom:1px solid #1E2430;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#00E5FF">Star Force 1198 — Weekly Fleet Digest</td></tr>
+          <tr><td style="padding:20px 28px;border-bottom:1px solid #1E2430;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#00E5FF">Star Force Base 1198 — Weekly Fleet Digest</td></tr>
           <tr><td style="padding:28px">
             <h1 style="margin:0 0 8px;font-size:20px;font-weight:600;color:#F5F9FF">Reporting in, ${escapeHtml(data.name)}</h1>
             <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#B7C3D0">Here's what the fleet published this week — new stories, lore, missions, and transmissions from Star Force Base 1198.</p>

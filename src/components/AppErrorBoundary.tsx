@@ -59,7 +59,7 @@ export class AppErrorBoundary extends Component<
             backdropFilter: "blur(18px)",
           }}
         >
-          <p className="uf-eyebrow" style={{ margin: 0 }}>Star Force 1198 · Link lost</p>
+          <p className="uf-eyebrow" style={{ margin: 0 }}>Star Force Base 1198 · Link lost</p>
           <h1 style={{ fontSize: "1.8rem", margin: "0.75rem 0 0.5rem" }}>
             Connection interrupted
           </h1>

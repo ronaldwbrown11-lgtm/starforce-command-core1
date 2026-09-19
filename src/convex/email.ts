@@ -12,7 +12,7 @@ import { Resend } from "resend";
  *
  * Optional:
  *   EMAIL_FROM   — from address; must be a verified domain in Resend.
- *                  Defaults to "Star Force 1198 <no-reply@starforcebase1198.com>".
+ *                  Defaults to "Star Force Base 1198 <no-reply@starforcebase1198.com>".
  *   SITE_URL     — absolute site URL used for links in emails.
  *
  * All senders are best-effort: when RESEND_API_KEY is missing or the send
@@ -22,7 +22,7 @@ import { Resend } from "resend";
 
 const SITE_URL = process.env.SITE_URL ?? "https://starforcebase1198.com";
 const FROM =
-  process.env.EMAIL_FROM ?? "Star Force 1198 <no-reply@starforcebase1198.com>";
+  process.env.EMAIL_FROM ?? "Star Force Base 1198 <no-reply@starforcebase1198.com>";
 
 function getResend(): Resend | null {
   const key = process.env.RESEND_API_KEY;
@@ -35,7 +35,7 @@ function shell({ subject, body }: { subject: string; body: string }): string {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0A0A0C;padding:32px 16px">
       <tr><td align="center">
         <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;border:1px solid #1E2430;border-radius:12px;overflow:hidden;background:#111214">
-          <tr><td style="padding:20px 28px;border-bottom:1px solid #1E2430;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#00E5FF">Star Force 1198</td></tr>
+          <tr><td style="padding:20px 28px;border-bottom:1px solid #1E2430;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#00E5FF">Star Force Base 1198</td></tr>
           <tr><td style="padding:28px">
             <h1 style="margin:0 0 12px;font-size:20px;font-weight:600;color:#F5F9FF">${subject}</h1>
             <div style="font-size:14px;line-height:1.6;color:#B7C3D0">${body}</div>
@@ -84,7 +84,7 @@ export const sendTicketReply = action({
   handler: async (_ctx, args) => {
     const resend = getResend();
     if (!resend) return { ok: false, reason: "not_configured" };
-    const subject = `Re: ${args.topic} — Star Force 1198 Support`;
+    const subject = `Re: ${args.topic} — Star Force Base 1198 Support`;
     const body = `
       <p>Your ticket <strong>${escapeHtml(args.topic)}</strong> has a new reply from our team:</p>
       <blockquote style="margin:16px 0;padding:12px 16px;border-left:3px solid #00E5FF;background:#16181D;border-radius:6px;white-space:pre-wrap">${escapeHtml(args.body)}</blockquote>

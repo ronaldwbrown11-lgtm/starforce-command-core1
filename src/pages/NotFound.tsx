@@ -5,7 +5,7 @@ import { usePageMeta } from "@/hooks/use-page-meta";
 
 export default function NotFound() {
   usePageMeta({
-    title: "Signal Lost (404) — Star Force 1198",
+    title: "Signal Lost (404) — Star Force Base 1198",
     description:
       "This sector has not been charted. Return to Star Force Base 1198 and resume the mission.",
     noindex: true,

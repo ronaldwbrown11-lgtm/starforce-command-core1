@@ -8,7 +8,7 @@ export default function Changelog() {
   const entries = useQuery(api.changelog.listChangelog, {});
 
   usePageMeta({
-    title: "Changelog — Star Force 1198",
+    title: "Changelog — Star Force Base 1198",
     description:
       "Release notes and platform updates from the Star Force Base 1198 bridge.",
   });
