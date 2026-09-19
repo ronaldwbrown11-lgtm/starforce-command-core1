@@ -25,6 +25,7 @@ import type * as changelog from "../changelog.js";
 import type * as content from "../content.js";
 import type * as contests from "../contests.js";
 import type * as cronJobs from "../cronJobs.js";
+import type * as diagnostics from "../diagnostics.js";
 import type * as digest from "../digest.js";
 import type * as digestActions from "../digestActions.js";
 import type * as digestData from "../digestData.js";
@@ -96,6 +97,7 @@ declare const fullApi: ApiFromModules<{
   content: typeof content;
   contests: typeof contests;
   cronJobs: typeof cronJobs;
+  diagnostics: typeof diagnostics;
   digest: typeof digest;
   digestActions: typeof digestActions;
   digestData: typeof digestData;
