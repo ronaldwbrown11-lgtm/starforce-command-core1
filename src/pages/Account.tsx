@@ -107,12 +107,13 @@ export default function Account() {
     !user.onboarded &&
     !user.displayName &&
     !user.rank;
+  usePageMeta({ title: "Account — Star Force Base 1198", description: "Manage your pilot profile, rank, and account settings.", noindex: false });
+
   if (needsOnboarding) {
     return <PilotOnboarding />;
   }
 
   const startEditIdentity = () => setEditingIdentity(true);
-  usePageMeta({ title: "Account — Star Force Base 1198", description: "Manage your pilot profile, rank, and account settings.", noindex: false });
 
 
   return (

@@ -59,6 +59,8 @@ export default function Messages() {
   const markRead = useMutation(api.messages.markThreadRead);
   const heart = useMutation(api.social.heartbeat);
 
+  usePageMeta({ title: "Comms Channel — Star Force Base 1198", description: "Secure messaging between fleet personnel.", noindex: false });
+
   useEffect(() => {
     if (isAuthenticated) heart({});
   }, [isAuthenticated, heart]);
@@ -85,7 +87,6 @@ export default function Messages() {
         // Ignore — UI shows auth prompt.
       }
     })();
-  usePageMeta({ title: "Comms Channel — Star Force Base 1198", description: "Secure messaging between fleet personnel.", noindex: false });
 
     return () => {
       cancelled = true;
