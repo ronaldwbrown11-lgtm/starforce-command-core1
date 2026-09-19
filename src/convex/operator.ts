@@ -1034,6 +1034,7 @@ export const setUserTier = mutation({
       v.literal("cadet"),
       v.literal("officer"),
       v.literal("command"),
+      v.literal("elite"),
       v.literal("gia_agent"),
     ),
   },
@@ -1048,6 +1049,33 @@ export const setUserTier = mutation({
       action: "user.tier",
       target: `user:${args.id}`,
       meta: JSON.stringify({ tier: args.tier }),
+      createdAt: Date.now(),
+    });
+    return { ok: true };
+  },
+});
+
+/**
+ * Grant or revoke the owner-level usage-cap bypass (unlimited AI, storage,
+ * upload size) for a user. Intended for the site owner only — regular tier
+ * caps still apply to everyone else.
+ */
+export const setUserUnlimitedUsage = mutation({
+  args: {
+    id: v.id("users"),
+    unlimited: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+    ]);
+    await ctx.db.patch(args.id, { unlimitedUsage: args.unlimited });
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "user.unlimited_usage",
+      target: `user:${args.id}`,
+      meta: JSON.stringify({ unlimited: args.unlimited }),
       createdAt: Date.now(),
     });
     return { ok: true };
@@ -1492,6 +1520,7 @@ export const setOwnerTier = mutation({
       v.literal("cadet"),
       v.literal("officer"),
       v.literal("command"),
+      v.literal("elite"),
       v.literal("gia_agent"),
     ),
     clearStripe: v.optional(v.boolean()),

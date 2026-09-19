@@ -8,7 +8,7 @@ export const getUser = internalQuery({
   handler: async (ctx, { userId }) => {
     const user = await ctx.db.get(userId);
     if (!user) return null;
-    return { tier: user.tier ?? "free" };
+    return { tier: user.tier ?? "free", unlimitedUsage: user.unlimitedUsage === true };
   },
 });
 

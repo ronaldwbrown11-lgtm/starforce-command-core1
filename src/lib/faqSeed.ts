@@ -82,7 +82,7 @@ export const FAQ_SEED: FaqSeed[] = [
     category: "membership",
     question: "What membership tiers are available?",
     answer:
-      "Free, Cadet ($5/mo), Officer ($12/mo), Command ($19/mo), Elite ($25/mo), and G.I.A. Agent ($49/mo). Every tier is a monthly subscription handled by Stripe — the full benefit comparison lives on the Membership page.",
+      "Free, Cadet ($5/mo), Officer ($12/mo), Command ($19/mo), Elite ($25/mo), and G.I.A. Agent ($49/mo). Every tier is a monthly subscription handled by Stripe — G.I.A. Agent carries no usage caps at all, and the full benefit comparison lives on the Membership page.",
   },
   {
     category: "membership",

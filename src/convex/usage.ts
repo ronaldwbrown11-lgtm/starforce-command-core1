@@ -48,8 +48,9 @@ async function snapshotForCtx(
 
   const aiUsed = sinceReset ? 0 : user.monthlyAiUsed ?? 0;
   const storageUsedGb = user.storageUsedGb ?? 0;
-  const aiCap = getAiCapForTier(tier);
-  const storageCap = getStorageCapForTier(tier);
+  const unlimited = user.unlimitedUsage === true;
+  const aiCap = unlimited ? Infinity : getAiCapForTier(tier);
+  const storageCap = unlimited ? Infinity : getStorageCapForTier(tier);
   return {
     user,
     periodStart: sinceReset ? now : periodStart,
@@ -261,8 +262,9 @@ export const usersUsageForOperator = query({
     const now = Date.now();
     return all.map((u) => {
       const tier = (u.tier ?? "free") as TierId;
-      const aiCap = getAiCapForTier(tier);
-      const storageCap = getStorageCapForTier(tier);
+      const unlimited = u.unlimitedUsage === true;
+      const aiCap = unlimited ? Infinity : getAiCapForTier(tier);
+      const storageCap = unlimited ? Infinity : getStorageCapForTier(tier);
       const aiUsed = u.monthlyAiUsed ?? 0;
       const storageUsedGb = u.storageUsedGb ?? 0;
       const aiPercent = aiCap === Infinity ? 0 : Math.round((aiUsed / Math.max(1, aiCap)) * 100);

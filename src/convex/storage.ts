@@ -67,9 +67,12 @@ export const getUploadUrl = action({
     // Fetch user tier from the database.
     const user = await ctx.runQuery(internal.storageHelper.getUser, { userId });
     const tier = user?.tier ?? "free";
+    const unlimited = user?.unlimitedUsage === true;
 
     // Enforce per-file size limit.
-    const maxUploadBytes = getTierMaxUploadMb(tier) * 1024 * 1024;
+    const maxUploadBytes = unlimited
+      ? Infinity
+      : getTierMaxUploadMb(tier) * 1024 * 1024;
     if (fileSize > maxUploadBytes) {
       throw new Error(
         `File too large. Your ${tier} tier allows max ${getTierMaxUploadMb(tier)} MB per file.`,
@@ -78,7 +81,7 @@ export const getUploadUrl = action({
 
     // Enforce quota.
     const usage = await ctx.runQuery(internal.storageHelper.getUsageInternal, { userId });
-    const quota = getTierQuotaBytes(tier);
+    const quota = unlimited ? Infinity : getTierQuotaBytes(tier);
     if (usage.usedBytes + fileSize > quota) {
       throw new Error(
         `Storage quota exceeded. You've used ${formatBytes(usage.usedBytes)} of ${formatBytes(quota)}. Delete some files or upgrade your tier.`,

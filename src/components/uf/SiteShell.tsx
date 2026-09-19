@@ -55,6 +55,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: Users,
     items: [
       { label: "Hub", labelKey: "nav.community", href: "/community", desc: "Central command" },
+      { label: "Groups", labelKey: "nav.groups", href: "/groups", desc: "Fleets & ship formations" },
       { label: "Forums", labelKey: "nav.forums", href: "/forums", desc: "Discussion threads" },
       { label: "Contests", labelKey: "nav.contests", href: "/contests", desc: "Member lore contests" },
       { label: "Requisition Depot", labelKey: "nav.store", href: "/store", desc: "Lore bibles & merch" },

@@ -34,7 +34,7 @@ const FAQ = [
   },
   {
     q: "What does G.I.A Agent include?",
-    a: "Top-tier access: 2,000 AI generations / month, 100 GB storage, 500 MB max upload, private groups, podcast publishing, and priority featured placement.",
+    a: "Top-tier access: unlimited AI generations, unlimited storage, unlimited upload size, private groups, podcast publishing, and top featured placement.",
   },
   {
     q: "Is my data safe?",
@@ -52,17 +52,17 @@ const FEATURE_ROWS: Array<{
   {
     key: "ai" as const,
     label: "AI generations / month",
-    render: (id) => `${TIERS[id].aiGenerations.toLocaleString()}`,
+    render: (id) => (Number.isFinite(TIERS[id].aiGenerations) ? TIERS[id].aiGenerations.toLocaleString() : "Unlimited"),
   },
   {
     key: "storage" as const,
     label: "Storage",
-    render: (id) => `${TIERS[id].storageGb} GB`,
+    render: (id) => (Number.isFinite(TIERS[id].storageGb) ? `${TIERS[id].storageGb} GB` : "Unlimited"),
   },
   {
     key: "upload" as const,
     label: "Max upload",
-    render: (id) => `${TIERS[id].maxUploadMb} MB`,
+    render: (id) => (Number.isFinite(TIERS[id].maxUploadMb) ? `${TIERS[id].maxUploadMb} MB` : "Unlimited"),
   },
   {
     key: "groups" as const,

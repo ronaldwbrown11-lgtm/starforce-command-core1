@@ -34,8 +34,10 @@ export function TierUsageWidget({
 
   const tier: TierId =
     (usage?.tier as TierId | undefined) ?? initialTier ?? "free";
-  const aiCap = getAiCap(tier);
-  const storageCap = getStorageCap(tier);
+  // Backend sends cap -1 for unlimited (owner bypass / operator). Honor it;
+  // fall back to the frontend catalog when no usage snapshot exists.
+  const aiCap = usage && usage.ai.cap < 0 ? Infinity : getAiCap(tier);
+  const storageCap = usage && usage.storage.capGb < 0 ? Infinity : getStorageCap(tier);
   const aiUsed = usage?.ai.used ?? 0;
   const storageUsed = usage?.storage.usedGb ?? 0;
   const aiPercent = usage?.ai.percent ?? formatPercent(aiUsed, aiCap);
@@ -209,6 +211,7 @@ function UsageRow({
   percent: number;
   suffix?: string;
 }) {
+  const unlimited = !Number.isFinite(cap);
   const clampedPct = Math.max(0, Math.min(100, percent));
   return (
     <div className="mb-3">
@@ -217,7 +220,11 @@ function UsageRow({
         <span className="text-sm font-medium">
           {used.toLocaleString()}
           <span className="text-uf-muted">{suffix ?? ""}</span>{" "}
-          <span className="text-uf-muted text-xs">/ {cap.toLocaleString()}</span>
+          {unlimited ? (
+            <span className="text-uf-muted text-xs uppercase tracking-[0.12em] text-[var(--uf-gold)]">· Unlimited</span>
+          ) : (
+            <span className="text-uf-muted text-xs">/ {cap.toLocaleString()}</span>
+          )}
         </span>
       </div>
       <div
@@ -225,8 +232,8 @@ function UsageRow({
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={clampedPct}
-        aria-label={`${label}: ${used} of ${cap} (${percent}%)`}
+        aria-valuenow={unlimited ? 0 : clampedPct}
+        aria-label={unlimited ? `${label}: ${used} used (unlimited tier)` : `${label}: ${used} of ${cap} (${percent}%)`}
       >
         <div
           className="uf-progress__bar"

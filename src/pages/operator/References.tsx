@@ -76,9 +76,9 @@ export default function OperatorReferences() {
                     <th scope="row">
                       <StatusPill variant={tierPillVariant(id)}>{tierLabel(id)}</StatusPill>
                     </th>
-                    <td>{t.aiGenerations.toLocaleString()}</td>
-                    <td>{t.storageGb} GB</td>
-                    <td>{t.maxUploadMb} MB</td>
+                    <td>{Number.isFinite(t.aiGenerations) ? t.aiGenerations.toLocaleString() : "Unlimited"}</td>
+                    <td>{Number.isFinite(t.storageGb) ? `${t.storageGb} GB` : "Unlimited"}</td>
+                    <td>{Number.isFinite(t.maxUploadMb) ? `${t.maxUploadMb} MB` : "Unlimited"}</td>
                     <td>
                       <StatusPill
                         variant={

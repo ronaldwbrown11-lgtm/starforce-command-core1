@@ -83,6 +83,10 @@ const schema = defineSchema(
       xp: v.optional(v.number()),
       fleet: v.optional(v.string()), // faction name
       tier: v.optional(tierValidator),
+      // Owner-level bypass: user is exempt from tier usage caps (AI, storage,
+      // upload size). Never granted by any public flow — operators patch it
+      // directly in the dashboard Data tab.
+      unlimitedUsage: v.optional(v.boolean()),
       opRole: v.optional(opRoleValidator), // operator/admin role
       avatarUrl: v.optional(v.string()),
       avatarStorageId: v.optional(v.id("_storage")),

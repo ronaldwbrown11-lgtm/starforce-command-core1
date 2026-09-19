@@ -150,7 +150,7 @@ export const TIERS: Record<TierId, Tier> = {
     priceLabel: "$49.00",
     variant: "gold",
     benefits: [
-      "2000 AI generations / month",
+      "2,000 AI generations / month",
       "100 GB storage",
       "500 MB max upload",
       "Private groups",
