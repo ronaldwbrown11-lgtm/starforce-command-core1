@@ -42,10 +42,13 @@ const MILKY_WAY = { w: 1920, h: 1920 };
 
 /**
  * Sol's position in viewBox coordinates. The map is cover-fitted (scaled to
- * fully cover the viewBox, then centered), and this returns where the real
- * Sol marker lands after that transform. On Hurt's rendering Sol sits at
- * roughly (0.50, 0.30) in image space — on the Orion Spur.
+ * fully cover the viewBox, then centered) and rendered rotated 180° (operator
+ * preference), so image-space fractions flip: fu' = 1 - fu, fv' = 1 - fv.
+ * On Hurt's rendering Sol sits at roughly (0.50, 0.30) in image space —
+ * on the Orion Spur — which lands at (0.50, 0.70) after the flip.
  */
+const SOL_IMG = { fu: 0.5, fv: 0.3 };
+
 function solPointIn(vbX: number, vbY: number, vbW: number, vbH: number) {
   const scale = Math.max(vbW / MILKY_WAY.w, vbH / MILKY_WAY.h);
   const drawW = MILKY_WAY.w * scale;
@@ -53,8 +56,8 @@ function solPointIn(vbX: number, vbY: number, vbW: number, vbH: number) {
   const offX = vbX + (vbW - drawW) / 2;
   const offY = vbY + (vbH - drawH) / 2;
   return {
-    x: offX + 0.5 * drawW,
-    y: offY + 0.3 * drawH,
+    x: offX + (1 - SOL_IMG.fu) * drawW,
+    y: offY + (1 - SOL_IMG.fv) * drawH,
   };
 }
 
@@ -154,6 +157,12 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
     },
     [viewBox.vbX, viewBox.vbY, viewBox.vbW, viewBox.vbH],
   );
+
+  // 47 Ursae Majoris — real Sun-like star ~46 ly from Sol with the famous
+  // planetary system (and the fleet's Alliance Capital in canon). 46 ly is
+  // sub-pixel at galactic scale, so the marker is stylized just off the Sol
+  // pin rather than astronomically projected.
+  const uma47 = { x: galaxy.sol.x + 16, y: galaxy.sol.y - 20 };
 
   // Curated warp gates from the operator console. Each row links two sector
   // slugs; we resolve live positions client-side so moving a sector moves its
@@ -380,6 +389,9 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                   height={galaxy.rect.h}
                   preserveAspectRatio="xMidYMid slice"
                   opacity={0.85}
+                  transform={`rotate(180 ${galaxy.rect.x + galaxy.rect.w / 2} ${
+                    galaxy.rect.y + galaxy.rect.h / 2
+                  })`}
                 />
                 {/* Readability scrim so interactive layers stay crisp on top */}
                 <rect
@@ -501,6 +513,15 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                 </text>
               </a>
             )}
+
+            {/* 47 Ursae Majoris — the Alliance Capital, a short hop from Sol */}
+            <g aria-hidden="true">
+              <circle cx={uma47.x} cy={uma47.y} r={3} fill="none" stroke="var(--uf-cyan)" strokeWidth={1} opacity={0.85} />
+              <circle cx={uma47.x} cy={uma47.y} r={1.4} fill="var(--uf-cyan)" />
+              <text x={uma47.x + 6} y={uma47.y + 3} fontSize={9.5} fill="var(--uf-text)">
+                47 Ursae Majoris
+              </text>
+            </g>
 
             {/* Canon sector nodes */}
             {layers.sectors && (
