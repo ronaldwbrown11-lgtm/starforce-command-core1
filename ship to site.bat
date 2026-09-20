@@ -21,7 +21,9 @@ rem      sidecar file. If the serving layer hands back an uncompressed tar
 rem      snapshot instead, the hash is skipped (it cannot match) and safety
 rem      falls to the build-stamp freshness gate below.
 rem   3. BUILD-INFO.txt is read from inside the package and anything older
-rem      than the last successful ship is refused.
+rem      than the last successful ship is refused. The last-ship record stores
+rem      the PACKAGE's build stamp (not the wall-clock ship time), so re-running
+rem      against the same package is a friendly no-op, not a stale error.
 rem ===========================================================================
 
 set "ARCHIVE_URL=https://crisp-turtles-fall.freebuff.dev/starforce-source-latest.tar.gz"
@@ -137,9 +139,8 @@ git add -A
 git diff --cached --quiet
 if errorlevel 1 goto :have_changes
 
-rem ---- no changes: record the ship timestamp and finish ----
-for /f "usebackq delims=" %%L in (`%PS% "Write-Output (Get-Date).ToUniversalTime().ToString('o')"`) do set "NOW_UTC=%%L"
-echo !NOW_UTC!> "%LAST_SHIP_FILE%"
+rem ---- no changes: record the package stamp and finish ----
+copy /y "%BUILTAT_FILE%" "%LAST_SHIP_FILE%" >nul
 echo No changes detected - the sandbox and the local repo are already in sync.
 goto :done
 
@@ -158,7 +159,7 @@ if errorlevel 1 (
     goto :fail
 )
 for /f "usebackq delims=" %%L in (`%PS% "Write-Output (Get-Date).ToUniversalTime().ToString('o')"`) do set "NOW_UTC=%%L"
-echo !NOW_UTC!> "%LAST_SHIP_FILE%"
+copy /y "%BUILTAT_FILE%" "%LAST_SHIP_FILE%" >nul
 echo ============================================================
 echo  Pushed! GitHub Actions builds and deploys in ~90 seconds.
 echo ============================================================
