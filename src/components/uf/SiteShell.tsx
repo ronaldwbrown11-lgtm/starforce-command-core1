@@ -28,12 +28,14 @@ import emblem from "@/assets/logo.svg";
 interface NavItem {
   label: string;
   labelKey: string;
+  descKey?: string;
   href: string;
   desc?: string;
   highlight?: boolean;
 }
 interface NavGroup {
   label: string;
+  labelKey: string;
   icon: LucideIcon;
   items: NavItem[];
 }
@@ -41,50 +43,54 @@ interface NavGroup {
 const NAV_GROUPS: NavGroup[] = [
   {
     label: "Archive",
+    labelKey: "group.archive",
     icon: BookOpen,
     items: [
-      { label: "Stories", labelKey: "nav.stories", href: "/stories", desc: "Fiction & narratives" },
-      { label: "Lore", labelKey: "nav.lore", href: "/lore", desc: "Universe canon" },
-      { label: "Maps", labelKey: "nav.maps", href: "/maps", desc: "Sector charts" },
-      { label: "Star Atlas", labelKey: "nav.starAtlas", href: "/map", desc: "Interactive galaxy" },
-      { label: "Transmissions", labelKey: "nav.videos", href: "/videos", desc: "Video & audio" },
-      { label: "Missions", labelKey: "nav.missions", href: "/missions", desc: "Active operations" },
-      { label: "Signal Vault", labelKey: "nav.vault", href: "/vault", desc: "ARG puzzles" },
+      { label: "Stories", labelKey: "nav.stories", href: "/stories", desc: "Fiction & narratives", descKey: "desc.stories" },
+      { label: "Lore", labelKey: "nav.lore", href: "/lore", desc: "Universe canon", descKey: "desc.lore" },
+      { label: "Maps", labelKey: "nav.maps", href: "/maps", desc: "Sector charts", descKey: "desc.maps" },
+      { label: "Star Atlas", labelKey: "nav.starAtlas", href: "/map", desc: "Interactive galaxy", descKey: "desc.starAtlas" },
+      { label: "Transmissions", labelKey: "nav.videos", href: "/videos", desc: "Video & audio", descKey: "desc.videos" },
+      { label: "Missions", labelKey: "nav.missions", href: "/missions", desc: "Active operations", descKey: "desc.missions" },
+      { label: "Signal Vault", labelKey: "nav.vault", href: "/vault", desc: "ARG puzzles", descKey: "desc.vault" },
     ],
   },
   {
     label: "Community",
+    labelKey: "group.community",
     icon: Users,
     items: [
-      { label: "Hub", labelKey: "nav.community", href: "/community", desc: "Central command" },
-      { label: "Groups", labelKey: "nav.groups", href: "/groups", desc: "Fleets & ship formations" },
-      { label: "Forums", labelKey: "nav.forums", href: "/forums", desc: "Discussion threads" },
-      { label: "Contests", labelKey: "nav.contests", href: "/contests", desc: "Member lore contests" },
-      { label: "Requisition Depot", labelKey: "nav.store", href: "/store", desc: "Lore bibles & merch" },
-      { label: "Members", labelKey: "nav.members", href: "/members", desc: "Fleet roster" },
-      { label: "Leaderboard", labelKey: "nav.leaderboard", href: "/leaderboard", desc: "Top contributors" },
-      { label: "Events", labelKey: "nav.events", href: "/events", desc: "Upcoming ops" },
-      { label: "Submit", labelKey: "nav.submit", href: "/submit", desc: "File a report" },
-      { label: "Messages", labelKey: "nav.messages", href: "/messages", desc: "Direct comms" },
+      { label: "Hub", labelKey: "nav.community", href: "/community", desc: "Central command", descKey: "desc.community" },
+      { label: "Groups", labelKey: "nav.groups", href: "/groups", desc: "Fleets & ship formations", descKey: "desc.groups" },
+      { label: "Forums", labelKey: "nav.forums", href: "/forums", desc: "Discussion threads", descKey: "desc.forums" },
+      { label: "Contests", labelKey: "nav.contests", href: "/contests", desc: "Member lore contests", descKey: "desc.contests" },
+      { label: "Requisition Depot", labelKey: "nav.store", href: "/store", desc: "Lore bibles & merch", descKey: "desc.store" },
+      { label: "Members", labelKey: "nav.members", href: "/members", desc: "Fleet roster", descKey: "desc.members" },
+      { label: "Leaderboard", labelKey: "nav.leaderboard", href: "/leaderboard", desc: "Top contributors", descKey: "desc.leaderboard" },
+      { label: "Events", labelKey: "nav.events", href: "/events", desc: "Upcoming ops", descKey: "desc.events" },
+      { label: "Submit", labelKey: "nav.submit", href: "/submit", desc: "File a report", descKey: "desc.submit" },
+      { label: "Messages", labelKey: "nav.messages", href: "/messages", desc: "Direct comms", descKey: "desc.messages" },
     ],
   },
   {
     label: "Network",
+    labelKey: "group.network",
     icon: Compass,
     items: [
-      { label: "Blog", labelKey: "nav.blog", href: "/blog", desc: "Dispatches" },
-      { label: "FAQs", labelKey: "nav.faqs", href: "/faqs", desc: "Common queries" },
-      { label: "Changelog", labelKey: "nav.changelog", href: "/changelog", desc: "System updates" },
-      { label: "Resources", labelKey: "nav.resources", href: "/resources", desc: "Reference files" },
+      { label: "Blog", labelKey: "nav.blog", href: "/blog", desc: "Dispatches", descKey: "desc.blog" },
+      { label: "FAQs", labelKey: "nav.faqs", href: "/faqs", desc: "Common queries", descKey: "desc.faqs" },
+      { label: "Changelog", labelKey: "nav.changelog", href: "/changelog", desc: "System updates", descKey: "desc.changelog" },
+      { label: "Resources", labelKey: "nav.resources", href: "/resources", desc: "Reference files", descKey: "desc.resources" },
     ],
   },
   {
     label: "Access",
+    labelKey: "group.access",
     icon: Star,
     items: [
-      { label: "Membership", labelKey: "nav.membership", href: "/membership", desc: "Join the fleet" },
-      { label: "Cadet Manual", labelKey: "nav.manual", href: "/manual", desc: "New recruit orientation" },
-      { label: "Support", labelKey: "nav.support", href: "/support", desc: "Get help" },
+      { label: "Membership", labelKey: "nav.membership", href: "/membership", desc: "Join the fleet", descKey: "desc.membership" },
+      { label: "Cadet Manual", labelKey: "nav.manual", href: "/manual", desc: "New recruit orientation", descKey: "desc.manual" },
+      { label: "Support", labelKey: "nav.support", href: "/support", desc: "Get help", descKey: "desc.support" },
     ],
   },
 ];
@@ -122,7 +128,7 @@ function MegaMenuDropdown({ group }: { group: NavGroup }) {
         onFocus={enter}
         onBlur={leave}
       >
-        {group.label}
+        {t(group.labelKey)}
         <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} />
       </button>
       {open && (
@@ -138,7 +144,7 @@ function MegaMenuDropdown({ group }: { group: NavGroup }) {
           >
             <div className="flex items-center gap-2 mb-3 pb-2 border-b border-cyan-800/40">
               <Icon className="h-4 w-4 text-cyan-400" />
-              <span className="text-xs uppercase tracking-[0.16em] text-cyan-300 font-bold">{group.label}</span>
+              <span className="text-xs uppercase tracking-[0.16em] text-cyan-300 font-bold">{t(group.labelKey)}</span>
             </div>
             <ul className="flex flex-col gap-0.5 list-none p-0 m-0">
               {group.items.map((item) => (
@@ -154,7 +160,9 @@ function MegaMenuDropdown({ group }: { group: NavGroup }) {
                     role="menuitem"
                   >
                     <span className="text-sm font-semibold">{t(item.labelKey)}</span>
-                    {item.desc && <span className="text-xs text-gray-300 mt-0.5">{item.desc}</span>}
+                    {item.desc && (
+                      <span className="text-xs text-gray-300 mt-0.5">{item.descKey ? t(item.descKey) : item.desc}</span>
+                    )}
                   </Link>
                 </li>
               ))}
@@ -339,7 +347,7 @@ const OP_ROLES = [
 ] as const;
 
 function Header() {
-  const { t } = useI18n();
+  const { t, locale, setLocale } = useI18n();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
@@ -425,6 +433,7 @@ function Header() {
             className="w-32 lg:w-44 bg-transparent text-sm placeholder:text-uf-muted/70 focus:outline-none"
           />
         </form>
+        <HeaderLanguageToggle />
         <div className="ml-auto flex items-center gap-2 lg:ml-2">
           <Link
             to="/search"
@@ -530,7 +539,7 @@ function Header() {
                 <div key={group.label}>
                   <div className="flex items-center gap-2 px-3 mb-1">
                     <Icon className="h-3.5 w-3.5 text-uf-cyan" />
-                    <span className="text-[10px] uppercase tracking-[0.16em] text-cyan-300 font-semibold">{group.label}</span>
+                    <span className="text-[10px] uppercase tracking-[0.16em] text-cyan-300 font-semibold">{t(group.labelKey)}</span>
                   </div>
                   <div className="flex flex-col gap-0.5">
                     {group.items.map((item) => (
@@ -571,6 +580,28 @@ function Header() {
               <Search className="h-4 w-4" aria-hidden />
               Search the network
             </NavLink>
+            <div className="flex items-center gap-2 px-3 py-1">
+              <span className="text-xs uppercase tracking-[0.16em] text-uf-muted">{t("common.language")}</span>
+              <div className="flex gap-1.5" role="group" aria-label={t("common.language")}>
+                {LOCALES.map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => setLocale(l)}
+                    aria-pressed={locale === l}
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-xs uppercase transition-colors cursor-pointer",
+                      locale === l
+                        ? "border-[rgba(0,229,255,0.5)] bg-[rgba(0,229,255,0.1)] text-uf-text"
+                        : "border-[color:var(--uf-border)] text-uf-muted hover:text-uf-text",
+                    )}
+                  >
+                    {l === "en" ? "EN" : "ES"}
+                    <span className="sr-only">{locale === l ? " (active)" : ""}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="mt-3 flex flex-col gap-2">
               {isOperator ? (
                 <Link to="/operator" className="flex-1" onClick={() => setOpen(false)}>
@@ -608,6 +639,37 @@ function Header() {
   );
 }
 
+/**
+ * Compact EN/ES language toggle for the header. Mirrors the footer switcher
+ * so the control is visible without scrolling to the page bottom.
+ */
+function HeaderLanguageToggle() {
+  const { t, locale, setLocale } = useI18n();
+  return (
+    <div
+      role="group"
+      aria-label={t("common.language")}
+      className="hidden md:flex items-center rounded-md border border-[color:var(--uf-border)] overflow-hidden"
+    >
+      {LOCALES.map((l) => (
+        <button
+          key={l}
+          type="button"
+          onClick={() => setLocale(l)}
+          aria-pressed={locale === l}
+          className={cn(
+            "px-2.5 h-10 text-xs font-semibold uppercase tracking-[0.08em] transition-colors cursor-pointer",
+            locale === l
+              ? "bg-[rgba(0,229,255,0.15)] text-uf-text shadow-[var(--uf-glow-cyan)]"
+              : "text-uf-muted hover:text-uf-text hover:bg-[rgba(0,229,255,0.08)]",
+          )}
+        >
+          {l === "en" ? "EN" : "ES"}
+        </button>
+      ))}
+    </div>
+  );}
+
 /** Discord glyph (simple-icons path, fill follows text color). */
 function DiscordIcon({ className }: { className?: string }) {
   return (
@@ -644,27 +706,27 @@ function Footer() {
           </p>
         </div>
         <div>
-          <p className="text-uf-text uppercase tracking-[0.16em] text-xs mb-3">Archive</p>
+          <p className="text-uf-text uppercase tracking-[0.16em] text-xs mb-3">{t("group.archive")}</p>
           <ul className="space-y-2">
-            <li><Link to="/stories">Stories</Link></li>
-            <li><Link to="/lore">Lore</Link></li>
-            <li><Link to="/maps">Maps</Link></li>
-            <li><Link to="/map">Star Atlas</Link></li>
-            <li><Link to="/videos">Transmissions</Link></li>
-            <li><Link to="/missions">Missions</Link></li>
-            <li><Link to="/vault">Signal Vault</Link></li>
-            <li><Link to="/events">Events</Link></li>
-            <li><Link to="/resources">Resources</Link></li>
+            <li><Link to="/stories">{t("nav.stories")}</Link></li>
+            <li><Link to="/lore">{t("nav.lore")}</Link></li>
+            <li><Link to="/maps">{t("nav.maps")}</Link></li>
+            <li><Link to="/map">{t("nav.starAtlas")}</Link></li>
+            <li><Link to="/videos">{t("nav.videos")}</Link></li>
+            <li><Link to="/missions">{t("nav.missions")}</Link></li>
+            <li><Link to="/vault">{t("nav.vault")}</Link></li>
+            <li><Link to="/events">{t("nav.events")}</Link></li>
+            <li><Link to="/resources">{t("nav.resources")}</Link></li>
           </ul>
         </div>
         <div>
-          <p className="text-uf-text uppercase tracking-[0.16em] text-xs mb-3">Community</p>
+          <p className="text-uf-text uppercase tracking-[0.16em] text-xs mb-3">{t("group.community")}</p>
           <ul className="space-y-2">
-            <li><Link to="/community">Hub</Link></li>
-            <li><Link to="/forums">Forums</Link></li>
-            <li><Link to="/groups">Groups</Link></li>
-            <li><Link to="/store">Requisition Depot</Link></li>
-            <li><Link to="/membership">Membership</Link></li>
+            <li><Link to="/community">{t("nav.community")}</Link></li>
+            <li><Link to="/forums">{t("nav.forums")}</Link></li>
+            <li><Link to="/groups">{t("nav.groups")}</Link></li>
+            <li><Link to="/store">{t("nav.store")}</Link></li>
+            <li><Link to="/membership">{t("nav.membership")}</Link></li>
           </ul>
         </div>
         <div>
