@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, ChevronDown, Compass, ExternalLink, Facebook, Github, Globe, Instagram, LayoutDashboard, Linkedin, Link as LinkIcon, LogOut, Mail, Menu, Search, Shield, Sparkles, Star, Twitch, Twitter, User, Users, Youtube, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { FRAME_CATALOG } from "@/lib/economy";
 import { LOCALES, useI18n } from "@/lib/i18n";
 import { NeonButton } from "./NeonButton";
 import { HeaderNotifications } from "@/components/notifications/HeaderNotifications";
@@ -82,6 +83,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: Star,
     items: [
       { label: "Membership", labelKey: "nav.membership", href: "/membership", desc: "Join the fleet" },
+      { label: "Cadet Manual", labelKey: "nav.manual", href: "/manual", desc: "New recruit orientation" },
       { label: "Support", labelKey: "nav.support", href: "/support", desc: "Get help" },
     ],
   },
@@ -347,6 +349,7 @@ function Header() {
   const isOperator = user?.opRole && OP_ROLES.includes(user.opRole as (typeof OP_ROLES)[number]);
   const displayName = user?.displayName?.trim() || user?.email?.split("@")[0] || "Operator";
   const initials = displayName.charAt(0).toUpperCase();
+  const headerFrame = user?.frame ? FRAME_CATALOG[user.frame] : undefined;
   const handleSignOut = async () => {
     if (signingOut) return;
     setSigningOut(true);
@@ -451,8 +454,12 @@ function Header() {
                     aria-hidden
                     className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-xs font-bold text-white"
                     style={{
-                      background:
-                        "conic-gradient(from 220deg, var(--uf-cyan), var(--uf-violet), var(--uf-magenta), var(--uf-cyan))",
+                      background: headerFrame
+                        ? `conic-gradient(from 220deg, ${headerFrame.colors[0]}, ${headerFrame.colors[1]}, ${headerFrame.colors[2]}, ${headerFrame.colors[0]})`
+                        : "conic-gradient(from 220deg, var(--uf-cyan), var(--uf-violet), var(--uf-magenta), var(--uf-cyan))",
+                      boxShadow: headerFrame
+                        ? `0 0 10px ${headerFrame.colors[0]}88`
+                        : undefined,
                     }}
                   >
                     {initials}

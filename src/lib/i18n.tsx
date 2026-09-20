@@ -40,6 +40,7 @@ const EN: Dict = {
   "nav.resources": "Resources",
   "nav.membership": "Membership",
   "nav.support": "Support",
+  "nav.manual": "Cadet Manual",
   "nav.home": "Home",
   "common.language": "Language",
 };
@@ -69,6 +70,7 @@ const ES: Dict = {
   "nav.resources": "Recursos",
   "nav.membership": "Membresía",
   "nav.support": "Soporte",
+  "nav.manual": "Manual de Cadetes",
   "nav.home": "Inicio",
   "common.language": "Idioma",
 };

@@ -107,6 +107,13 @@ const schema = defineSchema(
       flair: v.optional(v.string()),
       frame: v.optional(v.string()), // equipped profile frame id
       frames: v.optional(v.array(v.string())), // owned frame ids
+      // Cosmetic Lab titles — `title` is equipped, `titles` are owned.
+      // Mission-line titles are operator-granted via awardTitle.
+      title: v.optional(v.string()),
+      titles: v.optional(v.array(v.string())),
+      // Boost expiry timestamps (epoch ms) — XP Surge / Credit Surge.
+      xpSurgeUntil: v.optional(v.number()),
+      creditSurgeUntil: v.optional(v.number()),
 
       // Ultra Force ship assignment — cosmetic + identity only, never a
       // gameplay mechanic. Editable any time; switching ships preserves
@@ -1157,7 +1164,9 @@ const schema = defineSchema(
       slug: v.string(),
       title: v.string(),
       description: v.string(),
-      kind: v.string(), // "digital" | "physical"
+      kind: v.string(), // "digital" | "physical" | "credits"
+      // For kind === "credits": Star Credits granted on fulfillment.
+      creditAmount: v.optional(v.number()),
       category: v.string(), // e.g. "Lore Bibles", "Apparel", "Artifacts"
       priceCents: v.number(),
       currency: v.optional(v.string()),
@@ -1199,7 +1208,9 @@ const schema = defineSchema(
       variant: v.optional(v.string()),
       amountCents: v.number(),
       currency: v.string(),
-      kind: v.string(), // "digital" | "physical"
+      kind: v.string(), // "digital" | "physical" | "credits"
+      // For kind === "credits": Star Credits granted on fulfillment.
+      creditAmount: v.optional(v.number()),
       status: v.string(), // "paid" | "fulfilled" | "shipped" | "cancelled"
       stripeSessionId: v.string(),
       // Shipping snapshot written by the webhook for physical goods.

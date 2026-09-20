@@ -28,6 +28,7 @@ import Forums from "@/pages/Forums";
 import Resources from "@/pages/Resources";
 import Membership from "@/pages/Membership";
 import Support from "@/pages/Support";
+import CadetManual from "@/pages/CadetManual";
 import BlogPage from "@/pages/Blog";
 import BlogDetailPage from "@/pages/BlogDetail";
 import FaqsPage from "@/pages/Faqs";
@@ -127,6 +128,7 @@ export const PUBLIC_ROUTES: PublicPageRoute[] = [
   },
   { path: "/membership", label: "Membership", element: <Membership /> },
   { path: "/support", label: "Support", element: <Support /> },
+  { path: "/manual", label: "Cadet Manual", element: <CadetManual /> },
   { path: "/search", label: "Search", element: <SearchPage /> },
   { path: "/tools/assistant", label: "Tools Assistant", element: <ToolsAssistant /> },
   { path: "/account", label: "Account", element: <Account /> },

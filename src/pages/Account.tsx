@@ -15,7 +15,7 @@ import { StarCreditsCard } from "@/components/widgets/StarCreditsCard";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { tierLabel, tierPillVariant, type TierId } from "@/lib/tiers";
-import { FRAME_CATALOG } from "@/lib/economy";
+import { FRAME_CATALOG, TITLE_CATALOG } from "@/lib/economy";
 import { TierUsageWidget } from "@/components/usage/TierUsageWidget";
 import { StorageManager } from "@/components/widgets/StorageManager";
 import { MyRequisitions } from "@/components/widgets/MyRequisitions";
@@ -164,7 +164,7 @@ export default function Account() {
         )}
         {isAuthenticated && (
           <div className="uf-grid uf-grid--3">
-            <HoloCard>
+            <HoloCard frame={user?.frame}>
               <div className="flex items-center gap-3">
                 <div
                   aria-hidden
@@ -208,7 +208,21 @@ export default function Account() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-2xl font-semibold truncate">{displayName}</h2>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-2xl font-semibold truncate">{displayName}</h2>
+                    {user?.title && TITLE_CATALOG[user.title] ? (
+                      <span
+                        className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold"
+                        style={{
+                          color: TITLE_CATALOG[user.title].color,
+                          borderColor: `${TITLE_CATALOG[user.title].color}55`,
+                          background: `${TITLE_CATALOG[user.title].color}12`,
+                        }}
+                      >
+                        {TITLE_CATALOG[user.title].label}
+                      </span>
+                    ) : null}
+                  </div>
                   {user?.email ? (
                     <p className="text-uf-muted text-xs truncate">{user.email}</p>
                   ) : null}
@@ -349,6 +363,10 @@ export default function Account() {
               credits={user?.credits ?? 0}
               frame={user?.frame}
               frames={user?.frames ?? []}
+              title={user?.title}
+              titles={user?.titles ?? []}
+              xpSurgeUntil={user?.xpSurgeUntil}
+              creditSurgeUntil={user?.creditSurgeUntil}
             />
             <HoloCard>
               <span className="uf-eyebrow">Quick actions</span>

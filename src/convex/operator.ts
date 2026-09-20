@@ -1184,6 +1184,31 @@ export const awardAchievement = mutation({
   },
 });
 
+/**
+ * Grant a Cosmetic Lab title (including the operator-only mission line —
+ * those have cost: null and can't be purchased). Audit-logged.
+ */
+export const awardTitle = mutation({
+  args: { id: v.id("users"), title: v.string() },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+    ]);
+    const u = await ctx.db.get(args.id);
+    if (!u) throw new Error("Member not found.");
+    const titles = Array.from(new Set([...(u.titles ?? []), args.title]));
+    await ctx.db.patch(args.id, { titles });
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "user.award_title",
+      target: `user:${args.id}:${args.title}`,
+      createdAt: Date.now(),
+    });
+    return { ok: true };
+  },
+});
+
 export const removeAchievement = mutation({
   args: { id: v.id("users"), key: v.string() },
   handler: async (ctx, args) => {

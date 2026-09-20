@@ -3,6 +3,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireOperatorCapability } from "./admin";
+import { grantCreditsExact } from "./economy";
 
 // =========================================================================
 // Requisition Depot — the base store.
@@ -608,6 +609,17 @@ export const fulfillStoreOrder = internalMutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    // Star Credit caches: the purchase IS the credits. Granted exactly (no
+    // surge) and audit-logged; the order record is the receipt.
+    if (product.kind === "credits" && (product.creditAmount ?? 0) > 0) {
+      await grantCreditsExact(
+        ctx,
+        args.userId,
+        product.creditAmount as number,
+        `store:${product.slug}`,
+      );
+    }
 
     if (product.kind === "digital") {
       await ctx.db.insert("storeEntitlements", {

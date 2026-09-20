@@ -288,4 +288,28 @@ export const FAQ_SEED: FaqSeed[] = [
     answer:
       "Operators can run identity verification on request — start from Support and mention verification. To delete your account and data, contact support; you can choose whether published stories come down or stay up with your attribution.",
   },
+  {
+    category: "account",
+    question: "What are Frames, Titles, and Boosts in the Cosmetic Lab?",
+    answer:
+      "The Cosmetic Lab on your Account page is where Star Credits become style. Frames dress your entire profile card and header badge in a holographic ring — Ion, Void, Terra, and Admiral tints. Titles are name flairs (Signal Warden, Void Cartographer, Keeper of the Deep Canon) shown next to your callsign on profiles and bylines; two mission-line titles — Fleet Honor and Signal Legend — can never be bought, only awarded by command. Boosts are consumables: an XP Surge doubles XP for 24 hours (500 credits) and a Credit Surge doubles credit earnings for 24 hours (750). Everything is cosmetic — nothing in the Lab affects story approvals, ranks, or standing.",
+  },
+  {
+    category: "account",
+    question: "How do I earn Star Credits, and what are they worth?",
+    answer:
+      "The faucet: publish a story (100), get lore approved (25), certify a discovery (25), file a mission report (10), comment (5) — plus quests, contests, and vault ciphers. The sinks: frames from 250, titles from 300, boosts from 500, and the Keeper of the Deep Canon title at 900 for veterans. A Credit Surge doubles everything you earn for a day, and weekly spotlight items rotate into the Lab every ISO week — the shelf is the same for the whole fleet.",
+  },
+  {
+    category: "account",
+    question: "Can I buy Star Credits with real money?",
+    answer:
+      "Yes — Star Credit caches are sold in the Requisition Depot alongside lore bibles and merch. A cache grants its full credit amount exactly as labeled; boosts and sales events never multiply a purchase. Credits buy cosmetics, titles, and boosts only — they never influence moderation, story approval, or rank.",
+  },
+  {
+    category: "account",
+    question: "What is the weekly rotation in the Cosmetic Lab?",
+    answer:
+      "One frame and one title are featured each week (the cycle runs Monday to Sunday, UTC) — the spotlight is identical for every member and marked with a sparkle in the Lab. Rotated items return; nothing in the catalog is permanently retired, and seasonal editions arrive with events.",
+  },
 ];

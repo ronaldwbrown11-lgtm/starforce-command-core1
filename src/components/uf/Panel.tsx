@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useScrollReveal } from "@/hooks/use-scroll-reveal";
+import { FRAME_CATALOG } from "@/lib/economy";
 
 type GlowAccent = "cyan" | "violet" | "amber" | "magenta" | "green";
 
@@ -61,6 +62,9 @@ interface HoloCardProps extends PanelProps {
   as?: "div" | "section" | "article" | "li";
   glow?: boolean;
   staggerIndex?: number;
+  /** Cosmetic Lab frame id — wraps the card in a holographic ring of the
+   *  frame's colors so purchases dress the whole card, not just the avatar. */
+  frame?: string | null;
 }
 
 export function HoloCard({
@@ -73,10 +77,12 @@ export function HoloCard({
   staggerIndex,
   style,
   htmlProps,
+  frame,
 }: HoloCardProps) {
   const ref = useScrollReveal<HTMLElement>({ staggerIndex });
 
-  return (
+  const frameSpec = frame ? FRAME_CATALOG[frame] : undefined;
+  const card = (
     <As
       ref={reveal ? ref : undefined}
       className={cn(
@@ -84,6 +90,7 @@ export function HoloCard({
         glow && "uf-card--glow",
         accent && ACCENT_BORDERS[accent],
         reveal && "uf-reveal",
+        frameSpec && "uf-card--framed",
         className,
       )}
       style={style}
@@ -92,6 +99,22 @@ export function HoloCard({
       {children}
     </As>
   );
+
+  if (frameSpec) {
+    return (
+      <div
+        style={{
+          background: `conic-gradient(from 220deg, ${frameSpec.colors[0]}, ${frameSpec.colors[1]}, ${frameSpec.colors[2]}, ${frameSpec.colors[0]})`,
+          borderRadius: 16,
+          padding: 2,
+          boxShadow: `0 0 22px ${frameSpec.colors[0]}55`,
+        }}
+      >
+        {card}
+      </div>
+    );
+  }
+  return card;
 }
 
 // ============================================================================

@@ -18,7 +18,7 @@ import { Flair } from "@/components/widgets/Flair";
 import { ShipProfileCard } from "@/components/ships/ShipProfileCard";
 import { useAuth } from "@/hooks/use-auth";
 import { tierLabel, tierPillVariant } from "@/lib/tiers";
-import { FRAME_CATALOG } from "@/lib/economy";
+import { FRAME_CATALOG, TITLE_CATALOG } from "@/lib/economy";
 
 import { usePageMeta } from "@/hooks/use-page-meta";
 export default function Profile() {
@@ -120,7 +120,7 @@ export default function Profile() {
       />
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
         <div className="uf-grid uf-grid--3">
-          <HoloCard>
+          <HoloCard frame={profile?.frame}>
             <div className="flex items-center gap-3 mb-3">
               <div
                 aria-hidden
@@ -168,6 +168,18 @@ export default function Profile() {
                   <h2 className="text-xl font-semibold truncate">
                     {profileName}
                   </h2>
+                  {profile.title && TITLE_CATALOG[profile.title] ? (
+                    <span
+                      className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold"
+                      style={{
+                        color: TITLE_CATALOG[profile.title].color,
+                        borderColor: `${TITLE_CATALOG[profile.title].color}55`,
+                        background: `${TITLE_CATALOG[profile.title].color}12`,
+                      }}
+                    >
+                      {TITLE_CATALOG[profile.title].label}
+                    </span>
+                  ) : null}
                   {profile.flair ? <Flair label={profile.flair} /> : null}
                 </div>
                 {profile.fleet ? (
