@@ -143,8 +143,15 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
       vbY: minY - pad,
       vbW: Math.max(1120, maxX - minX) + pad * 2,
       vbH: Math.max(760, maxY - minY) + pad * 2,
-    };
-  }, [sectors]);  // Real-galaxy backdrop mapping — recomputed only when the viewBox reframes.
+    };  }, [sectors]);
+
+  // UI scale factor — the chart is drawn in viewBox units, so zooming out
+  // (wide field of view) shrinks everything drawn. This compensates: labels,
+  // nodes, gates, and tooltips scale with the field of view so they stay
+  // readable at any zoom. Clamped to sane bounds.
+  const UI = Math.max(1, Math.min(2.6, viewBox.vbW / 800));
+
+  // Real-galaxy backdrop mapping — recomputed only when the viewBox reframes.
   const galaxy = useMemo(
     () => {
       const scale = Math.max(viewBox.vbW / MILKY_WAY.w, viewBox.vbH / MILKY_WAY.h);
@@ -428,7 +435,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                     x2={l.x2}
                     y2={l.y2}
                     stroke={l.color}
-                    strokeWidth={0.9}
+                    strokeWidth={0.9 * UI}
                   />
                 ))}
               </g>
@@ -446,7 +453,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                     x2={l.x2}
                     y2={l.y2}
                     stroke="var(--uf-text-muted)"
-                    strokeWidth={0.55}
+                    strokeWidth={0.55 * UI}
                     opacity={0.45}
                   />
                 ))}
@@ -458,17 +465,17 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
               <g aria-hidden="true">
                 {gateLanes.map((l) => (
                   <g key={l.id} transform={`translate(${l.gx} ${l.gy})`}>
-                    <circle r={7} fill="none" stroke={l.color} strokeWidth={0.6} opacity={0.35} className="uf-warp-gate" />
+                    <circle r={7 * UI} fill="none" stroke={l.color} strokeWidth={0.6 * UI} opacity={0.35} className="uf-warp-gate" />
                     <rect
-                      x={-2.2}
-                      y={-2.2}
-                      width={4.4}
-                      height={4.4}
+                      x={-2.2 * UI}
+                      y={-2.2 * UI}
+                      width={4.4 * UI}
+                      height={4.4 * UI}
                       transform="rotate(45)"
                       fill="var(--uf-navy)"
                       stroke={l.color}
-                      strokeWidth={1}
-                      rx={0.6}
+                      strokeWidth={1 * UI}
+                      rx={0.6 * UI}
                       className="uf-warp-gate"
                     />
                   </g>
@@ -481,17 +488,17 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
               <g aria-hidden="true">
                 {memberLanes.map((l) => (
                   <g key={l.id} transform={`translate(${l.gx} ${l.gy})`}>
-                    <circle r={4.5} fill="none" stroke="var(--uf-text-muted)" strokeWidth={0.5} opacity={0.25} className="uf-warp-gate" />
+                    <circle r={4.5 * UI} fill="none" stroke="var(--uf-text-muted)" strokeWidth={0.5 * UI} opacity={0.25} className="uf-warp-gate" />
                     <rect
-                      x={-1.5}
-                      y={-1.5}
-                      width={3}
-                      height={3}
+                      x={-1.5 * UI}
+                      y={-1.5 * UI}
+                      width={3 * UI}
+                      height={3 * UI}
                       transform="rotate(45)"
                       fill="var(--uf-navy)"
                       stroke="var(--uf-text-muted)"
-                      strokeWidth={0.7}
-                      rx={0.4}
+                      strokeWidth={0.7 * UI}
+                      rx={0.4 * UI}
                       className="uf-warp-gate"
                     />
                   </g>
@@ -508,10 +515,10 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                 aria-label="Open Sol sector lore"
                 onClick={(e) => e.stopPropagation()}
               >
-                <circle cx={galaxy.sol.x} cy={galaxy.sol.y} r={10} fill="var(--uf-gold)" fillOpacity={0.12} className="uf-warp-gate" />
-                <circle cx={galaxy.sol.x} cy={galaxy.sol.y} r={5.5} fill="none" stroke="var(--uf-gold)" strokeWidth={1} opacity={0.8} />
-                <circle cx={galaxy.sol.x} cy={galaxy.sol.y} r={2} fill="var(--uf-gold)" />
-                <text x={galaxy.sol.x + 9} y={galaxy.sol.y - 6} fontSize={11} fill="var(--uf-gold)" fontWeight={600}>
+                <circle cx={galaxy.sol.x} cy={galaxy.sol.y} r={10 * UI} fill="var(--uf-gold)" fillOpacity={0.12} className="uf-warp-gate" />
+                <circle cx={galaxy.sol.x} cy={galaxy.sol.y} r={5.5 * UI} fill="none" stroke="var(--uf-gold)" strokeWidth={1 * UI} opacity={0.8} />
+                <circle cx={galaxy.sol.x} cy={galaxy.sol.y} r={2 * UI} fill="var(--uf-gold)" />
+                <text x={galaxy.sol.x + 9 * UI} y={galaxy.sol.y - 6 * UI} fontSize={11 * UI} fill="var(--uf-gold)" fontWeight={600}>
                   Sol
                 </text>
               </a>
@@ -519,9 +526,9 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
 
             {/* 47 Ursae Majoris — the Alliance Capital, a short hop from Sol */}
             <g aria-hidden="true">
-              <circle cx={uma47.x} cy={uma47.y} r={3} fill="none" stroke="var(--uf-cyan)" strokeWidth={1} opacity={0.85} />
-              <circle cx={uma47.x} cy={uma47.y} r={1.4} fill="var(--uf-cyan)" />
-              <text x={uma47.x + 6} y={uma47.y + 3} fontSize={9.5} fill="var(--uf-text)">
+              <circle cx={uma47.x} cy={uma47.y} r={3 * UI} fill="none" stroke="var(--uf-cyan)" strokeWidth={1 * UI} opacity={0.85} />
+              <circle cx={uma47.x} cy={uma47.y} r={1.4 * UI} fill="var(--uf-cyan)" />
+              <text x={uma47.x + 6 * UI} y={uma47.y + 3 * UI} fontSize={9.5 * UI} fill="var(--uf-text)">
                 47 Ursae Majoris
               </text>
             </g>
@@ -531,7 +538,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
               <g>
                 {(sectors ?? []).map((s, i) => {
                   const hue = HUES[i % HUES.length];
-                  const r = Math.min(20, 6 + Math.sqrt(s.loreCount ?? 0) * 2);
+                  const r = Math.min(20 * UI, (6 + Math.sqrt(s.loreCount ?? 0) * 2) * UI);
                   const link = `/lore?sector=${encodeURIComponent(s.name)}`;
                   return (
                     <a
@@ -541,13 +548,13 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                       aria-label={`Open ${s.name} lore (${s.loreCount ?? 0} entries)`}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <circle cx={s.x} cy={s.y} r={r + 4} fill={hue.glow} fillOpacity={0.1} />
-                      <circle cx={s.x} cy={s.y} r={r} fill={hue.glow} fillOpacity={0.25} stroke={hue.glow} strokeWidth={1.2} />
-                      <circle cx={s.x} cy={s.y} r={2.5} fill={hue.glow} />
-                      <text x={s.x} y={s.y + r + 12} fontSize={11} fill="var(--uf-text)" textAnchor="middle">
+                      <circle cx={s.x} cy={s.y} r={r + 4 * UI} fill={hue.glow} fillOpacity={0.1} />
+                      <circle cx={s.x} cy={s.y} r={r} fill={hue.glow} fillOpacity={0.25} stroke={hue.glow} strokeWidth={1.2 * UI} />
+                      <circle cx={s.x} cy={s.y} r={2.5 * UI} fill={hue.glow} />
+                      <text x={s.x} y={s.y + r + 12 * UI} fontSize={11 * UI} fill="var(--uf-text)" textAnchor="middle">
                         {s.name}
                       </text>
-                      <text x={s.x} y={s.y + r + 24} fontSize={9} fill="var(--uf-muted)" textAnchor="middle">
+                      <text x={s.x} y={s.y + r + 24 * UI} fontSize={9 * UI} fill="var(--uf-muted)" textAnchor="middle">
                         {s.loreCount ?? 0} lore
                       </text>
                     </a>
@@ -592,20 +599,20 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                       onBlur={() => setHoverId(null)}
                       style={{ cursor: "pointer" }}
                     >
-                      <circle cx={c.cx} cy={c.cy} r={single ? 11 : 13} fill="rgba(80,255,160,0.12)" />
+                      <circle cx={c.cx} cy={c.cy} r={single ? 11 * UI : 13 * UI} fill="rgba(80,255,160,0.12)" />
                       <circle
                         cx={c.cx}
                         cy={c.cy}
-                        r={single ? 6.5 : 8}
+                        r={single ? 6.5 * UI : 8 * UI}
                         fill="rgba(80,255,160,0.28)"
                         stroke="var(--uf-green)"
-                        strokeWidth={1.4}
+                        strokeWidth={1.4 * UI}
                       />
                       {/* crosshair */}
-                      <line x1={c.cx - 3} y1={c.cy} x2={c.cx + 3} y2={c.cy} stroke="var(--uf-green)" strokeWidth={1} />
-                      <line x1={c.cx} y1={c.cy - 3} x2={c.cx} y2={c.cy + 3} stroke="var(--uf-green)" strokeWidth={1} />
+                      <line x1={c.cx - 3 * UI} y1={c.cy} x2={c.cx + 3 * UI} y2={c.cy} stroke="var(--uf-green)" strokeWidth={0.9 * UI} />
+                      <line x1={c.cx} y1={c.cy - 3 * UI} x2={c.cx} y2={c.cy + 3 * UI} stroke="var(--uf-green)" strokeWidth={0.9 * UI} />
                       {!single && (
-                        <text x={c.cx} y={c.cy + 3} fontSize={8} fill="var(--uf-green)" textAnchor="middle" fontWeight={700}>
+                        <text x={c.cx} y={c.cy + 3 * UI} fontSize={8 * UI} fill="var(--uf-green)" textAnchor="middle" fontWeight={700}>
                           {c.members.length}
                         </text>
                       )}
@@ -613,19 +620,19 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                       {hovering && (
                         <g>
                           <rect
-                            x={c.cx - 40}
-                            y={c.cy - 30}
-                            width={80}
-                            height={16}
-                            rx={4}
+                            x={c.cx - 40 * UI}
+                            y={c.cy - 30 * UI}
+                            width={80 * UI}
+                            height={16 * UI}
+                            rx={4 * UI}
                             fill="rgba(5,8,22,0.85)"
                             stroke="rgba(80,255,160,0.5)"
                           />
-                          <text x={c.cx} y={c.cy - 18} fontSize={9} fill="var(--uf-green)" textAnchor="middle" fontWeight={600}>
+                          <text x={c.cx} y={c.cy - 18 * UI} fontSize={9 * UI} fill="var(--uf-green)" textAnchor="middle" fontWeight={600}>
                             {label}
                           </text>
                           {single && isNew(first) && (
-                            <text x={c.cx + 9} y={c.cy - 22} fontSize={7} fill="var(--uf-gold)" textAnchor="start" fontWeight={700}>
+                            <text x={c.cx + 9 * UI} y={c.cy - 22 * UI} fontSize={7 * UI} fill="var(--uf-gold)" textAnchor="start" fontWeight={700}>
                               NEW
                             </text>
                           )}
