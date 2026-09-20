@@ -435,10 +435,14 @@
 
 /* Cosmetic Lab equipped frame: kills the card's own border so the outer
    conic-gradient ring (set by HoloCard's frame wrapper) reads as the card's
-   frame. Inside corner radius shrinks to sit flush against the wrapper. */
+   frame. Inside corner radius shrinks to sit flush against the wrapper.
+   The face goes (near-)opaque: the card glass is translucent, and without
+   this the wrapper's gradient bleeds through the whole interior — users
+   want ONLY the outline tinted. */
 .uf-card--framed {
   border-color: transparent;
   border-radius: 14px;
+  background: linear-gradient(145deg, rgba(16, 24, 39, 0.97), rgba(11, 18, 32, 0.95));
 }
 
 .uf-card--glow:hover {

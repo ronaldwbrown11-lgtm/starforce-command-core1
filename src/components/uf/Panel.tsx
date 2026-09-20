@@ -62,8 +62,9 @@ interface HoloCardProps extends PanelProps {
   as?: "div" | "section" | "article" | "li";
   glow?: boolean;
   staggerIndex?: number;
-  /** Cosmetic Lab frame id — wraps the card in a holographic ring of the
-   *  frame's colors so purchases dress the whole card, not just the avatar. */
+  /** Cosmetic Lab frame id — outlines the card edge (and a soft under-glow)
+   *  in the frame's colors. Interior stays dark glass; only the outline is
+   *  tinted. */
   frame?: string | null;
 }
 
@@ -107,7 +108,7 @@ export function HoloCard({
           background: `conic-gradient(from 220deg, ${frameSpec.colors[0]}, ${frameSpec.colors[1]}, ${frameSpec.colors[2]}, ${frameSpec.colors[0]})`,
           borderRadius: 16,
           padding: 2,
-          boxShadow: `0 0 22px ${frameSpec.colors[0]}55`,
+          boxShadow: `0 0 12px ${frameSpec.colors[0]}3d`,
         }}
       >
         {card}
