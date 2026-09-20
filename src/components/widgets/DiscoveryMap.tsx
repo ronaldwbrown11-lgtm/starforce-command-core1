@@ -29,6 +29,101 @@ const HUES = [
 const DRAW_CAP = 60; // only the most recent N charted systems are drawn
 const CLUSTER_R = 22; // viewBox units — systems closer than this group together
 
+// ---------------------------------------------------------------------------
+// Galaxy underlay — a procedural deep-sky backdrop rendered in the same SVG
+// coordinate space as the interactive layers, so it stays registered with
+// sector nodes no matter how the viewBox reframes. All shapes are seeded
+// (deterministic) so the galaxy never jumps between renders.
+// ---------------------------------------------------------------------------
+
+/** Deterministic hash → [0,1). Same family as `seeded` above. */
+function seeded2(i: number) {
+  const s = Math.sin(i * 269.5 + 183.3) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+/** Build an SVG path string for a logarithmic spiral arm around (cx, cy). */
+function spiralArmPath(
+  cx: number,
+  cy: number,
+  r0: number,
+  growth: number,
+  thetaStart: number,
+  thetaEnd: number,
+): string {
+  const steps = 44;
+  let d = "";
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const theta = thetaStart + (thetaEnd - thetaStart) * t;
+    const r = r0 * Math.exp(growth * theta);
+    const x = cx + r * Math.cos(theta);
+    const y = cy + r * Math.sin(theta);
+    d += (i === 0 ? "M" : "L") + x.toFixed(1) + " " + y.toFixed(1) + " ";
+  }
+  return d;
+}
+
+type GalaxyUnderlay = {
+  arms: Array<{ d: string; width: number; color: string; opacity: number }>;
+  dustLanes: Array<{ d: string; width: number; color: string; opacity: number }>;
+  distantGalaxies: Array<{ x: number; y: number; rx: number; ry: number; rot: number; opacity: number }>;
+};
+
+/**
+ * Procedural galaxy backdrop sized to the current viewBox. Arms sweep
+ * counter-clockwise from the core; dust lanes trace slightly offset paths;
+ * distant galaxies scatter along the rim. Everything derives from the viewBox
+ * so it stays registered with canon-sector coordinates.
+ */
+function buildGalaxyUnderlay(vbX: number, vbY: number, vbW: number, vbH: number): GalaxyUnderlay {
+  const cx = vbX + vbW * 0.5;
+  const cy = vbY + vbH * 0.5;
+  const scale = Math.min(vbW, vbH);
+
+  // Palette — deep-theme hues only, all at low opacity so interactive layers
+  // stay readable on top.
+  const armColors = ["rgba(139,92,246,0.16)", "rgba(0,229,255,0.13)", "rgba(230,168,23,0.09)"];
+  const dustColor = "rgba(0,0,0,0.35)";
+
+  const arms: GalaxyUnderlay["arms"] = [];
+  const dustLanes: GalaxyUnderlay["dustLanes"] = [];
+  const armCount = 3;
+  for (let a = 0; a < armCount; a++) {
+    const phase = (a / armCount) * Math.PI * 2 + seeded2(a * 7) * 0.4;
+    for (let w = 0; w < 2; w++) {
+      const offset = w === 0 ? 0 : seeded2(a * 13 + w) * 0.22 - 0.11;
+      const d = spiralArmPath(cx, cy, scale * 0.055, 0.31, phase + offset, phase + offset + 2.1);
+      arms.push({
+        d,
+        width: scale * (w === 0 ? 0.075 : 0.045),
+        color: armColors[a % armColors.length],
+        opacity: w === 0 ? 1 : 0.55,
+      });
+    }
+    // Dust lane hugging each arm's inner edge.
+    const dustD = spiralArmPath(cx, cy, scale * 0.045, 0.31, phase - 0.16, phase - 0.16 + 2.1);
+    dustLanes.push({
+      d: dustD,
+      width: scale * 0.028,
+      color: dustColor,
+    opacity: 0.5,
+    });
+  }
+
+  // Distant elliptical galaxies scattered around the rim.
+  const distantGalaxies = Array.from({ length: 7 }, (_, i) => ({
+    x: vbX + seeded2(i * 3 + 11) * vbW,
+    y: vbY + seeded2(i * 5 + 17) * vbH,
+    rx: scale * (0.012 + seeded2(i * 7 + 23) * 0.02),
+    ry: scale * (0.005 + seeded2(i * 11 + 31) * 0.008),
+    rot: seeded2(i * 13 + 41) * 180,
+    opacity: 0.12 + seeded2(i * 17 + 53) * 0.18,
+  }));
+
+  return { arms, dustLanes, distantGalaxies };
+}
+
 type Discovery = {
   _id: string;
   title: string;
@@ -46,8 +141,9 @@ type Discovery = {
 type Cluster = { members: Discovery[]; cx: number; cy: number };
 
 const LAYERS = [
+  { key: "galaxy", label: "Galaxy underlay" },
   { key: "stars", label: "Starfield" },
-  { key: "connections", label: "Connections" },
+  { key: "connections", label: "Transit lanes & gates" },
   { key: "sectors", label: "Canon sectors" },
   { key: "discoveries", label: "Member systems" },
 ] as const;
@@ -71,6 +167,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   const [clusterOpen, setClusterOpen] = useState<Cluster | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [layers, setLayers] = useState<Record<LayerKey, boolean>>({
+    galaxy: true,
     stars: true,
     connections: true,
     sectors: true,
@@ -108,6 +205,76 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
       vbH: Math.max(340, maxY - minY) + pad * 2,
     };
   }, [sectors]);
+
+  // Procedural galaxy backdrop — rebuilt only when the viewBox reframes.
+  const underlay = useMemo(
+    () => buildGalaxyUnderlay(viewBox.vbX, viewBox.vbY, viewBox.vbW, viewBox.vbH),
+    [viewBox.vbX, viewBox.vbY, viewBox.vbW, viewBox.vbH],
+  );
+
+  // Curated warp gates from the operator console. Each row links two sector
+  // slugs; we resolve live positions client-side so moving a sector moves its
+  // lanes and gates too.
+  const gateRows = useQuery(api.content.warpGates);
+
+  // Curated lanes + gate markers. When no gates are defined yet, we fall back
+  // to the original pairwise connection lines so the chart still reads well.
+  const gateLanes = useMemo(() => {
+    const bySlug = new Map((sectors ?? []).map((s) => [s.slug, s]));
+    return (gateRows ?? [])
+      .map((g) => {
+        const a = bySlug.get(g.fromSlug);
+        const b = bySlug.get(g.toSlug);
+        if (!a || !b) return null;
+        const hueIndex = (a.x + a.y + b.x + b.y) | 0;
+        return {
+          id: g._id as string,
+          label: g.label,
+          x1: a.x,
+          y1: a.y,
+          x2: b.x,
+          y2: b.y,
+          gx: (a.x + b.x) / 2,
+          gy: (a.y + b.y) / 2,
+          color: HUES[hueIndex % HUES.length].glow,
+        };
+      })
+      .filter((l): l is NonNullable<typeof l> => l !== null);
+  }, [gateRows, sectors]);
+
+  // Member warp lanes — every APPROVED member system that declared a home
+  // sector knits itself to that sector with a fainter, thinner lane. Reads as
+  // a "registered civilian route" under the canon Starnet. Deep-space
+  // proposals (no sector) stay unlinked. Approved-only comes free: the
+  // discoveries query already filters status, so the Bridge canonizes each
+  // lane by approving the survey.
+  const memberLanes = useMemo(() => {
+    const byName = new Map((sectors ?? []).map((s) => [s.name, s]));
+    const lanes: Array<{
+      id: string;
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      gx: number;
+      gy: number;
+    }> = [];
+    for (const d of discoveries ?? []) {
+      if (!d.sector) continue;
+      const s = byName.get(d.sector);
+      if (!s) continue;
+      lanes.push({
+        id: d._id,
+        x1: d.x,
+        y1: d.y,
+        x2: s.x,
+        y2: s.y,
+        gx: (d.x + s.x) / 2,
+        gy: (d.y + s.y) / 2,
+      });
+    }
+    return lanes;
+  }, [discoveries, sectors]);
 
   // Decorative starfield dots (stable across renders).
   const stars = useMemo(() => {
@@ -224,7 +391,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
             <h2 className="text-xl mt-1">The Outer Rim — live survey chart</h2>
             <p className="text-uf-muted text-xs mt-1 max-w-[56ch]">
               Canon sectors are fixed; emerald nodes are systems charted by
-              members. Clusters group nearby systems — click a node to read its
+              members. Starnet transit lanes pulse toward warp gates. Clusters group nearby systems — click a node to read its
               survey, or click empty space to propose a discovery.
             </p>
           </div>
@@ -258,6 +425,48 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
               to propose a new system.
             </desc>
 
+            {/* Deep-sky galaxy underlay — sits behind everything, purely decorative */}
+            {layers.galaxy && (
+              <g aria-hidden="true">
+                {/* Core glow */}
+                <radialGradient id="uf-galaxy-core" gradientUnits="userSpaceOnUse"
+                  cx={viewBox.vbX + viewBox.vbW / 2} cy={viewBox.vbY + viewBox.vbH / 2}
+                  r={Math.min(viewBox.vbW, viewBox.vbH) * 0.55}
+                >
+                  <stop offset="0%" stopColor="rgba(139,92,246,0.22)" />
+                  <stop offset="45%" stopColor="rgba(0,229,255,0.07)" />
+                  <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+                </radialGradient>
+                <rect
+                  x={viewBox.vbX}
+                  y={viewBox.vbY}
+                  width={viewBox.vbW}
+                  height={viewBox.vbH}
+                  fill="url(#uf-galaxy-core)"
+                />
+                {/* Spiral arms + dust lanes */}
+                {underlay.arms.map((a, i) => (
+                  <path key={`arm-${i}`} d={a.d} fill="none" stroke={a.color} strokeWidth={a.width} strokeLinecap="round" opacity={a.opacity} />
+                ))}
+                {underlay.dustLanes.map((d, i) => (
+                  <path key={`dust-${i}`} d={d.d} fill="none" stroke={d.color} strokeWidth={d.width} strokeLinecap="round" opacity={d.opacity} />
+                ))}
+                {/* Distant elliptical galaxies */}
+                {underlay.distantGalaxies.map((g, i) => (
+                  <ellipse
+                    key={`dg-${i}`}
+                    cx={g.x}
+                    cy={g.y}
+                    rx={g.rx}
+                    ry={g.ry}
+                    transform={`rotate(${g.rot} ${g.x} ${g.y})`}
+                    fill="#bfe9ff"
+                    opacity={g.opacity}
+                  />
+                ))}
+              </g>
+            )}
+
             {/* Decorative starfield */}
             {layers.stars && (
               <g>
@@ -267,25 +476,86 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
               </g>
             )}
 
-            {/* Connecting lines between canon sectors */}
+            {/* Canon Starnet — operator-curated lanes, full-strength styling */}
+            {layers.connections && gateLanes.length > 0 && (
+              <g strokeLinecap="round">
+                {gateLanes.map((l) => (
+                  <line
+                    key={l.id}
+                    className="uf-transit-lane"
+                    x1={l.x1}
+                    y1={l.y1}
+                    x2={l.x2}
+                    y2={l.y2}
+                    stroke={l.color}
+                    strokeWidth={0.9}
+                  />
+                ))}
+              </g>
+            )}
+
+            {/* Civilian routes — always-on member lanes, visually subordinate */}
             {layers.connections && (
               <g strokeLinecap="round">
-                {(sectors ?? []).map((a, i) =>
-                  (sectors ?? []).slice(i + 1).map((b, j) => {
-                    const hue = HUES[(i + j) % HUES.length];
-                    return (
-                      <line
-                        key={`${a._id}-${b._id}`}
-                        x1={a.x}
-                        y1={a.y}
-                        x2={b.x}
-                        y2={b.y}
-                        stroke={hue.line}
-                        strokeWidth={0.8}
-                      />
-                    );
-                  }),
-                )}
+                {memberLanes.map((l) => (
+                  <line
+                    key={l.id}
+                    className="uf-transit-lane"
+                    x1={l.x1}
+                    y1={l.y1}
+                    x2={l.x2}
+                    y2={l.y2}
+                    stroke="var(--uf-text-muted)"
+                    strokeWidth={0.55}
+                    opacity={0.45}
+                  />
+                ))}
+              </g>
+            )}
+
+            {/* Warp gates — canon gates on curated lanes... */}
+            {layers.connections && gateLanes.length > 0 && (
+              <g aria-hidden="true">
+                {gateLanes.map((l) => (
+                  <g key={l.id} transform={`translate(${l.gx} ${l.gy})`}>
+                    <circle r={7} fill="none" stroke={l.color} strokeWidth={0.6} opacity={0.35} className="uf-warp-gate" />
+                    <rect
+                      x={-2.2}
+                      y={-2.2}
+                      width={4.4}
+                      height={4.4}
+                      transform="rotate(45)"
+                      fill="var(--uf-navy)"
+                      stroke={l.color}
+                      strokeWidth={1}
+                      rx={0.6}
+                      className="uf-warp-gate"
+                    />
+                  </g>
+                ))}
+              </g>
+            )}
+
+            {/* Civilian gates — smaller, dimmer markers on member lanes */}
+            {layers.connections && (
+              <g aria-hidden="true">
+                {memberLanes.map((l) => (
+                  <g key={l.id} transform={`translate(${l.gx} ${l.gy})`}>
+                    <circle r={4.5} fill="none" stroke="var(--uf-text-muted)" strokeWidth={0.5} opacity={0.25} className="uf-warp-gate" />
+                    <rect
+                      x={-1.5}
+                      y={-1.5}
+                      width={3}
+                      height={3}
+                      transform="rotate(45)"
+                      fill="var(--uf-navy)"
+                      stroke="var(--uf-text-muted)"
+                      strokeWidth={0.7}
+                      rx={0.4}
+                      className="uf-warp-gate"
+                    />
+                  </g>
+                ))}
               </g>
             )}
 

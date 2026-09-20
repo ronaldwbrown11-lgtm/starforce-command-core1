@@ -238,6 +238,13 @@ export const sectors = query({
   handler: async (ctx) => ctx.db.query("sectorMap").collect(),
 });
 
+// Public warp-gate roster for the galaxy map. Returns stored sector slugs
+// (not ids) so the widget can join against the sectors query client-side.
+export const warpGates = query({
+  args: {},
+  handler: async (ctx) => ctx.db.query("warpGates").withIndex("by_fromSlug").collect(),
+});
+
 export const listTransmissions = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, { limit }) => {

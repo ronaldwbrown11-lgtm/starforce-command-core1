@@ -1140,6 +1140,34 @@
 /* ===========================================================================
    REDUCED MOTION
    =========================================================================== */
+/* ===========================================================================
+   STAR ATLAS — transit lanes & warp gates
+   =========================================================================== */
+@keyframes uf-transit-dash {
+  to {
+    stroke-dashoffset: -10; /* = dash period (4+6), so the loop is seamless */
+  }
+}
+
+.uf-transit-lane {
+  stroke-dasharray: 4 6;
+  animation: uf-transit-dash 1.6s linear infinite;
+}
+
+@keyframes uf-warp-gate-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.uf-warp-gate {
+  animation: uf-warp-gate-pulse 2.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

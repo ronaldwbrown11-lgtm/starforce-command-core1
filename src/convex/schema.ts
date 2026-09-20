@@ -681,6 +681,19 @@ const schema = defineSchema(
       y: v.number(),
     }).index("by_slug", ["slug"]),
 
+    // Operator-curated Starnet warp gates: named transit corridors linking two
+    // canon sectors on the galaxy map. Lanes/gates render only between the
+    // sector pairs registered here; deleting a sector removes its gates.
+    warpGates: defineTable({
+      label: v.string(),
+      fromSlug: v.string(),
+      toSlug: v.string(),
+      note: v.optional(v.string()),
+      createdAt: v.number(),
+    })
+      .index("by_fromSlug", ["fromSlug"])
+      .index("by_toSlug", ["toSlug"]),
+
     // Member-proposed star systems charted onto the galaxy map. Members
     // click an empty region to propose a system; operators approve/reject.
     discoveries: defineTable({

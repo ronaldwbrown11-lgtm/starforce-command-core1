@@ -6,7 +6,7 @@ import { OperatorShell } from "@/components/operator/OperatorShell";
 import { GalaxyMapMini } from "@/components/widgets/GalaxyMapMini";
 import { HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { toast } from "sonner";
-import { Loader2, Map as MapIcon, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Loader2, Map as MapIcon, Pencil, Plus, Route, Trash2, X } from "lucide-react";
 
 type SectorDoc = {
   _id: Id<"sectorMap">;
@@ -37,12 +37,32 @@ const EMPTY_FORM: FormState = {
   y: "150",
 };
 
+type GateFormState = {
+  id?: Id<"warpGates">;
+  label: string;
+  fromSlug: string;
+  toSlug: string;
+  note: string;
+};
+
+const EMPTY_GATE_FORM: GateFormState = {
+  label: "",
+  fromSlug: "",
+  toSlug: "",
+  note: "",
+};
+
 export default function OperatorSectorMap() {
   const sectors = useQuery(api.sectorMap.listSectorsForOperator);
   const upsert = useMutation(api.sectorMap.upsertSector);
   const remove = useMutation(api.sectorMap.deleteSector);
+  const gates = useQuery(api.sectorMap.listGatesForOperator);
+  const upsertGate = useMutation(api.sectorMap.upsertGate);
+  const deleteGate = useMutation(api.sectorMap.deleteGate);
   const [editing, setEditing] = useState<FormState | null>(null);
   const [busy, setBusy] = useState(false);
+  const [gateEditing, setGateEditing] = useState<GateFormState | null>(null);
+  const [gateBusy, setGateBusy] = useState(false);
 
   function startEdit(s?: SectorDoc) {
     setEditing(
@@ -96,7 +116,7 @@ export default function OperatorSectorMap() {
   }
 
   async function onDelete(s: SectorDoc) {
-    if (!window.confirm(`Delete sector "${s.name}" from the map?`)) return;
+    if (!window.confirm(`Delete sector "${s.name}" from the map? Its warp gates will be removed too.`)) return;
     try {
       await remove({ id: s._id });
       toast.success("Sector removed.");
@@ -104,6 +124,47 @@ export default function OperatorSectorMap() {
       toast.error(e instanceof Error ? e.message : "Delete failed.");
     }
   }
+
+  async function saveGate() {
+    if (!gateEditing) return;
+    const label = gateEditing.label.trim();
+    if (!label) return toast.error("Gate label is required.");
+    if (!gateEditing.fromSlug || !gateEditing.toSlug) {
+      return toast.error("Pick both ends of the corridor.");
+    }
+    if (gateEditing.fromSlug === gateEditing.toSlug) {
+      return toast.error("A corridor cannot link a sector to itself.");
+    }
+    setGateBusy(true);
+    try {
+      await upsertGate({
+        id: gateEditing.id,
+        label,
+        fromSlug: gateEditing.fromSlug,
+        toSlug: gateEditing.toSlug,
+        note: gateEditing.note.trim() || undefined,
+      });
+      toast.success(gateEditing.id ? "Gate updated." : "Gate added.");
+      setGateEditing(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed.");
+    } finally {
+      setGateBusy(false);
+    }
+  }
+
+  async function onDeleteGate(g: { _id: Id<"warpGates">; label: string; fromSlug: string; toSlug: string }) {
+    if (!window.confirm(`Delete gate "${g.label}" (${g.fromSlug} ↔ ${g.toSlug})?`)) return;
+    try {
+      await deleteGate({ id: g._id });
+      toast.success("Gate removed.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed.");
+    }
+  }
+
+  const sectorName = (slug: string) =>
+    sectors?.find((s) => s.slug === slug)?.name ?? slug;
 
   return (
     <OperatorShell>
@@ -123,6 +184,150 @@ export default function OperatorSectorMap() {
 
       <section aria-label="Live map preview" className="mb-6">
         <GalaxyMapMini />
+      </section>
+
+      <section aria-label="Warp gate management" className="mb-6">
+        <header className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Route className="h-5 w-5 text-uf-cyan" aria-hidden />
+              Starnet warp gates
+              <span className="text-uf-muted text-sm">({gates?.length ?? "…"})</span>
+            </h2>
+            <p className="text-uf-muted text-xs mt-1 max-w-2xl">
+              Transit corridors between two canon sectors. Each lane renders on
+              the public map with a pulsing warp-gate marker at its midpoint —
+              label them to match your lore. Until at least one gate exists,
+              the public map falls back to simple pairwise connection lines.
+            </p>
+          </div>
+          <NeonButton
+            variant="primary"
+            onClick={() => setGateEditing(EMPTY_GATE_FORM)}
+            disabled={!sectors || sectors.length < 2}
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            New gate
+          </NeonButton>
+        </header>
+
+        {gateEditing ? (
+          <HoloCard className="mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-semibold">
+                {gateEditing.id ? `Edit ${gateEditing.label}` : "Add warp gate"}
+              </h3>
+              <button
+                type="button"
+                aria-label="Close gate editor"
+                className="uf-btn uf-btn--ghost"
+                onClick={() => setGateEditing(null)}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field
+                label="Corridor label"
+                value={gateEditing.label}
+                onChange={(v) => setGateEditing((f) => f && { ...f, label: v })}
+                placeholder="Vega Run"
+              />
+              <div className="text-xs uppercase tracking-[0.16em] text-uf-muted">
+                From sector
+                <select
+                  value={gateEditing.fromSlug}
+                  onChange={(e) => setGateEditing((f) => f && { ...f, fromSlug: e.target.value })}
+                  className="mt-1 w-full border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
+                >
+                  <option value="">Select sector…</option>
+                  {(sectors ?? []).map((s) => (
+                    <option key={s._id} value={s.slug}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="text-xs uppercase tracking-[0.16em] text-uf-muted">
+                To sector
+                <select
+                  value={gateEditing.toSlug}
+                  onChange={(e) => setGateEditing((f) => f && { ...f, toSlug: e.target.value })}
+                  className="mt-1 w-full border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
+                >
+                  <option value="">Select sector…</option>
+                  {(sectors ?? []).map((s) => (
+                    <option key={s._id} value={s.slug}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+              <Field
+                label="Note (optional)"
+                value={gateEditing.note}
+                onChange={(v) => setGateEditing((f) => f && { ...f, note: v })}
+                placeholder="Primary military transit route"
+              />
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <NeonButton variant="ghost" onClick={() => setGateEditing(null)} disabled={gateBusy}>
+                Cancel
+              </NeonButton>
+              <NeonButton variant="primary" onClick={saveGate} loading={gateBusy} disabled={gateBusy}>
+                {gateEditing.id ? "Save changes" : "Add gate"}
+              </NeonButton>
+            </div>
+          </HoloCard>
+        ) : null}
+
+        <HoloCard>
+          {gates === undefined ? (
+            <div className="uf-skeleton" style={{ height: 120 }} />
+          ) : gates.length === 0 ? (
+            <p className="uf-empty">
+              No warp gates yet. The public map draws simple connection lines
+              until you register your first corridor.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-2 list-none p-0 m-0">
+              {gates.map((g) => (
+                <li
+                  key={g._id}
+                  className="flex flex-wrap items-center justify-between gap-3 border border-[color:var(--uf-border)] rounded-md px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="text-base font-semibold truncate">{g.label}</p>
+                    <p className="text-uf-muted text-xs flex flex-wrap items-center gap-2 mt-1">
+                      <StatusPill variant="info">
+                        {sectorName(g.fromSlug)} ↔ {sectorName(g.toSlug)}
+                      </StatusPill>
+                    </p>
+                    {g.note ? (
+                      <p className="text-uf-muted text-xs mt-1 line-clamp-1">{g.note}</p>
+                    ) : null}
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <NeonButton
+                      variant="ghost"
+                      onClick={() =>
+                        setGateEditing({
+                          id: g._id,
+                          label: g.label,
+                          fromSlug: g.fromSlug,
+                          toSlug: g.toSlug,
+                          note: g.note ?? "",
+                        })
+                      }
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden />
+                      Edit
+                    </NeonButton>
+                    <NeonButton variant="danger" onClick={() => onDeleteGate(g)}>
+                      <Trash2 className="h-4 w-4" aria-hidden />
+                    </NeonButton>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </HoloCard>
       </section>
 
       <section aria-label="Sector management">
