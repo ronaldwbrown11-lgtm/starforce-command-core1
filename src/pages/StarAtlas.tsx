@@ -77,8 +77,11 @@ export default function StarAtlas() {
         secondary={{ label: "Survey operations", href: "/missions", variant: "ghost" }}
       />
 
-      <section className="uf-section max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-12">
-        <DiscoveryMap height={540} />
+      {/* Wide-format section — the atlas gets more horizontal room than the
+          standard content column so charted space and the surrounding galaxy
+          are both visible at once. */}
+      <section className="uf-section max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10">
+        <DiscoveryMap height={680} />
 
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           <HoloCard>

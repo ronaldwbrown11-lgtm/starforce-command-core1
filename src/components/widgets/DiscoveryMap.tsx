@@ -130,7 +130,10 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
     if (!sectors || !sectors.length) return { vbX: -60, vbY: -60, vbW: 720, vbH: 440 };
     const xs = sectors.map((s) => s.x);
     const ys = sectors.map((s) => s.y);
-    const pad = 80;
+    // Wide margin so the outer galaxy stays visible around charted space —
+    // the sectors frame inside a much larger field of view instead of
+    // filling the window edge-to-edge.
+    const pad = 320;
     const minX = Math.min(...xs);
     const maxX = Math.max(...xs);
     const minY = Math.min(...ys);
@@ -138,8 +141,8 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
     return {
       vbX: minX - pad,
       vbY: minY - pad,
-      vbW: Math.max(520, maxX - minX) + pad * 2,
-      vbH: Math.max(340, maxY - minY) + pad * 2,
+      vbW: Math.max(1120, maxX - minX) + pad * 2,
+      vbH: Math.max(760, maxY - minY) + pad * 2,
     };
   }, [sectors]);  // Real-galaxy backdrop mapping — recomputed only when the viewBox reframes.
   const galaxy = useMemo(
