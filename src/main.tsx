@@ -62,6 +62,7 @@ import OpStore from "./pages/operator/StoreManage.tsx";
 import OpArg from "./pages/operator/ArgManage.tsx";
 import OpLog from "./pages/operator/LogManage.tsx";
 import OpChangelog from "./pages/operator/ChangelogManage.tsx";
+import OpRoadAhead from "./pages/operator/RoadAhead.tsx";
 import { OperatorGuard } from "./components/operator/OperatorGuard.tsx";
 
 // This is the public Convex endpoint associated with the current Freebuff
@@ -204,6 +205,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/operator/arg" element={<OperatorGuard><OpArg /></OperatorGuard>} />
               <Route path="/operator/log" element={<OperatorGuard><OpLog /></OperatorGuard>} />
               <Route path="/operator/changelog" element={<OperatorGuard><OpChangelog /></OperatorGuard>} />
+              <Route path="/operator/road-ahead" element={<OperatorGuard><OpRoadAhead /></OperatorGuard>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>

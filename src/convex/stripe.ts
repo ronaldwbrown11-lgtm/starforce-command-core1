@@ -244,7 +244,12 @@ export const processWebhook = action({
               userId: userId as Id<"users">,
               productId: productId as Id<"storeProducts">,
               variant: session.metadata?.variant || undefined,
-              kind: session.metadata?.kind === "physical" ? "physical" : "digital",
+              kind:
+                session.metadata?.kind === "physical"
+                  ? "physical"
+                  : session.metadata?.kind === "credits"
+                    ? "credits"
+                    : "digital",
               stripeSessionId: session.id,
               amountCents: session.amount_total ?? 0,
               currency: session.currency ?? "usd",
@@ -440,10 +445,13 @@ export const createStoreCheckoutSession = action({
             product_data: {
               name: product.title,
               description: product.description.slice(0, 300),
-              // txcd_105030000 = general permanent downloads (digital);
-              // txcd_10502000 = general tangible goods (physical merch).
+              // txcd_105030000 = general permanent downloads (digital files
+              // and virtual currency like Star Credits); txcd_10502000 =
+              // general tangible goods (physical merch).
               tax_code:
-                product.kind === "digital" ? "txcd_105030000" : "txcd_10502000",
+                product.kind === "physical"
+                  ? "txcd_10502000"
+                  : "txcd_105030000",
             },
           },
         },

@@ -29,6 +29,7 @@ import Resources from "@/pages/Resources";
 import Membership from "@/pages/Membership";
 import Support from "@/pages/Support";
 import CadetManual from "@/pages/CadetManual";
+import { OperatorGuard } from "@/components/operator/OperatorGuard";
 import BlogPage from "@/pages/Blog";
 import BlogDetailPage from "@/pages/BlogDetail";
 import FaqsPage from "@/pages/Faqs";

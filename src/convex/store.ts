@@ -101,9 +101,15 @@ export const createProduct = mutation({
   args: {
     title: v.string(),
     description: v.string(),
-    kind: v.union(v.literal("digital"), v.literal("physical")),
+    kind: v.union(
+      v.literal("digital"),
+      v.literal("physical"),
+      v.literal("credits"),
+    ),
     category: v.string(),
     priceCents: v.number(),
+    /** For kind === "credits": exact Star Credits granted at fulfillment. */
+    creditAmount: v.optional(v.number()),
     variants: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
@@ -117,8 +123,25 @@ export const createProduct = mutation({
     if (!Number.isFinite(args.priceCents) || args.priceCents < 0 || args.priceCents > MAX_PRICE_CENTS) {
       throw new Error("Price must be between $0.00 and $5,000.00.");
     }
+    if (args.kind === "credits") {
+      if (
+        !Number.isFinite(args.creditAmount) ||
+        (args.creditAmount as number) < 100 ||
+        (args.creditAmount as number) > 100_000 ||
+        (args.creditAmount as number) % 100 !== 0
+      ) {
+        throw new Error(
+          "Credit caches must be a whole multiple of 100 between 100 and 100,000.",
+        );
+      }
+    } else if (args.creditAmount !== undefined) {
+      throw new Error("creditAmount is only valid for credit-cache products.");
+    }
     if (args.kind === "digital" && args.variants?.length) {
       throw new Error("Digital products do not take size/variant options.");
+    }
+    if (args.kind !== "physical" && args.variants?.length) {
+      throw new Error("Only physical products take size/variant options.");
     }
     const variants = (args.variants ?? [])
       .map((v) => v.trim().slice(0, 40))
@@ -141,6 +164,8 @@ export const createProduct = mutation({
       category,
       priceCents: Math.round(args.priceCents),
       currency: "usd",
+      creditAmount:
+        args.kind === "credits" ? (args.creditAmount as number) : undefined,
       variants: variants.length ? variants : undefined,
       status: "active",
       createdBy: me,
@@ -151,6 +176,11 @@ export const createProduct = mutation({
       actorId: me,
       action: "store.createProduct",
       target: id,
+      meta: JSON.stringify({
+        kind: args.kind,
+        creditAmount: args.kind === "credits" ? args.creditAmount : undefined,
+        priceCents: Math.round(args.priceCents),
+      }),
       createdAt: now,
     });
     return { id, slug };
@@ -164,6 +194,8 @@ export const updateProduct = mutation({
     description: v.optional(v.string()),
     category: v.optional(v.string()),
     priceCents: v.optional(v.number()),
+    /** For kind === "credits": exact Star Credits granted at fulfillment. */
+    creditAmount: v.optional(v.number()),
     variants: v.optional(v.array(v.string())),
     status: v.optional(v.union(v.literal("active"), v.literal("retired"))),
   },
@@ -198,9 +230,25 @@ export const updateProduct = mutation({
       }
       patch.priceCents = Math.round(args.priceCents);
     }
+    if (args.creditAmount !== undefined) {
+      if (row.kind !== "credits") {
+        throw new Error("creditAmount is only valid for credit-cache products.");
+      }
+      if (
+        !Number.isFinite(args.creditAmount) ||
+        args.creditAmount < 100 ||
+        args.creditAmount > 100_000 ||
+        args.creditAmount % 100 !== 0
+      ) {
+        throw new Error(
+          "Credit caches must be a whole multiple of 100 between 100 and 100,000.",
+        );
+      }
+      patch.creditAmount = args.creditAmount;
+    }
     if (args.variants !== undefined) {
-      if (row.kind === "digital" && args.variants.length) {
-        throw new Error("Digital products do not take size/variant options.");
+      if (row.kind !== "physical" && args.variants.length) {
+        throw new Error("Only physical products take size/variant options.");
       }
       const variants = args.variants
         .map((v) => v.trim().slice(0, 40))
@@ -436,6 +484,7 @@ export const listProducts = query({
         category: row.category,
         priceCents: row.priceCents,
         currency: row.currency ?? "usd",
+        creditAmount: row.creditAmount ?? null,
         variants: row.variants ?? [],
         hasFile: row.kind === "digital" ? Boolean(row.fileStorageId) : false,
         fileMeta: row.fileMeta ?? null,
@@ -576,7 +625,11 @@ export const fulfillStoreOrder = internalMutation({
     userId: v.id("users"),
     productId: v.id("storeProducts"),
     variant: v.optional(v.string()),
-    kind: v.union(v.literal("digital"), v.literal("physical")),
+    kind: v.union(
+      v.literal("digital"),
+      v.literal("physical"),
+      v.literal("credits"),
+    ),
     stripeSessionId: v.string(),
     amountCents: v.number(),
     currency: v.string(),
@@ -647,9 +700,10 @@ export const listAllProductsAdmin = query({
         slug: row.slug,
         title: row.title,
         description: row.description,
-        kind: row.kind as "digital" | "physical",
+        kind: row.kind as "digital" | "physical" | "credits",
         category: row.category,
         priceCents: row.priceCents,
+        creditAmount: row.creditAmount ?? null,
         variants: row.variants ?? [],
         hasFile: Boolean(row.fileStorageId),
         fileMeta: row.fileMeta ?? null,

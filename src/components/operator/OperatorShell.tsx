@@ -1,6 +1,6 @@
 import { Link, NavLink, useLocation } from "react-router";
 import { useState } from "react";
-import { Activity, Award, BookOpen, BookOpenText, CalendarPlus, ClipboardCheck, CreditCard, FileCheck2, Flag, GaugeCircle, History, IdCard, LayoutDashboard, LifeBuoy, ListChecks, Link as LinkIcon, Map as MapIcon, MapPin, Megaphone, RadioTower, Rocket, Ship, ShipWheel, Menu, Palette, ShieldCheck, ShoppingBag, Sparkles, Users, UsersRound, X } from "lucide-react";
+import { Activity, Award, BookOpen, BookOpenText, CalendarPlus, ClipboardCheck, Compass, CreditCard, FileCheck2, Flag, GaugeCircle, History, IdCard, LayoutDashboard, LifeBuoy, ListChecks, Link as LinkIcon, Map as MapIcon, MapPin, Megaphone, RadioTower, Rocket, Ship, ShipWheel, Menu, Palette, ShieldCheck, ShoppingBag, Sparkles, Users, UsersRound, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SiteShell, ParallaxBackground } from "@/components/uf";
 import { FleetStatus } from "@/components/widgets/FleetStatus";
@@ -9,6 +9,7 @@ import { api } from "@/convex/_generated/api";
 
 const NAV = [
   { label: "Dashboard", href: "/operator", icon: LayoutDashboard, exact: true },
+  { label: "Road Ahead", href: "/operator/road-ahead", icon: Compass },
   { label: "Featured Content", href: "/operator/featured", icon: Sparkles },
   { label: "Moderation", href: "/operator/moderation", icon: ShieldCheck },
   { label: "Field Reports", href: "/operator/reports", icon: ClipboardCheck },

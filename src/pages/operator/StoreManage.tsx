@@ -6,7 +6,7 @@ import { OperatorShell } from "@/components/operator/OperatorShell";
 import { CoverPicker, readImageDimensions } from "@/components/operator/CoverPicker";
 import { HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { toast } from "sonner";
-import { Download, FileText, Package, Plus, Trash2, Truck, Upload } from "lucide-react";
+import { Coins, Download, FileText, Package, Plus, Trash2, Truck, Upload } from "lucide-react";
 
 type ProductRow = {
   _id: Id<"storeProducts">;
@@ -15,6 +15,7 @@ type ProductRow = {
   description: string;
   kind: string;
   category: string;
+  creditAmount?: number | null;
   priceCents: number;
   variants: string[];
   hasFile: boolean;
@@ -61,9 +62,10 @@ export default function StoreManage() {
   // ---- create form ----
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [kind, setKind] = useState<"digital" | "physical">("digital");
+  const [kind, setKind] = useState<"digital" | "physical" | "credits">("digital");
   const [category, setCategory] = useState("Lore Bibles");
   const [price, setPrice] = useState("14.99");
+  const [creditAmount, setCreditAmount] = useState("500");
   const [variants, setVariants] = useState("");
   const [creating, setCreating] = useState(false);
   // File chosen pre-create; uploaded right after the product row exists.
@@ -98,14 +100,26 @@ export default function StoreManage() {
       toast.error("Title, description, and a valid price are required.");
       return;
     }
+    const creditValue = kind === "credits" ? parseInt(creditAmount, 10) : undefined;
+    if (
+      kind === "credits" &&
+      (!Number.isFinite(creditValue) ||
+        (creditValue as number) < 100 ||
+        (creditValue as number) % 100 !== 0)
+    ) {
+      toast.error("Credit caches must be a whole multiple of 100 (100+).",
+      );
+      return;
+    }
     try {
       setCreating(true);
       const { id } = await createProduct({
         title,
         description,
         kind,
-        category,
+        category: kind === "credits" && !category.trim() ? "Star Credits" : category,
         priceCents,
+        creditAmount: creditValue,
         variants:
           kind === "physical" && variants.trim()
             ? variants.split(",").map((v) => v.trim()).filter(Boolean)
@@ -155,6 +169,7 @@ export default function StoreManage() {
       setTitle("");
       setDescription("");
       setPrice("14.99");
+      setCreditAmount("500");
       setVariants("");
       setPendingFile(null);
       setPendingCover(null);
@@ -259,11 +274,14 @@ export default function StoreManage() {
                   Kind
                   <select
                     value={kind}
-                    onChange={(e) => setKind(e.target.value as "digital" | "physical")}
+                    onChange={(e) =>
+                      setKind(e.target.value as "digital" | "physical" | "credits")
+                    }
                     className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)] text-uf-text"
                   >
                     <option value="digital">Digital download</option>
                     <option value="physical">Physical merchandise</option>
+                    <option value="credits">Star Credit cache</option>
                   </select>
                 </label>
                 <label className="text-xs uppercase tracking-[0.16em] text-uf-muted flex flex-col gap-1">
@@ -290,7 +308,23 @@ export default function StoreManage() {
                   placeholder="What the fleet gets — 128 pages of canon, printable sector charts, …"
                 />
               </label>
-              {kind === "physical" ? (
+              {kind === "credits" ? (
+                <label className="text-xs uppercase tracking-[0.16em] text-uf-muted flex flex-col gap-1">
+                  Star Credits granted (exact, no surge)
+                  <input
+                    value={creditAmount}
+                    onChange={(e) => setCreditAmount(e.target.value.replace(/[^0-9]/g, ""))}
+                    inputMode="numeric"
+                    required
+                    className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)] text-uf-text font-mono"
+                    placeholder="500"
+                  />
+                  <span className="text-[11px] normal-case tracking-normal text-uf-muted">
+                    Granted exactly at fulfillment — multiples of 100, max 100,000.
+                    Suggested pairings: 500 @ $4.99 · 1,200 @ $9.99 · 2,600 @ $19.99.
+                  </span>
+                </label>
+              ) : kind === "physical" ? (
                 <label className="text-xs uppercase tracking-[0.16em] text-uf-muted flex flex-col gap-1">
                   Options (comma-separated — sizes, colors)
                   <input
@@ -396,10 +430,22 @@ export default function StoreManage() {
                   <div className="min-w-0 flex-1">
                     <p className="m-0 font-semibold flex flex-wrap items-center gap-2">
                       {p.title}
-                      <StatusPill variant={p.kind === "digital" ? "info" : "violet"}>
+                      <StatusPill
+                        variant={
+                          p.kind === "digital"
+                            ? "info"
+                            : p.kind === "credits"
+                              ? "gold"
+                              : "violet"
+                        }
+                      >
                         {p.kind === "digital" ? (
                           <>
                             <Download className="h-3 w-3" aria-hidden /> Digital
+                          </>
+                        ) : p.kind === "credits" ? (
+                          <>
+                            <Coins className="h-3 w-3" aria-hidden /> Credit cache
                           </>
                         ) : (
                           <>
@@ -414,7 +460,11 @@ export default function StoreManage() {
                     <p className="m-0 text-xs text-uf-muted mt-1">
                       ${" "}
                       {(p.priceCents / 100).toFixed(2)} · {p.category}
-                      {p.kind === "digital" ? (
+                      {p.kind === "credits" ? (
+                        <span className="ml-2 font-mono" style={{ color: "var(--uf-gold)" }}>
+                          grants {p.creditAmount?.toLocaleString() ?? "—"} ★
+                        </span>
+                      ) : p.kind === "digital" ? (
                         p.fileMeta ? (
                           <span className="inline-flex items-center gap-1 ml-2">
                             <FileText className="h-3 w-3" aria-hidden />

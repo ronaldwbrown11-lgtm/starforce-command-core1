@@ -7,7 +7,7 @@ import { ScaleReveal } from "@/hooks/use-scroll-reveal";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-import { Download, FileText, Package, ShieldCheck, ShoppingBag } from "lucide-react";
+import { Download, FileText, Package, ShieldCheck, ShoppingBag, Coins } from "lucide-react";
 
 type ProductRow = {
   _id: string;
@@ -16,6 +16,7 @@ type ProductRow = {
   description: string;
   kind: string;
   category: string;
+  creditAmount?: number | null;
   priceCents: number;
   currency: string;
   variants: string[];
@@ -170,10 +171,22 @@ export default function Store() {
                     </figure>
                   ) : null}
                   <div className="flex flex-wrap items-center gap-2">
-                    <StatusPill variant={p.kind === "digital" ? "info" : "violet"}>
+                    <StatusPill
+                      variant={
+                        p.kind === "digital"
+                          ? "info"
+                          : p.kind === "credits"
+                            ? "gold"
+                            : "violet"
+                      }
+                    >
                       {p.kind === "digital" ? (
                         <>
                           <Download className="h-3 w-3" aria-hidden /> Digital
+                        </>
+                      ) : p.kind === "credits" ? (
+                        <>
+                          <Coins className="h-3 w-3" aria-hidden /> Star Credits
                         </>
                       ) : (
                         <>
@@ -187,6 +200,15 @@ export default function Store() {
                   </div>
                   <h3 className="text-xl font-semibold mt-3">{p.title}</h3>
                   <p className="text-uf-muted text-sm mt-2 line-clamp-3">{p.description}</p>
+                  {p.kind === "credits" && p.creditAmount ? (
+                    <p
+                      className="mt-2 text-sm font-mono font-semibold"
+                      style={{ color: "var(--uf-gold)" }}
+                    >
+                      {p.creditAmount.toLocaleString()} ★ granted to your account the
+                      moment payment clears — exact value, never multiplied.
+                    </p>
+                  ) : null}
                   {p.kind === "digital" && p.fileMeta ? (
                     <p className="text-uf-muted text-xs mt-2 flex items-center gap-1.5">
                       <FileText className="h-3.5 w-3.5 text-uf-cyan" aria-hidden />

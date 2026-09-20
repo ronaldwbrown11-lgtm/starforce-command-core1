@@ -54,7 +54,7 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 18 0 R >> >> /Contents 7 0 R >>
 endobj
 7 0 obj
-<< /Length 1463 >>
+<< /Length 1543 >>
 stream
 BT /F2 20 Tf
 1 0 0 1 64 720 Tm
@@ -73,13 +73,14 @@ BT /F1 10.5 Tf
 1 0 0 1 64 581 Tm ([SHIPPED] Weekly rotation shelf: one frame + one title spotlighted per) Tj
 1 0 0 1 64 564 Tm (          ISO week, deterministic fleet-wide.) Tj
 1 0 0 1 64 547 Tm ([SHIPPED] Operator credit adjustment panel with audit trail.) Tj
-1 0 0 1 64 530 Tm ([NEXT]    Star Credit caches in the Requisition Depot \(kind: credits\):) Tj
-1 0 0 1 64 513 Tm (          500-cache at $4.99, 1,200-cache at $9.99, 2,600-cache at) Tj
-1 0 0 1 64 496 Tm (          $19.99. Face value granted exactly at fulfillment.) Tj
-1 0 0 1 64 479 Tm ([NEXT]    Aspirational deep-sink item at 5,000+ credits so veterans) Tj
-1 0 0 1 64 462 Tm (          always have a goal.) Tj
-1 0 0 1 64 445 Tm ([OPS]     Configure cache prices and seasonal cosmetics in the) Tj
-1 0 0 1 64 428 Tm (          operator Store manager.) Tj
+1 0 0 1 64 530 Tm ([SHIPPED] Star Credit caches in the Requisition Depot \(kind: credits\):) Tj
+1 0 0 1 64 513 Tm (          operators publish caches from the console; checkout + webhook) Tj
+1 0 0 1 64 496 Tm (          grant exact face value, audit-logged. Suggested: 500 @ $4.99,) Tj
+1 0 0 1 64 479 Tm (          1,200 @ $9.99, 2,600 @ $19.99.) Tj
+1 0 0 1 64 462 Tm ([NEXT]    Aspirational deep-sink item at 5,000+ credits so veterans) Tj
+1 0 0 1 64 445 Tm (          always have a goal.) Tj
+1 0 0 1 64 428 Tm ([OPS]     Configure cache prices and seasonal cosmetics in the) Tj
+1 0 0 1 64 411 Tm (          operator Store manager.) Tj
 ET
 BT /F1 8.5 Tf
 1 0 0 1 64 40 Tm
@@ -254,19 +255,19 @@ xref
 0000000362 00000 n 
 0000002057 00000 n 
 0000002194 00000 n 
-0000003709 00000 n 
-0000003846 00000 n 
-0000004567 00000 n 
-0000004706 00000 n 
-0000005540 00000 n 
-0000005679 00000 n 
-0000006453 00000 n 
-0000006592 00000 n 
-0000007728 00000 n 
-0000007867 00000 n 
-0000009638 00000 n 
+0000003789 00000 n 
+0000003926 00000 n 
+0000004647 00000 n 
+0000004786 00000 n 
+0000005620 00000 n 
+0000005759 00000 n 
+0000006533 00000 n 
+0000006672 00000 n 
+0000007808 00000 n 
+0000007947 00000 n 
+0000009718 00000 n 
 trailer
 << /Size 19 /Root 1 0 R >>
 startxref
-9714
+9794
 %%EOF
