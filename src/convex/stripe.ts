@@ -501,8 +501,12 @@ export const openBillingPortal = action({
       throw new Error("User not found.");
     }
     if (!user.stripeCustomerId) {
+      // Operator-assigned / comped tier: no Stripe customer exists, so there
+      // is genuinely nothing to manage in the billing portal. The client
+      // hides this button for such accounts; this message covers direct API
+      // calls and stale clients.
       throw new Error(
-        "No subscription on file yet — choose a paid tier to get started.",
+        "No card on file — your clearance was assigned directly, so there is no billing to manage.",
       );
     }
     const stripe = getStripe();

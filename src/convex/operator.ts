@@ -1121,6 +1121,46 @@ export const adjustUserXp = mutation({
   },
 });
 
+/**
+ * Adjust a member's Star Credits balance by a delta (positive to grant,
+ * negative to claw back; floor of 0). Audit-logged for the operator trail.
+ */
+export const adjustUserCredits = mutation({
+  args: {
+    userId: v.id("users"),
+    delta: v.number(),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+    ]);
+    if (!Number.isFinite(args.delta) || args.delta === 0) {
+      throw new Error("Adjustment must be a non-zero number.");
+    }
+    if (Math.abs(args.delta) > 1_000_000) {
+      throw new Error("Adjustment is too large.");
+    }
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("Member not found.");
+    const next = Math.max(0, (user.credits ?? 0) + Math.trunc(args.delta));
+    await ctx.db.patch(args.userId, { credits: next });
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "credits.adjust",
+      target: `user:${args.userId}`,
+      meta: JSON.stringify({
+        delta: args.delta,
+        balance: next,
+        note: args.note?.trim().slice(0, 200) || undefined,
+      }),
+      createdAt: Date.now(),
+    });
+    return { ok: true, credits: next };
+  },
+});
+
 export const awardAchievement = mutation({
   args: { id: v.id("users"), key: v.string() },
   handler: async (ctx, args) => {

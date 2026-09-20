@@ -75,11 +75,15 @@ export default function OperatorUserDetail() {
   );
   const revoke = useMutation(api.operator.revokeActiveSession);
   const adjustXp = useMutation(api.operator.adjustUserXp);
+  const adjustCredits = useMutation(api.operator.adjustUserCredits);
   const [pending, setPending] = useState<string | null>(null);
   const [tab, setTab] = useState<"sessions" | "content">("sessions");
   const [xpDelta, setXpDelta] = useState("");
   const [xpNote, setXpNote] = useState("");
   const [xpBusy, setXpBusy] = useState(false);
+  const [creditsDelta, setCreditsDelta] = useState("");
+  const [creditsNote, setCreditsNote] = useState("");
+  const [creditsBusy, setCreditsBusy] = useState(false);
 
   if (data === undefined) {
     return (
@@ -406,6 +410,97 @@ export default function OperatorUserDetail() {
                 toast.error(err instanceof Error ? err.message : "Adjustment failed.");
               } finally {
                 setXpBusy(false);
+              }
+            }}
+          >
+            Apply
+          </NeonButton>
+        </div>
+      </HoloCard>
+
+      {/* Adjust Star Credits */}
+      <HoloCard>
+        <div className="flex flex-col lg:flex-row lg:items-end gap-4">
+          <div className="min-w-0 flex-1">
+            <span className="uf-eyebrow">Adjust Star Credits</span>
+            <p className="text-uf-muted text-xs mt-1">
+              Current balance:{" "}
+              <span className="text-[var(--uf-cyan)] font-mono">{(user.credits ?? 0).toLocaleString()} ★</span>
+              {" "}· grant comp credits or claw back fraudulent balances. Changes are audit-logged.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {[100, 500, 1000].map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setCreditsDelta(String(v))}
+                  className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                    creditsDelta === String(v)
+                      ? "border-[rgba(80,255,160,0.7)] bg-[rgba(80,255,160,0.12)] text-uf-text"
+                      : "border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] text-uf-muted hover:text-uf-text"
+                  }`}
+                >
+                  +{v}
+                </button>
+              ))}
+              {[-100].map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setCreditsDelta(String(v))}
+                  className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                    creditsDelta === String(v)
+                      ? "border-[rgba(255,107,107,0.7)] bg-[rgba(255,107,107,0.12)] text-uf-text"
+                      : "border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] text-uf-muted hover:text-uf-text"
+                  }`}
+                >
+                  {v}
+                </button>
+              ))}
+              <label className="sr-only" htmlFor="credits-delta">Star Credits adjustment amount</label>
+              <input
+                id="credits-delta"
+                type="number"
+                value={creditsDelta}
+                onChange={(e) => setCreditsDelta(e.target.value)}
+                placeholder="Custom ±"
+                className="w-28 rounded-md border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.6)] px-2.5 py-1 text-sm text-uf-text placeholder:text-uf-muted/60 focus:border-[rgba(0,229,255,0.5)] focus:outline-none"
+              />
+              <label className="sr-only" htmlFor="credits-note">Star Credits adjustment note</label>
+              <input
+                id="credits-note"
+                type="text"
+                value={creditsNote}
+                onChange={(e) => setCreditsNote(e.target.value)}
+                maxLength={200}
+                placeholder="Reason (optional)"
+                className="flex-1 min-w-[160px] rounded-md border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.6)] px-2.5 py-1 text-sm text-uf-text placeholder:text-uf-muted/60 focus:border-[rgba(0,229,255,0.5)] focus:outline-none"
+              />
+            </div>
+          </div>
+          <NeonButton
+            variant="primary"
+            loading={creditsBusy}
+            disabled={!creditsDelta.trim() || Number(creditsDelta) === 0}
+            onClick={async () => {
+              const delta = Number(creditsDelta);
+              if (!Number.isFinite(delta) || delta === 0) return;
+              setCreditsBusy(true);
+              try {
+                const res = await adjustCredits({
+                  userId: user._id,
+                  delta,
+                  note: creditsNote.trim() || undefined,
+                });
+                toast.success(
+                  `Star Credits updated to ${res.credits.toLocaleString()} (${delta > 0 ? "+" : ""}${delta}).`,
+                );
+                setCreditsDelta("");
+                setCreditsNote("");
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Adjustment failed.");
+              } finally {
+                setCreditsBusy(false);
               }
             }}
           >

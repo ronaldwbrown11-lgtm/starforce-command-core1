@@ -503,7 +503,7 @@ export default function Account() {
           <div className="mt-6">
             <ServiceDossierPanel editable />
             <TierUsageWidget mode="self" initialTier={(user?.tier ?? "free") as TierId} />
-            {(user?.tier ?? "free") !== "free" ? (
+            {(user?.tier ?? "free") !== "free" && user?.stripeCustomerId ? (
               <div className="mt-3">
                 <NeonButton
                   variant="ghost"

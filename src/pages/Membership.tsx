@@ -379,7 +379,7 @@ export default function Membership() {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {currentTier !== "free" ? (
+                {currentTier !== "free" && user?.stripeCustomerId ? (
                   <NeonButton
                     variant="ghost"
                     loading={portalBusy}
