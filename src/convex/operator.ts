@@ -1355,17 +1355,7 @@ export const deleteUser = mutation({
   },
 });
 
-// ---- Bootstrap: promote the site owner ----
-
-// Emails allowed to be promoted WITHOUT an existing operator session
-// (one-time bootstrap path). The owner signs up at /auth with this email,
-// then the promotion is run once (e.g. via `convex run`) to grant console
-// access. This is not a secret — it only ever grants access to the owner's
-// own address. Operators can promote any email through the normal flow.
-const OWNER_BOOTSTRAP_EMAILS = [
-  "admin@starforcebase1198.com",
-  "ronaldwbrown11@gmail.com",
-];
+// ---- Operator promotion (operator-gated) ----
 
 export const promoteByEmail = mutation({
   args: { email: v.string(), opRole: v.optional(opRoleValidator) },
@@ -1378,8 +1368,7 @@ export const promoteByEmail = mutation({
       !!caller &&
       (caller.role === "admin" ||
         ["operator", "senior_operator"].includes(String(caller.opRole ?? "")));
-    const isOwner = OWNER_BOOTSTRAP_EMAILS.includes(email);
-    if (!callerIsOperator && !isOwner) {
+    if (!callerIsOperator) {
       throw new Error("Forbidden.");
     }
     const user = await ctx.db
@@ -1408,154 +1397,6 @@ export const promoteByEmail = mutation({
       displayName: user.displayName ?? user.email ?? user._id,
       opRole: role,
     };
-  },
-});
-
-/**
- * Bootstrap one-off: attach the owner's message email (e.g.
- * admin@starforcebase1198.com) to their primary sign-in account
- * (e.g. ronaldwbrown11@gmail.com). Locked to the owner's own account
- * emails — nobody else can trigger it. Pass an empty string to clear.
- */
-export const setOwnerContactEmail = mutation({
-  args: {
-    accountEmail: v.string(),
-    contactEmail: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const accountEmail = args.accountEmail.trim().toLowerCase();
-    if (!OWNER_BOOTSTRAP_EMAILS.includes(accountEmail)) {
-      throw new Error("Forbidden.");
-    }
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", accountEmail))
-      .first();
-    if (!user) {
-      throw new Error(`No member found with email ${accountEmail}.`);
-    }
-    const contact = args.contactEmail.trim();
-    await ctx.db.patch(user._id, {
-      contactEmail: contact || undefined,
-    });
-    await ctx.db.insert("auditLog", {
-      actorId: user._id,
-      action: "account.contact_email",
-      target: `user:${user._id}`,
-      meta: JSON.stringify({
-        accountEmail,
-        contactEmail: contact || null,
-        via: "bootstrap",
-      }),
-      createdAt: Date.now(),
-    });
-    return { ok: true, contactEmail: contact || null };
-  },
-});
-
-/**
- * Bootstrap one-off: set the owner's public identity (display name, rank,
- * fleet) on their primary sign-in account. Locked to the owner's own
- * account emails — nobody else can trigger it. Omitted fields are left
- * unchanged.
- */
-export const setOwnerProfile = mutation({
-  args: {
-    accountEmail: v.string(),
-    displayName: v.optional(v.string()),
-    rank: v.optional(v.string()),
-    fleet: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const accountEmail = args.accountEmail.trim().toLowerCase();
-    if (!OWNER_BOOTSTRAP_EMAILS.includes(accountEmail)) {
-      throw new Error("Forbidden.");
-    }
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", accountEmail))
-      .first();
-    if (!user) {
-      throw new Error(`No member found with email ${accountEmail}.`);
-    }
-    const displayName = args.displayName?.trim();
-    if (displayName && displayName.length > 60) {
-      throw new Error("Display name must be 60 characters or fewer.");
-    }
-    const rank = args.rank?.trim();
-    if (rank && rank.length > 40) {
-      throw new Error("Rank must be 40 characters or fewer.");
-    }
-    const fleet = args.fleet?.trim();
-    if (fleet && fleet.length > 60) {
-      throw new Error("Fleet must be 60 characters or fewer.");
-    }
-    const patch: { displayName?: string; rank?: string; fleet?: string } = {};
-    if (displayName !== undefined) patch.displayName = displayName;
-    if (rank !== undefined) patch.rank = rank;
-    if (fleet !== undefined) patch.fleet = fleet;
-    await ctx.db.patch(user._id, patch);
-    await ctx.db.insert("auditLog", {
-      actorId: user._id,
-      action: "account.profile",
-      target: `user:${user._id}`,
-      meta: JSON.stringify({ accountEmail, ...patch, via: "bootstrap" }),
-      createdAt: Date.now(),
-    });
-    return { ok: true, ...patch };
-  },
-});
-
-/**
- * Bootstrap one-off: set the owner's membership tier on their primary
- * sign-in account and (optionally) clear test-mode Stripe links so the
- * account starts clean when switching between Stripe test/live modes.
- * Locked to the owner's own account emails — nobody else can trigger it.
- */
-export const setOwnerTier = mutation({
-  args: {
-    accountEmail: v.string(),
-    tier: v.union(
-      v.literal("free"),
-      v.literal("cadet"),
-      v.literal("officer"),
-      v.literal("command"),
-      v.literal("elite"),
-      v.literal("gia_agent"),
-    ),
-    clearStripe: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    const accountEmail = args.accountEmail.trim().toLowerCase();
-    if (!OWNER_BOOTSTRAP_EMAILS.includes(accountEmail)) {
-      throw new Error("Forbidden.");
-    }
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", accountEmail))
-      .first();
-    if (!user) {
-      throw new Error(`No member found with email ${accountEmail}.`);
-    }
-    const patch: Record<string, unknown> = { tier: args.tier };
-    if (args.clearStripe) {
-      patch.stripeCustomerId = undefined;
-      patch.stripeSubscriptionId = undefined;
-    }
-    await ctx.db.patch(user._id, patch);
-    await ctx.db.insert("auditLog", {
-      actorId: user._id,
-      action: "account.tier",
-      target: `user:${user._id}`,
-      meta: JSON.stringify({
-        accountEmail,
-        tier: args.tier,
-        clearStripe: !!args.clearStripe,
-        via: "bootstrap",
-      }),
-      createdAt: Date.now(),
-    });
-    return { ok: true, tier: args.tier };
   },
 });
 

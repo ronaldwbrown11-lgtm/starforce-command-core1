@@ -493,39 +493,6 @@ export const setMyEmailOptOut = mutation({
 });
 
 /**
- * DEV-ONLY: Promote the current signed-in user to admin (role "admin" +
- * opRole "senior_operator"). OTP / anonymous sign-in provisions a users row
- * with no role, so this is the escape hatch to reach the operator console.
- *
- * Lock it down before production: either delete this function or set the
- * DISABLE_DEV_ADMIN environment variable to "true" in the Convex dashboard.
- */
-export const devPromoteSelf = mutation({
-  args: {},
-  handler: async (ctx) => {
-    if (process.env.DISABLE_DEV_ADMIN === "true") {
-      throw new Error("Forbidden.");
-    }
-    const userId = await getAuthUserId(ctx);
-    if (userId === null) {
-      throw new Error("Sign in required.");
-    }
-    const user = await ctx.db.get(userId);
-    if (!user) {
-      throw new Error("User not found.");
-    }
-    await ctx.db.patch(userId, {
-      role: "admin",
-      opRole: "senior_operator",
-    });
-    return {
-      ok: true,
-      displayName: user.displayName ?? user.email ?? userId,
-    };
-  },
-});
-
-/**
  * Record a login attempt for the operator Login Logs screen. Called from the
  * auth page after a sign-in succeeds or fails. Unauthenticated on purpose so
  * failures can be logged before a session exists.

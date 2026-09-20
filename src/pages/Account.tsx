@@ -26,7 +26,6 @@ export default function Account() {
   const { isAuthenticated, user, signOut } = useAuth();
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
-  const claimAdmin = useMutation(api.users.devPromoteSelf);
   const setContactEmail = useMutation(api.users.setMyContactEmail);
   const setEmailPrefs = useMutation(api.users.setEmailPrefs);
   const [digestBusy, setDigestBusy] = useState(false);
@@ -537,50 +536,6 @@ export default function Account() {
             <div className="mt-4">
               <StorageManager />
             </div>
-            {/* Dev-only claim tool — visible to operators/admins only. The
-                backend mutation is also gated by DISABLE_DEV_ADMIN, but the
-                panel itself should never render for regular members. */}
-            {isOperator ? (
-            <details
-              className="mt-6 group rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] overflow-hidden"
-              aria-label="Developer access"
-            >
-              <summary className="flex items-center justify-between gap-3 cursor-pointer px-4 py-3 select-none list-none [&::-webkit-details-marker]:hidden">
-                <span className="uf-eyebrow">Developer access</span>
-                <ChevronDown
-                  className="h-4 w-4 text-uf-muted transition-transform duration-200 group-open:rotate-180"
-                  aria-hidden
-                />
-              </summary>
-              <div className="px-4 pb-4 border-t border-[color:var(--uf-border)]">
-                <p className="text-uf-muted text-sm mt-3">
-                  Dev-only tooling for this deployment. The claim button promotes
-                  this account to admin (role <code className="text-uf-cyan">admin</code>{" "}
-                  + op role{" "}
-                  <code className="text-uf-cyan">senior_operator</code>) so you can reach
-                  the operator console. Disable before production.
-                </p>
-                <NeonButton
-                  variant="gold"
-                  className="mt-4"
-                  onClick={async () => {
-                    try {
-                      await claimAdmin();
-                      toast.success("Operator access granted — welcome to the bridge.");
-                    } catch (err) {
-                      toast.error(
-                        err instanceof Error
-                          ? err.message
-                          : "Failed to claim operator access.",
-                      );
-                    }
-                  }}
-                >
-                  Claim operator access (dev)
-                </NeonButton>
-              </div>
-            </details>
-            ) : null}
           </div>
         )}
       </section>
