@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { MapPin, Plus, Sparkles } from "lucide-react";
+import milkyWayUrl from "@/assets/milky-way-map.jpg";
 
 // Deterministic pseudo-random stars for the chart backdrop (no Math.random
 // so the map is stable between renders).
@@ -30,98 +31,31 @@ const DRAW_CAP = 60; // only the most recent N charted systems are drawn
 const CLUSTER_R = 22; // viewBox units — systems closer than this group together
 
 // ---------------------------------------------------------------------------
-// Galaxy underlay — a procedural deep-sky backdrop rendered in the same SVG
-// coordinate space as the interactive layers, so it stays registered with
-// sector nodes no matter how the viewBox reframes. All shapes are seeded
-// (deterministic) so the galaxy never jumps between renders.
+// Real-galaxy backdrop — NASA/JPL-Caltech/R. Hurt's face-on Milky Way map
+// (public domain), cover-fitted into the chart's dynamic viewBox so the
+// interactive layers stay registered over the real galactic disc. Sol is
+// pinned to its true position on the Orion Spur (about 26,700 light-years
+// from the core, between the Sagittarius and Perseus arms).
 // ---------------------------------------------------------------------------
 
-/** Deterministic hash → [0,1). Same family as `seeded` above. */
-function seeded2(i: number) {
-  const s = Math.sin(i * 269.5 + 183.3) * 43758.5453;
-  return s - Math.floor(s);
-}
-
-/** Build an SVG path string for a logarithmic spiral arm around (cx, cy). */
-function spiralArmPath(
-  cx: number,
-  cy: number,
-  r0: number,
-  growth: number,
-  thetaStart: number,
-  thetaEnd: number,
-): string {
-  const steps = 44;
-  let d = "";
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const theta = thetaStart + (thetaEnd - thetaStart) * t;
-    const r = r0 * Math.exp(growth * theta);
-    const x = cx + r * Math.cos(theta);
-    const y = cy + r * Math.sin(theta);
-    d += (i === 0 ? "M" : "L") + x.toFixed(1) + " " + y.toFixed(1) + " ";
-  }
-  return d;
-}
-
-type GalaxyUnderlay = {
-  arms: Array<{ d: string; width: number; color: string; opacity: number }>;
-  dustLanes: Array<{ d: string; width: number; color: string; opacity: number }>;
-  distantGalaxies: Array<{ x: number; y: number; rx: number; ry: number; rot: number; opacity: number }>;
-};
+const MILKY_WAY = { w: 1920, h: 1920 };
 
 /**
- * Procedural galaxy backdrop sized to the current viewBox. Arms sweep
- * counter-clockwise from the core; dust lanes trace slightly offset paths;
- * distant galaxies scatter along the rim. Everything derives from the viewBox
- * so it stays registered with canon-sector coordinates.
+ * Sol's position in viewBox coordinates. The map is cover-fitted (scaled to
+ * fully cover the viewBox, then centered), and this returns where the real
+ * Sol marker lands after that transform. On Hurt's rendering Sol sits at
+ * roughly (0.50, 0.30) in image space — on the Orion Spur.
  */
-function buildGalaxyUnderlay(vbX: number, vbY: number, vbW: number, vbH: number): GalaxyUnderlay {
-  const cx = vbX + vbW * 0.5;
-  const cy = vbY + vbH * 0.5;
-  const scale = Math.min(vbW, vbH);
-
-  // Palette — deep-theme hues only, all at low opacity so interactive layers
-  // stay readable on top.
-  const armColors = ["rgba(139,92,246,0.16)", "rgba(0,229,255,0.13)", "rgba(230,168,23,0.09)"];
-  const dustColor = "rgba(0,0,0,0.35)";
-
-  const arms: GalaxyUnderlay["arms"] = [];
-  const dustLanes: GalaxyUnderlay["dustLanes"] = [];
-  const armCount = 3;
-  for (let a = 0; a < armCount; a++) {
-    const phase = (a / armCount) * Math.PI * 2 + seeded2(a * 7) * 0.4;
-    for (let w = 0; w < 2; w++) {
-      const offset = w === 0 ? 0 : seeded2(a * 13 + w) * 0.22 - 0.11;
-      const d = spiralArmPath(cx, cy, scale * 0.055, 0.31, phase + offset, phase + offset + 2.1);
-      arms.push({
-        d,
-        width: scale * (w === 0 ? 0.075 : 0.045),
-        color: armColors[a % armColors.length],
-        opacity: w === 0 ? 1 : 0.55,
-      });
-    }
-    // Dust lane hugging each arm's inner edge.
-    const dustD = spiralArmPath(cx, cy, scale * 0.045, 0.31, phase - 0.16, phase - 0.16 + 2.1);
-    dustLanes.push({
-      d: dustD,
-      width: scale * 0.028,
-      color: dustColor,
-    opacity: 0.5,
-    });
-  }
-
-  // Distant elliptical galaxies scattered around the rim.
-  const distantGalaxies = Array.from({ length: 7 }, (_, i) => ({
-    x: vbX + seeded2(i * 3 + 11) * vbW,
-    y: vbY + seeded2(i * 5 + 17) * vbH,
-    rx: scale * (0.012 + seeded2(i * 7 + 23) * 0.02),
-    ry: scale * (0.005 + seeded2(i * 11 + 31) * 0.008),
-    rot: seeded2(i * 13 + 41) * 180,
-    opacity: 0.12 + seeded2(i * 17 + 53) * 0.18,
-  }));
-
-  return { arms, dustLanes, distantGalaxies };
+function solPointIn(vbX: number, vbY: number, vbW: number, vbH: number) {
+  const scale = Math.max(vbW / MILKY_WAY.w, vbH / MILKY_WAY.h);
+  const drawW = MILKY_WAY.w * scale;
+  const drawH = MILKY_WAY.h * scale;
+  const offX = vbX + (vbW - drawW) / 2;
+  const offY = vbY + (vbH - drawH) / 2;
+  return {
+    x: offX + 0.5 * drawW,
+    y: offY + 0.3 * drawH,
+  };
 }
 
 type Discovery = {
@@ -204,11 +138,20 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
       vbW: Math.max(520, maxX - minX) + pad * 2,
       vbH: Math.max(340, maxY - minY) + pad * 2,
     };
-  }, [sectors]);
-
-  // Procedural galaxy backdrop — rebuilt only when the viewBox reframes.
-  const underlay = useMemo(
-    () => buildGalaxyUnderlay(viewBox.vbX, viewBox.vbY, viewBox.vbW, viewBox.vbH),
+  }, [sectors]);  // Real-galaxy backdrop mapping — recomputed only when the viewBox reframes.
+  const galaxy = useMemo(
+    () => {
+      const scale = Math.max(viewBox.vbW / MILKY_WAY.w, viewBox.vbH / MILKY_WAY.h);
+      return {
+        rect: {
+          x: viewBox.vbX + (viewBox.vbW - MILKY_WAY.w * scale) / 2,
+          y: viewBox.vbY + (viewBox.vbH - MILKY_WAY.h * scale) / 2,
+          w: MILKY_WAY.w * scale,
+          h: MILKY_WAY.h * scale,
+        },
+        sol: solPointIn(viewBox.vbX, viewBox.vbY, viewBox.vbW, viewBox.vbH),
+      };
+    },
     [viewBox.vbX, viewBox.vbY, viewBox.vbW, viewBox.vbH],
   );
 
@@ -425,45 +368,27 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
               to propose a new system.
             </desc>
 
-            {/* Deep-sky galaxy underlay — sits behind everything, purely decorative */}
+            {/* Real-galaxy backdrop — NASA/JPL-Caltech/R. Hurt Milky Way map,
+                cover-fitted into chart coordinates (decorative, aria-hidden) */}
             {layers.galaxy && (
               <g aria-hidden="true">
-                {/* Core glow */}
-                <radialGradient id="uf-galaxy-core" gradientUnits="userSpaceOnUse"
-                  cx={viewBox.vbX + viewBox.vbW / 2} cy={viewBox.vbY + viewBox.vbH / 2}
-                  r={Math.min(viewBox.vbW, viewBox.vbH) * 0.55}
-                >
-                  <stop offset="0%" stopColor="rgba(139,92,246,0.22)" />
-                  <stop offset="45%" stopColor="rgba(0,229,255,0.07)" />
-                  <stop offset="100%" stopColor="rgba(0,0,0,0)" />
-                </radialGradient>
+                <image
+                  href={milkyWayUrl}
+                  x={galaxy.rect.x}
+                  y={galaxy.rect.y}
+                  width={galaxy.rect.w}
+                  height={galaxy.rect.h}
+                  preserveAspectRatio="xMidYMid slice"
+                  opacity={0.85}
+                />
+                {/* Readability scrim so interactive layers stay crisp on top */}
                 <rect
                   x={viewBox.vbX}
                   y={viewBox.vbY}
                   width={viewBox.vbW}
                   height={viewBox.vbH}
-                  fill="url(#uf-galaxy-core)"
+                  fill="rgba(5,8,22,0.45)"
                 />
-                {/* Spiral arms + dust lanes */}
-                {underlay.arms.map((a, i) => (
-                  <path key={`arm-${i}`} d={a.d} fill="none" stroke={a.color} strokeWidth={a.width} strokeLinecap="round" opacity={a.opacity} />
-                ))}
-                {underlay.dustLanes.map((d, i) => (
-                  <path key={`dust-${i}`} d={d.d} fill="none" stroke={d.color} strokeWidth={d.width} strokeLinecap="round" opacity={d.opacity} />
-                ))}
-                {/* Distant elliptical galaxies */}
-                {underlay.distantGalaxies.map((g, i) => (
-                  <ellipse
-                    key={`dg-${i}`}
-                    cx={g.x}
-                    cy={g.y}
-                    rx={g.rx}
-                    ry={g.ry}
-                    transform={`rotate(${g.rot} ${g.x} ${g.y})`}
-                    fill="#bfe9ff"
-                    opacity={g.opacity}
-                  />
-                ))}
               </g>
             )}
 
@@ -557,6 +482,24 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                   </g>
                 ))}
               </g>
+            )}
+
+            {/* Sol — humanity's home star on the Orion Spur, linking into the
+                Sol-sector lore archive */}
+            {layers.sectors && (
+              <a
+                href="/lore?sector=Sol"
+                role="link"
+                aria-label="Open Sol sector lore"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <circle cx={galaxy.sol.x} cy={galaxy.sol.y} r={10} fill="var(--uf-gold)" fillOpacity={0.12} className="uf-warp-gate" />
+                <circle cx={galaxy.sol.x} cy={galaxy.sol.y} r={5.5} fill="none" stroke="var(--uf-gold)" strokeWidth={1} opacity={0.8} />
+                <circle cx={galaxy.sol.x} cy={galaxy.sol.y} r={2} fill="var(--uf-gold)" />
+                <text x={galaxy.sol.x + 9} y={galaxy.sol.y - 6} fontSize={11} fill="var(--uf-gold)" fontWeight={600}>
+                  Sol
+                </text>
+              </a>
             )}
 
             {/* Canon sector nodes */}
