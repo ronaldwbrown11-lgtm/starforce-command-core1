@@ -61,6 +61,27 @@ function solPointIn(vbX: number, vbY: number, vbW: number, vbH: number) {
   };
 }
 
+/** Points string for a 5-pointed star (capital insignia). */
+function starPoints(cx: number, cy: number, r: number): string {
+  const pts: string[] = [];
+  for (let i = 0; i < 10; i++) {
+    const ang = -Math.PI / 2 + (i * Math.PI) / 5;
+    const rad = i % 2 === 0 ? r : r * 0.42;
+    pts.push(`${(cx + rad * Math.cos(ang)).toFixed(2)},${(cy + rad * Math.sin(ang)).toFixed(2)}`);
+  }
+  return pts.join(" ");
+}
+
+/** Points string for an upward triangle (boundary vertex marker). */
+function trianglePoints(cx: number, cy: number, r: number): string {
+  const pts: string[] = [];
+  for (let i = 0; i < 3; i++) {
+    const ang = -Math.PI / 2 + (i * 2 * Math.PI) / 3;
+    pts.push(`${(cx + r * Math.cos(ang)).toFixed(2)},${(cy + r * Math.sin(ang)).toFixed(2)}`);
+  }
+  return pts.join(" ");
+}
+
 type Discovery = {
   _id: string;
   title: string;
@@ -173,6 +194,35 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   // sub-pixel at galactic scale, so the marker is stylized just off the Sol
   // pin rather than astronomically projected.
   const uma47 = { x: galaxy.sol.x + 16, y: galaxy.sol.y - 20 };
+
+  // Solar neighborhood — the closest real systems to Earth, rendered as a
+  // stylized cluster around the Sol pin (true distances are sub-pixel at
+  // galactic scale). Offsets are fanned to keep labels legible.
+  const localSystems = [
+    { name: "Proxima Centauri", dist: "4.2 ly", dx: -14, dy: 18, ax: 2, ay: 13, anchor: "start" },
+    { name: "Alpha Centauri", dist: "4.4 ly", dx: -34, dy: 30, ax: 2, ay: 13, anchor: "start" },
+    { name: "Barnard's Star", dist: "6.0 ly", dx: 2, dy: 44, ax: 2, ay: 13, anchor: "start" },
+    { name: "Wolf 359", dist: "7.9 ly", dx: -52, dy: -2, ax: -5, ay: 3, anchor: "end" },
+    { name: "Lalande 21185", dist: "8.3 ly", dx: -44, dy: 52, ax: 2, ay: 13, anchor: "start" },
+    { name: "Sirius", dist: "8.6 ly", dx: 44, dy: 42, ax: 2, ay: 13, anchor: "start" },
+    { name: "Epsilon Eridani", dist: "10.5 ly", dx: 66, dy: 10, ax: 5, ay: 3, anchor: "start" },
+    { name: "Tau Ceti", dist: "11.9 ly", dx: 28, dy: 68, ax: 2, ay: 13, anchor: "start" },
+  ].map((s) => ({
+    ...s,
+    x: galaxy.sol.x + s.dx,
+    y: galaxy.sol.y + s.dy,
+    lx: galaxy.sol.x + s.dx + s.ax,
+    ly: galaxy.sol.y + s.dy + s.ay,
+  }));
+
+  // Orion Triangle boundary — Betelgeuse, Bellatrix, and Rigel mark the
+  // alliance frontier enclosing Sol, the capital, and the neighborhood.
+  const orionTriangle = [
+    { name: "Betelgeuse", dx: -150, dy: -190 },
+    { name: "Bellatrix", dx: -235, dy: 55 },
+    { name: "Rigel", dx: 185, dy: 150 },
+  ].map((v) => ({ ...v, x: galaxy.sol.x + v.dx, y: galaxy.sol.y + v.dy }));
+  const orionLabel = { x: galaxy.sol.x - 165, y: galaxy.sol.y + 30 };
 
   // Curated warp gates from the operator console. Each row links two sector
   // slugs; we resolve live positions client-side so moving a sector moves its
@@ -524,14 +574,87 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
               </a>
             )}
 
-            {/* 47 Ursae Majoris — the Alliance Capital, a short hop from Sol */}
+            {/* 47 Ursae Majoris — Alliance Capital: gold star insignia */}
             <g aria-hidden="true">
-              <circle cx={uma47.x} cy={uma47.y} r={3 * UI} fill="none" stroke="var(--uf-cyan)" strokeWidth={1 * UI} opacity={0.85} />
-              <circle cx={uma47.x} cy={uma47.y} r={1.4 * UI} fill="var(--uf-cyan)" />
-              <text x={uma47.x + 6 * UI} y={uma47.y + 3 * UI} fontSize={9.5 * UI} fill="var(--uf-text)">
+              <title>47 Ursae Majoris — Alliance Capital</title>
+              <circle cx={uma47.x} cy={uma47.y} r={8 * UI} fill="var(--uf-gold)" fillOpacity={0.1} />
+              <circle cx={uma47.x} cy={uma47.y} r={5 * UI} fill="none" stroke="var(--uf-gold)" strokeWidth={1 * UI} opacity={0.9} />
+              <circle cx={uma47.x} cy={uma47.y} r={1.6 * UI} fill="var(--uf-gold)" />
+              <polygon
+                points={starPoints(uma47.x, uma47.y - 11 * UI, 4 * UI)}
+                fill="var(--uf-gold)"
+                stroke="var(--uf-navy)"
+                strokeWidth={0.4 * UI}
+              />
+              <text x={uma47.x + 9 * UI} y={uma47.y + 2 * UI} fontSize={9.5 * UI} fill="var(--uf-text)" fontWeight={600}>
                 47 Ursae Majoris
               </text>
+              <text x={uma47.x + 9 * UI} y={uma47.y + 12 * UI} fontSize={6.5 * UI} fill="var(--uf-gold)" letterSpacing={1.5 * UI}>
+                ALLIANCE CAPITAL
+              </text>
             </g>
+
+            {/* Orion Triangle boundary — thin gold line through the three
+                vertex systems, naming the alliance frontier */}
+            {layers.sectors && (
+              <g aria-hidden="true">
+                <path
+                  d={`M ${orionTriangle[0].x} ${orionTriangle[0].y} L ${orionTriangle[1].x} ${orionTriangle[1].y} L ${orionTriangle[2].x} ${orionTriangle[2].y} Z`}
+                  fill="none"
+                  stroke="var(--uf-gold)"
+                  strokeWidth={0.7 * UI}
+                  opacity={0.4}
+                />
+                <text
+                  x={orionLabel.x}
+                  y={orionLabel.y}
+                  fontSize={8 * UI}
+                  fill="var(--uf-gold)"
+                  opacity={0.7}
+                  textAnchor="middle"
+                  letterSpacing={3 * UI}
+                >
+                  ORION TRIANGLE
+                </text>
+                {orionTriangle.map((v) => (
+                  <g key={v.name}>
+                    <title>{v.name}</title>
+                    <polygon
+                      points={trianglePoints(v.x, v.y, 4 * UI)}
+                      fill="var(--uf-navy)"
+                      stroke="var(--uf-gold)"
+                      strokeWidth={0.9 * UI}
+                    />
+                    <text
+                      x={v.x + (v.dx < 0 ? -6 * UI : 6 * UI)}
+                      y={v.y + 3 * UI}
+                      fontSize={8 * UI}
+                      fill="var(--uf-text)"
+                      textAnchor={v.dx < 0 ? "end" : "start"}
+                      opacity={0.9}
+                    >
+                      {v.name}
+                    </text>
+                  </g>
+                ))}
+              </g>
+            )}
+
+            {/* Solar neighborhood — closest real systems to Earth */}
+            {layers.sectors && (
+              <g aria-hidden="true">
+                {localSystems.map((s) => (
+                  <g key={s.name}>
+                    <title>{`${s.name} — ${s.dist} from Sol`}</title>
+                    <circle cx={s.x} cy={s.y} r={3.5 * UI} fill="none" stroke="var(--uf-text)" strokeWidth={0.4 * UI} opacity={0.35} />
+                    <circle cx={s.x} cy={s.y} r={1.6 * UI} fill="var(--uf-text)" opacity={0.9} />
+                    <text x={s.lx} y={s.ly} fontSize={6.5 * UI} fill="var(--uf-muted)" textAnchor={s.anchor as "start" | "end"}>
+                      {s.name}
+                    </text>
+                  </g>
+                ))}
+              </g>
+            )}
 
             {/* Canon sector nodes */}
             {layers.sectors && (
