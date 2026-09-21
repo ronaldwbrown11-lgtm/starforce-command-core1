@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && bun run build:isolate && bun run package:source",
-    "build:ci": "vite build && bun run build:isolate && bun run package:source",
+    "build": "tsc -b && vite build && bun run prerender && bun run build:isolate && bun run package:source",
+    "build:ci": "vite build && bun run prerender && bun run build:isolate && bun run package:source",
+    "prerender": "bun scripts/prerender-routes.ts",
     "package:source": "bun scripts/package-source.ts",
     "build:isolate": "rm -rf isolate && mkdir -p isolate && cp -r dist/. isolate/",
     "lint": "eslint .",

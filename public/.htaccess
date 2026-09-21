@@ -17,6 +17,14 @@ RewriteRule ^assets/ - [L]
 # no session and one fetch, so the embed survives refresh and navigation.
 RewriteRule ^embed/story/([A-Za-z0-9_-]+)/?$ embed.html [L]
 
+# Prerendered per-route pages: internally rewrite /lore (or /lore/)
+# → lore.html when that file exists (flat sibling of index.html).
+# Internal rewrite, NOT a redirect — clean URLs serve unique crawler-first
+# HTML directly. Safe against loops: the -f check fails for
+# lore.html.html, so an already-rewritten URL passes through.
+RewriteCond %{DOCUMENT_ROOT}/$1.html -f
+RewriteRule ^(.+?)/?$ $1.html [L]
+
 # SPA fallback — serve index.html for all client-side routes
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
