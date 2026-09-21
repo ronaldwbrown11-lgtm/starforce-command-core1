@@ -270,6 +270,7 @@ const schema = defineSchema(
       ),
       createdAt: v.number(),
     })
+      .index("by_author", ["authorId"])
       .index("by_faction", ["faction"])
       .index("by_sector", ["sector"])
       .index("by_classification", ["classification"])

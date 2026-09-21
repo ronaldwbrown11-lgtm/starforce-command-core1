@@ -76,30 +76,6 @@ function HonorsSection() {
   const [description, setDescription] = useState("");
   const [precedence, setPrecedence] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploadFor, setUploadFor] = useState<string | null>(null);
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (busy) return;
-    setBusy("create");
-    try {
-      await createHonor({
-        name,
-        category,
-        description,
-        precedence: precedence ? Number(precedence) : undefined,
-      });
-      toast.success("Honor added to the catalog.");
-      setName("");
-      setDescription("");
-      setPrecedence("");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Create failed.");
-    } finally {
-      setBusy(null);
-    }
-  }
 
   async function handleUpload(honorId: string, file: File) {
     setBusy(`img:${honorId}`);
@@ -124,7 +100,40 @@ function HonorsSection() {
       toast.error(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setBusy(null);
-      setUploadFor(null);
+    }
+  }
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy("create");
+    try {
+      await createHonor({
+        name,
+        category,
+        description,
+        precedence: precedence ? Number(precedence) : undefined,
+      });
+      toast.success("Honor added to the catalog.");
+      setName("");
+      setDescription("");
+      setPrecedence("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Create failed.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleRemoveImage(honorId: string) {
+    setBusy(`rmimg:${honorId}`);
+    try {
+      await removeImage({ id: honorId as Id<"honors"> });
+      toast.success("Image removed.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Remove failed.");
+    } finally {
+      setBusy(null);
     }
   }
 
@@ -194,105 +203,146 @@ function HonorsSection() {
       ) : (
         <ul className="flex flex-col gap-3 list-none p-0 m-0">
           {honors.map((h) => (
-            <li key={h._id}>
-              <HoloCard>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="shrink-0 w-14 h-9 rounded border border-[color:var(--uf-border)] overflow-hidden bg-[rgba(16,24,39,0.5)] grid place-items-center">
-                      {h.hasImage ? (
-                        <HonorImage honorId={h._id} />
-                      ) : (
-                        <Medal className="h-4 w-4 text-uf-muted" aria-hidden />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-lg font-semibold">{h.name}</h3>
-                        <StatusPill variant={h.category === "medal" ? "gold" : h.category === "badge" ? "violet" : "cyan"}>
-                          {HONOR_CATEGORY_LABEL[h.category]}
-                        </StatusPill>
-                        {!h.active && <StatusPill variant="danger">Retired</StatusPill>}
-                      </div>
-                      <p className="text-sm text-uf-muted mt-1">{h.description}</p>
-                      <p className="text-xs text-uf-muted mt-1 uppercase tracking-[0.16em]">
-                        {h.holders} holder{h.holders === 1 ? "" : "s"} · precedence {h.precedence ?? "—"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                    <input
-                      ref={uploadFor === h._id ? fileRef : undefined}
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp,image/avif,image/svg+xml"
-                      className="sr-only"
-                      aria-label={`Upload image for ${h.name}`}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) void handleUpload(h._id, f);
-                        e.target.value = "";
-                      }}
-                    />
-                    <NeonButton
-                      variant="ghost"
-                      onClick={() => {
-                        setUploadFor(h._id);
-                        // Let the render attach the ref before triggering.
-                        setTimeout(() => fileRef.current?.click(), 0);
-                      }}
-                      disabled={busy === `img:${h._id}`}
-                    >
-                      {busy === `img:${h._id}` ? (
-                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                      ) : (
-                        <Upload className="h-4 w-4" aria-hidden />
-                      )}
-                      {h.hasImage ? "Replace art" : "Upload art"}
-                    </NeonButton>
-                    <NeonButton
-                      variant="ghost"
-                      onClick={async () => {
-                        setBusy(`ret:${h._id}`);
-                        try {
-                          await updateHonor({ id: h._id as Id<"honors">, active: !h.active });
-                          toast.success(h.active ? "Honor retired — no new awards." : "Honor reactivated.");
-                        } catch {
-                          toast.error("Update failed.");
-                        } finally {
-                          setBusy(null);
-                        }
-                      }}
-                      disabled={busy === `ret:${h._id}`}
-                    >
-                      {h.active ? <X className="h-4 w-4" aria-hidden /> : <Check className="h-4 w-4" aria-hidden />}
-                      {h.active ? "Retire" : "Reactivate"}
-                    </NeonButton>
-                    <NeonButton
-                      variant="ghost"
-                      aria-label={`Delete ${h.name}`}
-                      onClick={async () => {
-                        if (!window.confirm(`Delete "${h.name}" and revoke it from ${h.holders} member(s)? This cannot be undone.`)) return;
-                        setBusy(`del:${h._id}`);
-                        try {
-                          await deleteHonor({ id: h._id as Id<"honors"> });
-                          toast.success("Honor deleted.");
-                        } catch {
-                          toast.error("Delete failed.");
-                        } finally {
-                          setBusy(null);
-                        }
-                      }}
-                      disabled={busy === `del:${h._id}`}
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden />
-                    </NeonButton>
-                  </div>
-                </div>
-              </HoloCard>
-            </li>
+            <HonorRow
+              key={h._id}
+              honor={h}
+              busy={busy}
+              onUpload={handleUpload}
+              onRemoveImage={handleRemoveImage}
+              onToggleActive={async () => {
+                setBusy(`ret:${h._id}`);
+                try {
+                  await updateHonor({ id: h._id as Id<"honors">, active: !h.active });
+                  toast.success(h.active ? "Honor retired — no new awards." : "Honor reactivated.");
+                } catch {
+                  toast.error("Update failed.");
+                } finally {
+                  setBusy(null);
+                }
+              }}
+              onDelete={async () => {
+                if (!window.confirm(`Delete "${h.name}" and revoke it from ${h.holders} member(s)? This cannot be undone.`)) return;
+                setBusy(`del:${h._id}`);
+                try {
+                  await deleteHonor({ id: h._id as Id<"honors"> });
+                  toast.success("Honor deleted.");
+                } catch {
+                  toast.error("Delete failed.");
+                } finally {
+                  setBusy(null);
+                }
+              }}
+            />
           ))}
         </ul>
       )}
     </section>
+  );
+}
+
+function HonorRow({
+  honor,
+  busy,
+  onUpload,
+  onRemoveImage,
+  onToggleActive,
+  onDelete,
+}: {
+  honor: {
+    _id: string;
+    name: string;
+    category: string;
+    description: string;
+    precedence: number | null;
+    active: boolean;
+    hasImage: boolean;
+    holders: number;
+  };
+  busy: string | null;
+  onUpload: (honorId: string, file: File) => Promise<void>;
+  onRemoveImage: (honorId: string) => Promise<void>;
+  onToggleActive: () => void;
+  onDelete: () => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <li>
+      <HoloCard>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="shrink-0 w-16 h-12 rounded border border-[color:var(--uf-border)] overflow-hidden bg-[rgba(16,24,39,0.5)] grid place-items-center">
+              {honor.hasImage ? (
+                <HonorImage honorId={honor._id} />
+              ) : (
+                <Medal className="h-4 w-4 text-uf-muted" aria-hidden />
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-lg font-semibold">{honor.name}</h3>
+                <StatusPill variant={honor.category === "medal" ? "gold" : honor.category === "badge" ? "violet" : "cyan"}>
+                  {HONOR_CATEGORY_LABEL[honor.category]}
+                </StatusPill>
+                {!honor.active && <StatusPill variant="danger">Retired</StatusPill>}
+              </div>
+              <p className="text-sm text-uf-muted mt-1">{honor.description}</p>
+              <p className="text-xs text-uf-muted mt-1 uppercase tracking-[0.16em]">
+                {honor.holders} holder{honor.holders === 1 ? "" : "s"} · precedence {honor.precedence ?? "—"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/avif,image/svg+xml"
+              className="sr-only"
+              aria-label={`Upload image for ${honor.name}`}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void onUpload(honor._id, f);
+                e.target.value = "";
+              }}
+            />
+            <NeonButton
+              variant="ghost"
+              onClick={() => fileRef.current?.click()}
+              disabled={busy === `img:${honor._id}`}
+            >
+              {busy === `img:${honor._id}` ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <Upload className="h-4 w-4" aria-hidden />
+              )}
+              {honor.hasImage ? "Replace art" : "Upload art"}
+            </NeonButton>
+            {honor.hasImage && (
+              <NeonButton
+                variant="ghost"
+                onClick={() => onRemoveImage(honor._id)}
+                disabled={busy === `rmimg:${honor._id}`}
+                aria-label={`Remove image from ${honor.name}`}
+              >
+                {busy === `rmimg:${honor._id}` ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <X className="h-4 w-4" aria-hidden />
+                )}
+                Remove art
+              </NeonButton>
+            )}
+            <NeonButton variant="ghost" onClick={onToggleActive} disabled={busy === `ret:${honor._id}`}>
+              {honor.active ? <X className="h-4 w-4" aria-hidden /> : <Check className="h-4 w-4" aria-hidden />}
+              {honor.active ? "Retire" : "Reactivate"}
+            </NeonButton>
+            <NeonButton variant="ghost" aria-label={`Delete ${honor.name}`} onClick={onDelete} disabled={busy === `del:${honor._id}`}>
+              <Trash2 className="h-4 w-4" aria-hidden />
+            </NeonButton>
+          </div>
+        </div>
+      </HoloCard>
+    </li>
   );
 }
 
@@ -313,6 +363,8 @@ function VaultSection() {
   const updateItem = useMutation(api.honors.updateVaultItem);
   const attachCover = useMutation(api.honors.attachVaultCover);
   const attachFile = useMutation(api.honors.attachVaultFile);
+  const removeCover = useMutation(api.honors.removeVaultCover);
+  const removeFile = useMutation(api.honors.removeVaultFile);
   const genUpload = useMutation(api.assets.generateUploadUrl);
 
   const [name, setName] = useState("");
@@ -447,6 +499,28 @@ function VaultSection() {
               item={it}
               busy={busy}
               upload={upload}
+              onRemoveCover={async () => {
+                setBusy(`rmcover:${it._id}`);
+                try {
+                  await removeCover({ id: it._id as Id<"vaultItems"> });
+                  toast.success("Cover art removed.");
+                } catch {
+                  toast.error("Remove failed.");
+                } finally {
+                  setBusy(null);
+                }
+              }}
+              onRemoveFile={async () => {
+                setBusy(`rmfile:${it._id}`);
+                try {
+                  await removeFile({ id: it._id as Id<"vaultItems"> });
+                  toast.success("Payload file removed.");
+                } catch {
+                  toast.error("Remove failed.");
+                } finally {
+                  setBusy(null);
+                }
+              }}
               onToggleActive={async () => {
                 setBusy(`act:${it._id}`);
                 try {
@@ -482,6 +556,8 @@ function VaultRow({
   item,
   busy,
   upload,
+  onRemoveCover,
+  onRemoveFile,
   onToggleActive,
   onDelete,
 }: {
@@ -500,6 +576,8 @@ function VaultRow({
   };
   busy: string | null;
   upload: (itemId: string, file: File, target: "cover" | "file") => Promise<void>;
+  onRemoveCover: () => void;
+  onRemoveFile: () => void;
   onToggleActive: () => void;
   onDelete: () => void;
 }) {
@@ -510,7 +588,14 @@ function VaultRow({
     <li>
       <HoloCard>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="shrink-0 w-16 h-12 rounded border border-[color:var(--uf-border)] overflow-hidden bg-[rgba(16,24,39,0.5)] grid place-items-center">
+              {item.hasCover ? (
+                <VaultCoverPreview itemId={item._id} />
+              ) : (
+                <Package className="h-4 w-4 text-uf-muted" aria-hidden />
+              )}
+            </div>
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-lg font-semibold">{item.name}</h3>
               <StatusPill variant="violet">{VAULT_KIND_LABEL[item.kind] ?? item.kind}</StatusPill>
@@ -551,10 +636,20 @@ function VaultRow({
               {busy === `cover:${item._id}` ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ImageIcon className="h-4 w-4" aria-hidden />}
               {item.hasCover ? "Replace art" : "Cover art"}
             </NeonButton>
+            {item.hasCover && (
+              <NeonButton variant="ghost" onClick={onRemoveCover} disabled={busy === `rmcover:${item._id}`} aria-label={`Remove cover art from ${item.name}`}>
+                <X className="h-4 w-4" aria-hidden /> Remove art
+              </NeonButton>
+            )}
             <NeonButton variant="ghost" onClick={() => fileRef.current?.click()} disabled={busy === `file:${item._id}`}>
               {busy === `file:${item._id}` ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Upload className="h-4 w-4" aria-hidden />}
               {item.hasFile ? "Replace file" : "Payload"}
             </NeonButton>
+            {item.hasFile && (
+              <NeonButton variant="ghost" onClick={onRemoveFile} disabled={busy === `rmfile:${item._id}`} aria-label={`Remove payload file from ${item.name}`}>
+                <X className="h-4 w-4" aria-hidden /> Remove file
+              </NeonButton>
+            )}
             <NeonButton variant="ghost" onClick={onToggleActive} disabled={busy === `act:${item._id}`}>
               {item.active ? <X className="h-4 w-4" aria-hidden /> : <Check className="h-4 w-4" aria-hidden />}
               {item.active ? "Retire" : "Reactivate"}
@@ -567,6 +662,12 @@ function VaultRow({
       </HoloCard>
     </li>
   );
+}
+
+function VaultCoverPreview({ itemId }: { itemId: string }) {
+  const url = useQuery(api.honors.vaultCoverUrl, { id: itemId as Id<"vaultItems"> });
+  if (!url) return <ImageIcon className="h-4 w-4 text-uf-muted" aria-hidden />;
+  return <img src={url} alt="" className="w-full h-full object-cover" />;
 }
 
 // ===========================================================================

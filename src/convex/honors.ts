@@ -289,6 +289,20 @@ export const honorImageUrl = query({
   },
 });
 
+/** Cover-art URL for a vault item (operator console preview). */
+export const vaultCoverUrl = query({
+  args: { id: v.id("vaultItems") },
+  handler: async (ctx, args) => {
+    const me = await getAuthUserId(ctx);
+    if (!me) return null;
+    const user = await ctx.db.get(me);
+    if (user?.role !== "admin" && !user?.opRole) return null;
+    const item = await ctx.db.get(args.id);
+    if (!item?.coverStorageId) return null;
+    return await ctx.storage.getUrl(item.coverStorageId);
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Awarding & revoking honors
 // ---------------------------------------------------------------------------
