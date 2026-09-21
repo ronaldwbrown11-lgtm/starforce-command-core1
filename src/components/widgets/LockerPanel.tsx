@@ -55,38 +55,38 @@ export function MyLocker() {
           </div>
         </HoloCard>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 list-none p-0 m-0">
+        <div className="uf-grid uf-grid--3">
           {items.map((it) => {
             const meta = kindMeta(it.kind);
             const Icon = meta.icon;
             return (
-              <li key={it._id}>
-                <HoloCard className="!p-4 h-full">
-                  <div className="flex items-start gap-3">
-                    <div className="shrink-0 w-16 h-16 rounded-md border border-[color:var(--uf-border)] overflow-hidden bg-[rgba(16,24,39,0.6)] grid place-items-center">
-                      {it.coverUrl ? (
-                        <img src={it.coverUrl} alt={it.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <Icon className={`h-6 w-6 ${meta.tone}`} aria-hidden />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold">{it.name}</h3>
-                        <StatusPill variant="violet">{meta.label}</StatusPill>
-                      </div>
-                      {it.classification && (
-                        <StatusPill variant="danger">{it.classification}</StatusPill>
-                      )}
-                      <p className="text-sm text-uf-muted mt-1 line-clamp-2">{it.description}</p>
-                      {it.hasFile && <VaultDownload itemId={it.itemId} />}
-                    </div>
+              <HoloCard key={it._id} className="h-full">
+                <div className="flex items-start gap-4">
+                  <div className="shrink-0 w-20 h-20 rounded-md border border-[color:var(--uf-border)] overflow-hidden bg-[rgba(16,24,39,0.6)] grid place-items-center">
+                    {it.coverUrl ? (
+                      <img src={it.coverUrl} alt={it.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Icon className={`h-8 w-8 ${meta.tone}`} aria-hidden />
+                    )}
                   </div>
-                </HoloCard>
-              </li>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-lg font-semibold">{it.name}</h3>
+                      <StatusPill variant="violet">{meta.label}</StatusPill>
+                    </div>
+                    {it.classification && (
+                      <div className="mt-1">
+                        <StatusPill variant="danger">{it.classification}</StatusPill>
+                      </div>
+                    )}
+                    <p className="text-sm text-uf-muted mt-2">{it.description}</p>
+                    {it.hasFile && <VaultDownload itemId={it.itemId} />}
+                  </div>
+                </div>
+              </HoloCard>
             );
           })}
-        </ul>
+        </div>
       )}
     </section>
   );
@@ -131,13 +131,12 @@ export function LockerManifest() {
     );
   }
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 list-none p-0 m-0">
+    <div className="uf-grid uf-grid--3">
       {items.map((it) => {
         const meta = kindMeta(it.kind);
         const Icon = meta.icon;
         return (
-          <li key={it._id}>
-            <HoloCard className="!p-4 h-full">
+          <HoloCard key={it._id} className="h-full">
               <div className="flex items-start gap-3">
                 <div className="shrink-0 w-12 h-12 rounded-md border border-[color:var(--uf-border)] overflow-hidden bg-[rgba(16,24,39,0.6)] grid place-items-center">
                   <Icon className={`h-5 w-5 ${meta.tone}`} aria-hidden />
@@ -150,14 +149,13 @@ export function LockerManifest() {
                     <StatusPill variant="violet">{meta.label}</StatusPill>
                     {it.classification && <StatusPill variant="danger">{it.classification}</StatusPill>}
                   </div>
-                  <p className="text-sm text-uf-muted mt-1 line-clamp-3">{it.description}</p>
+                  <p className="text-sm text-uf-muted mt-1">{it.description}</p>
                 </div>
               </div>
-            </HoloCard>
-          </li>
+          </HoloCard>
         );
       })}
-    </ul>
+    </div>
   );
 }
 

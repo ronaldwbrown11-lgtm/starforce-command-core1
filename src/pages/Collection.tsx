@@ -287,7 +287,7 @@ export default function Collection() {
       </div>
 
       {/* ---- Ribbon rack ---- */}
-      <section aria-labelledby="col-rack" className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+      <section aria-labelledby="col-rack" className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 pt-10 pb-2">
         <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
           <h2 id="col-rack" className="uf-eyebrow">
             Ribbon rack
@@ -300,12 +300,12 @@ export default function Collection() {
       </section>
 
       {/* ---- Quartermaster's Locker ---- */}
-      <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 pt-8 pb-2">
         <MyLocker />
       </section>
 
       {/* ---- Badges ---- */}
-      <section aria-labelledby="col-badges" className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+      <section aria-labelledby="col-badges" className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 pt-8 pb-16">
         <h2 id="col-badges" className="uf-eyebrow mb-3">
           Earned badges
         </h2>

@@ -42,7 +42,7 @@ function ArcList() {
         secondary={{ label: "How arcs work", href: "#how", variant: "ghost" }}
       />
 
-      <section id="arcs" className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+      <section id="arcs" className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 pt-10 pb-6">
         <header className="mb-6">
           <span className="uf-eyebrow">Active arcs</span>
           <h2 className="text-3xl font-semibold mt-2 tracking-tight">
@@ -95,7 +95,7 @@ function ArcList() {
         )}
       </section>
 
-      <section id="how" className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 scroll-mt-24">
+      <section id="how" className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 pt-6 pb-16 scroll-mt-24">
         <header className="mb-6">
           <span className="uf-eyebrow">Protocol</span>
           <h2 className="text-2xl font-semibold mt-2 tracking-tight">How an arc works.</h2>

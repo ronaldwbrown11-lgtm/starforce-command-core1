@@ -35,7 +35,7 @@ export default function Awards() {
         secondary={{ label: "The Locker manifest", href: "#locker", variant: "ghost" }}
       />
 
-      <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 pt-10 pb-4">
         <header className="mb-6">
           <span className="uf-eyebrow">Order of precedence</span>
           <h2 className="text-3xl font-semibold mt-2 tracking-tight">
@@ -52,7 +52,7 @@ export default function Awards() {
 
       <section
         id="locker"
-        className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 scroll-mt-24"
+        className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 pt-6 pb-16 scroll-mt-24"
       >
         <header className="mb-6">
           <span className="uf-eyebrow">Digital trading & collection</span>

@@ -101,12 +101,11 @@ export function RibbonRack({
   }
 
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 list-none p-0 m-0">
+    <div className="uf-grid uf-grid--2">
       {visible.map((h) => {
         const Icon = CATEGORY_ICON[h.category] ?? Award;
         return (
-          <li key={h.awardId}>
-            <HoloCard className="!p-4">
+          <HoloCard key={h.awardId} className="h-full">
               <div className="flex items-start gap-3">
                 <div
                   className={`shrink-0 w-16 h-10 rounded-sm border grid place-items-center bg-[rgba(16,24,39,0.6)] ${CATEGORY_CLASS[h.category] ?? CATEGORY_CLASS.ribbon}`}
@@ -147,11 +146,10 @@ export function RibbonRack({
                   </time>
                 </div>
               </div>
-            </HoloCard>
-          </li>
+          </HoloCard>
         );
       })}
-    </ul>
+    </div>
   );
 }
 
@@ -193,10 +191,10 @@ export function AwardsCatalog() {
               {g.label}
             </h2>
             <p className="text-uf-muted text-sm mt-1 mb-4">{g.blurb}</p>
-            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 list-none p-0 m-0">
+            <ul className="uf-grid uf-grid--3 list-none p-0 m-0">
               {rows.map((h) => (
                 <li key={h._id}>
-                  <HoloCard className="!p-4 h-full">
+                  <HoloCard className="h-full">
                     <div className="flex items-start gap-3">
                       <div
                         className={`shrink-0 w-14 h-9 rounded-sm border grid place-items-center bg-[rgba(16,24,39,0.6)] ${CATEGORY_CLASS[h.category] ?? CATEGORY_CLASS.ribbon}`}
