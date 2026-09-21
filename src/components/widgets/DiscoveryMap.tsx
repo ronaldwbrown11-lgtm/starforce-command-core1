@@ -33,6 +33,7 @@ const HUES = [
 
 // Anti-clutter limits.
 const DRAW_CAP = 60; // only the most recent N charted systems are drawn
+const SECTOR_VISIT_RADIUS = 60; // chart units — clicking within this of a sector logs an exploration visit
 const CLUSTER_R = 22; // viewBox units — systems closer than this group together
 
 // ---------------------------------------------------------------------------
@@ -467,6 +468,21 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   const total = discoveries?.length ?? 0;
   const capped = total > DRAW_CAP;
 
+  // Exploration log — visiting a sector's neighborhood on the chart feeds
+  // the First Watch "visit three worlds" objective and the Wayfarer badge.
+  const logVisit = useMutation(api.engagement.logAtlasVisit);
+  const loggedFor = useRef<Set<string>>(new Set());
+  const handleSectorVisited = useCallback(
+    (sectorName: string) => {
+      if (!isAuthenticated || loggedFor.current.has(sectorName)) return;
+      loggedFor.current.add(sectorName); // dedupe per session; server dedupes forever
+      void logVisit({ sectorName }).catch(() => {
+        loggedFor.current.delete(sectorName);
+      });
+    },
+    [isAuthenticated, logVisit],
+  );
+
   const openProposeAt = (x: number, y: number) => {
     if (!isAuthenticated) {
       setAuthOpen(true);
@@ -491,6 +507,11 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
     }
     const p = pointerToBase(e);
     if (!p) return;
+    // Log exploration when the click lands inside a canon sector's reach.
+    const hit = (sectors ?? []).find(
+      (s) => Math.hypot(s.x - p.x, s.y - p.y) <= SECTOR_VISIT_RADIUS,
+    );
+    if (hit) handleSectorVisited(hit.name);
     openProposeAt(p.x, p.y);
   };
 

@@ -16,4 +16,14 @@ crons.weekly(
   {},
 );
 
+// Referral activation payouts — daily at 06:00 UTC. Pays referrers whose
+// recruits have been active on the base for at least a day; idempotent
+// (each recruit pays out exactly once, tracked via their referredBy marker).
+crons.daily(
+  "referral-payouts",
+  { hourUTC: 6, minuteUTC: 0 },
+  internal.engagement.payoutReferrals,
+  {},
+);
+
 export default crons;

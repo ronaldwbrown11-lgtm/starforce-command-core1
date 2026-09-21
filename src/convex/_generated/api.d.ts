@@ -35,6 +35,7 @@ import type * as discordBridgeNode from "../discordBridgeNode.js";
 import type * as discoveries from "../discoveries.js";
 import type * as economy from "../economy.js";
 import type * as email from "../email.js";
+import type * as engagement from "../engagement.js";
 import type * as events from "../events.js";
 import type * as factions from "../factions.js";
 import type * as faqs from "../faqs.js";
@@ -107,6 +108,7 @@ declare const fullApi: ApiFromModules<{
   discoveries: typeof discoveries;
   economy: typeof economy;
   email: typeof email;
+  engagement: typeof engagement;
   events: typeof events;
   factions: typeof factions;
   faqs: typeof faqs;

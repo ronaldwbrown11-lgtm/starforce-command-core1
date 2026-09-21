@@ -1,6 +1,6 @@
 import { Link, NavLink, useLocation, useNavigate } from "react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, ChevronDown, Compass, ExternalLink, Facebook, Github, Globe, Instagram, LayoutDashboard, Linkedin, Link as LinkIcon, LogOut, Mail, Menu, Search, Shield, Sparkles, Star, Twitch, Twitter, User, Users, Youtube, X } from "lucide-react";
+import { BookOpen, ChevronDown, Compass, ExternalLink, Facebook, Github, Globe, Instagram, LayoutDashboard, Linkedin, Link as LinkIcon, LogOut, Mail, Menu, Package, Search, Shield, Sparkles, Star, Twitch, Twitter, User, Users, Youtube, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { FRAME_CATALOG } from "@/lib/economy";
@@ -48,6 +48,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Stories", labelKey: "nav.stories", href: "/stories", desc: "Fiction & narratives", descKey: "desc.stories" },
       { label: "Lore", labelKey: "nav.lore", href: "/lore", desc: "Universe canon", descKey: "desc.lore" },
+      { label: "Lore Arcs", labelKey: "nav.arcs", href: "/arcs", desc: "Collaborative storylines", descKey: "desc.arcs" },
       { label: "Maps", labelKey: "nav.maps", href: "/maps", desc: "Sector charts", descKey: "desc.maps" },
       { label: "Star Atlas", labelKey: "nav.starAtlas", href: "/map", desc: "Interactive galaxy", descKey: "desc.starAtlas" },
       { label: "Transmissions", labelKey: "nav.videos", href: "/videos", desc: "Video & audio", descKey: "desc.videos" },
@@ -489,6 +490,10 @@ function Header() {
                 <DropdownMenuItem onClick={() => navigate("/account")} className="cursor-pointer">
                   <User className="h-4 w-4" aria-hidden />
                   My Account
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/collection")} className="cursor-pointer">
+                  <Package className="h-4 w-4" aria-hidden />
+                  My Collection
                 </DropdownMenuItem>
                 {isOperator ? (
                   <DropdownMenuItem onClick={() => navigate("/operator")} className="cursor-pointer">

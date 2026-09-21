@@ -18,6 +18,8 @@ type Dict = Record<string, string>;
 const EN: Dict = {
   "nav.stories": "Stories",
   "nav.lore": "Lore",
+  "nav.arcs": "Lore Arcs",
+  "desc.arcs": "Collaborative storylines",
   "nav.maps": "Maps",
   "nav.starAtlas": "Star Atlas",
   "nav.videos": "Videos",
@@ -76,6 +78,8 @@ const EN: Dict = {
 const ES: Dict = {
   "nav.stories": "Historias",
   "nav.lore": "Lore",
+  "nav.arcs": "Arcos Narrativos",
+  "desc.arcs": "Tramas colaborativas",
   "nav.maps": "Mapas",
   "nav.starAtlas": "Atlas Estelar",
   "nav.videos": "Transmisiones",

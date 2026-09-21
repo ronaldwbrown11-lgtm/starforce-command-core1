@@ -58,6 +58,7 @@ import OpAppearance from "./pages/operator/Appearance.tsx";
 import OpSocialLinks from "./pages/operator/SocialLinks.tsx";
 import OpEvents from "./pages/operator/EventsManage.tsx";
 import OpContests from "./pages/operator/ContestsManage.tsx";
+import OpArcs from "./pages/operator/Arcs.tsx";
 import OpStore from "./pages/operator/StoreManage.tsx";
 import OpArg from "./pages/operator/ArgManage.tsx";
 import OpLog from "./pages/operator/LogManage.tsx";
@@ -201,6 +202,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/operator/social-links" element={<OperatorGuard><OpSocialLinks /></OperatorGuard>} />
               <Route path="/operator/events" element={<OperatorGuard><OpEvents /></OperatorGuard>} />
               <Route path="/operator/contests" element={<OperatorGuard><OpContests /></OperatorGuard>} />
+              <Route path="/operator/arcs" element={<OperatorGuard><OpArcs /></OperatorGuard>} />
               <Route path="/operator/store" element={<OperatorGuard><OpStore /></OperatorGuard>} />
               <Route path="/operator/arg" element={<OperatorGuard><OpArg /></OperatorGuard>} />
               <Route path="/operator/log" element={<OperatorGuard><OpLog /></OperatorGuard>} />

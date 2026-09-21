@@ -30,6 +30,7 @@ const NAV = [
   { label: "Events Calendar", href: "/operator/events", icon: CalendarPlus },
   { label: "Billing", href: "/operator/billing", icon: CreditCard },
   { label: "Lore Contests", href: "/operator/contests", icon: Award },
+  { label: "Lore Arcs", href: "/operator/arcs", icon: BookOpenText },
   { label: "Requisition Depot", href: "/operator/store", icon: ShoppingBag },
   { label: "ARG Campaigns", href: "/operator/arg", icon: RadioTower },
   { label: "Captain's Log", href: "/operator/log", icon: ShipWheel },

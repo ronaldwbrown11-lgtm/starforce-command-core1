@@ -30,6 +30,8 @@ import Membership from "@/pages/Membership";
 import Support from "@/pages/Support";
 import CadetManual from "@/pages/CadetManual";
 import FirstWatch from "@/pages/FirstWatch";
+import LoreArcs from "@/pages/LoreArcs";
+import Collection from "@/pages/Collection";
 import { OperatorGuard } from "@/components/operator/OperatorGuard";
 import BlogPage from "@/pages/Blog";
 import BlogDetailPage from "@/pages/BlogDetail";
@@ -132,6 +134,9 @@ export const PUBLIC_ROUTES: PublicPageRoute[] = [
   { path: "/support", label: "Support", element: <Support /> },
   { path: "/manual", label: "Cadet Manual", element: <CadetManual /> },
   { path: "/first-watch", label: "First Watch", element: <FirstWatch /> },
+  { path: "/arcs", label: "Lore Arcs", element: <LoreArcs /> },
+  { path: "/arcs/:slug", label: "Lore Arc", element: <LoreArcs />, appearance: false },
+  { path: "/collection", label: "My Collection", element: <Collection />, appearance: false },
   { path: "/search", label: "Search", element: <SearchPage /> },
   { path: "/tools/assistant", label: "Tools Assistant", element: <ToolsAssistant /> },
   { path: "/account", label: "Account", element: <Account /> },

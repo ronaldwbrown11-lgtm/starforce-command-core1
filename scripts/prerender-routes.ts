@@ -56,6 +56,12 @@ const ROUTES: Route[] = [
       "Take on active operations: exploration, lore bounties, community events, and rank advancement.",
   },
   {
+    path: "/arcs",
+    title: "Lore Arcs — Star Force Base 1198",
+    description:
+      "Collaborative storylines written by the fleet. Contribute a chapter to an open arc and earn your place in canon.",
+  },
+  {
     path: "/vault",
     title: "Signal Vault — Star Force Base 1198",
     description:

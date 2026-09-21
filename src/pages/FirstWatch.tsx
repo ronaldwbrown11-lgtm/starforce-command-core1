@@ -1,6 +1,8 @@
 import { SiteShell, PageHero, HoloCard, NeonButton } from "@/components/uf";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { FirstWatchPanel } from "@/components/widgets/FirstWatchPanel";
 import { Link } from "react-router";
+import { useAuth } from "@/hooks/use-auth";
 import {
   CheckCircle2,
   Compass,
@@ -83,6 +85,7 @@ const NEXT_STEPS = [
 const STEP_ICONS = [Medal, Compass, PenLine, Shield, Gem];
 
 export default function FirstWatch() {
+  const { isAuthenticated } = useAuth();
   usePageMeta({
     title: "First Watch — Star Force Base 1198",
     description:
@@ -98,6 +101,28 @@ export default function FirstWatch() {
         primary={{ label: "Start with Objective 01", href: "/missions", variant: "primary" }}
         secondary={{ label: "Full Cadet Manual", href: "/manual", variant: "ghost" }}
       />
+
+      {/* Live objective tracker — signed-in members see real completion
+          state pulled from their account activity, plus the claimable bonus. */}
+      {isAuthenticated ? (
+        <section className="max-w-[900px] mx-auto px-4 sm:px-6 lg:px-12 mt-8">
+          <FirstWatchPanel forceShow />
+        </section>
+      ) : (
+        <section className="max-w-[900px] mx-auto px-4 sm:px-6 lg:px-12">
+          <HoloCard>
+            <p className="text-uf-muted text-sm">
+              Signed-in cadets see this checklist track itself — each objective
+              ticks off automatically as you complete it, and finishing all five
+              pays a one-time bonus of <span className="text-uf-text">+200 XP</span> and{" "}
+              <span className="text-uf-text">+50★ Star Credits</span>.
+            </p>
+            <Link to="/auth?returnTo=/first-watch" className="inline-block mt-3">
+              <NeonButton variant="primary">Sign in to start your watch</NeonButton>
+            </Link>
+          </HoloCard>
+        </section>
+      )}
 
       {/* Section I — activation */}
       <section className="uf-section max-w-[900px] mx-auto px-4 sm:px-6 lg:px-12">

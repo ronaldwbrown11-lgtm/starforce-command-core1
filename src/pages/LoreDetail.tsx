@@ -17,6 +17,8 @@ import {
 import { BookOpenText, Database, Download, FileText, ImageIcon } from "lucide-react";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { ShareButtons } from "@/components/ShareButtons";
+import { CodexSaveButton } from "@/components/widgets/CodexPanel";
+import { useAuth } from "@/hooks/use-auth";
 import type { Doc } from "@/convex/_generated/dataModel";
 
 type LibraryItem = Doc<"loreLibrary"> & {
@@ -29,6 +31,7 @@ export default function LoreDetail() {
   const slug = params.slug ?? "";
   const libraryItem = useQuery(api.loreLibrary.loreLibraryBySlug, { slug });
   const entry = useQuery(api.content.loreBySlug, { slug });
+  const { isAuthenticated } = useAuth();
   const metaTitle = libraryItem?.title ?? entry?.title ?? null;
 
   usePageMeta({
@@ -100,7 +103,16 @@ export default function LoreDetail() {
           ) : null}
         </article>
         <div className="mt-6 flex items-center justify-between flex-wrap gap-4">
-          <ReactionBar targetId={entry._id} targetType="lore" />
+          <div className="flex items-center gap-3 flex-wrap">
+            <ReactionBar targetId={entry._id} targetType="lore" />
+            <CodexSaveButton
+              entryType="lore"
+              entryId={entry._id}
+              title={entry.title}
+              slug={entry.slug}
+              isAuthenticated={isAuthenticated}
+            />
+          </div>
           <ShareButtons title={entry.title} path={`/lore/${entry.slug}`} description={entry.excerpt ?? undefined} />
         </div>
         <div className="mt-8">

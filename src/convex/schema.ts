@@ -146,8 +146,24 @@ const schema = defineSchema(
       discordUsername: v.optional(v.string()),
       discordLinkedAt: v.optional(v.number()),
       discordVerifiedAt: v.optional(v.number()),
+
+      // ---- Engagement layer (First Watch / streaks / referrals) ----------
+      // Daily-visit streak: consecutive-day check-in count, the last day it
+      // was extended ("YYYY-MM-DD", UTC), and the all-time best.
+      streakCount: v.optional(v.number()),
+      streakLastDay: v.optional(v.string()),
+      streakBest: v.optional(v.number()),
+      // First Watch activation funnel: one-time bonus claim timestamp.
+      firstWatchClaimedAt: v.optional(v.number()),
+      // Referral program: this member's recruitment code (generated lazily),
+      // the code they signed up under (set once), and how many recruits used
+      // their code.
+      referralCode: v.optional(v.string()),
+      referredBy: v.optional(v.string()),
+      referralCount: v.optional(v.number()),
     })
       .index("email", ["email"])
+      .index("by_referral_code", ["referralCode"])
       .searchIndex("search_display_name", { searchField: "displayName" })
       .searchIndex("search_name", { searchField: "name" }),
 
@@ -619,6 +635,77 @@ const schema = defineSchema(
     })
       .index("by_user", ["userId"])
       .index("by_user_story", ["userId", "storyId"]),
+
+    // ---- Member engagement layer -----------------------------------------
+
+    // Personal Codex: lore entries and stories a member bookmarks. One row
+    // per (user, entry); removing a bookmark deletes the row.
+    codexSaves: defineTable({
+      userId: v.id("users"),
+      entryType: v.string(), // "lore" | "story"
+      entryId: v.string(), // Convex id of the saved entry
+      title: v.string(), // snapshot so the list renders without joins
+      slug: v.string(),
+      savedAt: v.number(),
+    })
+      .index("by_user", ["userId"])
+      .index("by_user_entry", ["userId", "entryId"]),
+
+    // Atlas exploration log: one row per (user, sector) visit from the Star
+    // Atlas chart. Powers the First Watch "visit three worlds" objective and
+    // the Wayfarer badge. Deduped per user+sector per day.
+    atlasVisits: defineTable({
+      userId: v.id("users"),
+      sectorName: v.string(),
+      visitedAt: v.number(),
+    })
+      .index("by_user", ["userId"])
+      .index("by_user_sector", ["userId", "sectorName"]),
+
+    // Collaborative lore arcs: operator-curated multi-author storylines.
+    // Members submit chapter contributions for operator review; approved
+    // chapters render on the arc's public page in order.
+    loreArcs: defineTable({
+      title: v.string(),
+      slug: v.string(),
+      summary: v.string(),
+      status: v.string(), // open / active / closed
+      order: v.optional(v.number()),
+      createdBy: v.id("users"),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_slug", ["slug"])
+      .index("by_status", ["status"]),
+
+    arcContributions: defineTable({
+      arcId: v.id("loreArcs"),
+      authorId: v.id("users"),
+      title: v.string(),
+      body: v.string(),
+      status: v.string(), // pending / approved / rejected
+      reviewNote: v.optional(v.string()),
+      reviewedAt: v.optional(v.number()),
+      createdAt: v.number(),
+    })
+      .index("by_arc", ["arcId"])
+      .index("by_author", ["authorId"])
+      .index("by_arc_status", ["arcId", "status"]),
+
+    // Push notification subscriptions (integration placeholder — delivering
+    // an actual push requires VAPID keys + a send action in the Node
+    // runtime; registration is fully functional so the transport can be
+    // wired later without schema changes).
+    pushSubscriptions: defineTable({
+      userId: v.id("users"),
+      endpoint: v.string(),
+      p256dh: v.optional(v.string()),
+      auth: v.optional(v.string()),
+      ua: v.optional(v.string()),
+      createdAt: v.number(),
+    })
+      .index("by_user", ["userId"])
+      .index("by_endpoint", ["endpoint"]),
 
     sessions: defineTable({
       userId: v.id("users"),

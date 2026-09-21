@@ -19,6 +19,12 @@ import { FRAME_CATALOG, TITLE_CATALOG } from "@/lib/economy";
 import { TierUsageWidget } from "@/components/usage/TierUsageWidget";
 import { StorageManager } from "@/components/widgets/StorageManager";
 import { MyRequisitions } from "@/components/widgets/MyRequisitions";
+import {
+  FirstWatchPanel,
+  ReferralCard,
+  StreakChip,
+} from "@/components/widgets/FirstWatchPanel";
+import { CodexPanel } from "@/components/widgets/CodexPanel";
 import { Camera, ChevronDown, LogOut, Mail, MessageCircle, Send } from "lucide-react";
 
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -137,6 +143,16 @@ export default function Account() {
             <CadetQuestPanel />
           </div>
         )}
+        {isAuthenticated && user ? (
+          <div className="mb-4">
+            <StreakChip />
+          </div>
+        ) : null}
+        {isAuthenticated ? (
+          <div className="mb-5">
+            <FirstWatchPanel />
+          </div>
+        ) : null}
         {isAuthenticated && (
           <div className="mb-5">
             <ShipDashboard
@@ -162,6 +178,12 @@ export default function Account() {
             </HoloCard>
           </div>
         )}
+        {isAuthenticated ? (
+          <div className="mb-5 grid gap-5 lg:grid-cols-2">
+            <CodexPanel />
+            <ReferralCard />
+          </div>
+        ) : null}
         {isAuthenticated && (
           <div className="uf-grid uf-grid--3">
             <HoloCard frame={user?.frame}>
