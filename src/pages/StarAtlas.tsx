@@ -34,7 +34,7 @@ export default function StarAtlas() {
 
   usePageMeta({
     title: "Star Atlas — Star Force Base 1198",
-    description: "Interactive galaxy map of the Outer Rim. Chart new systems, propose discoveries, and build the fleet's knowledge of the frontier.",
+    description: "Interactive galaxy map of the Orion Triangle. Chart new systems, propose discoveries, and build the fleet's knowledge of the frontier.",
   });
 
   const submitClaim = async (e: React.FormEvent) => {
@@ -67,7 +67,7 @@ export default function StarAtlas() {
     <SiteShell>
       <PageHero
         eyebrow="Star Atlas"
-        title="Chart the Outer Rim."
+        title="Chart the Orion Triangle."
         lead="The galaxy is only as known as the fleet makes it. Survey an empty region, propose a system, and put your name on a star the Bridge canonizes for everyone."
         primary={
           isAuthenticated

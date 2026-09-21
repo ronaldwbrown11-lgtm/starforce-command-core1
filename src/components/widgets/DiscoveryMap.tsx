@@ -6,7 +6,7 @@ import { HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-import { MapPin, Plus, Sparkles } from "lucide-react";
+import { MapPin, Minus, Plus, RotateCcw, Sparkles } from "lucide-react";
 import milkyWayUrl from "@/assets/milky-way-map.jpg";
 
 // Deterministic pseudo-random stars for the chart backdrop (no Math.random
@@ -232,6 +232,10 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   // public Star Atlas page while the console happened to work.
   const applyWheelZoom = useCallback(
     (e: WheelEvent) => {
+      // Only pinch-zoom (Ctrl+wheel — what trackpad/touchpad pinch fires)
+      // zooms the chart. Plain two-finger scroll must NEVER be hijacked:
+      // without this guard the page becomes unscrollable over the map.
+      if (!e.ctrlKey) return;
       e.preventDefault();
       const p = pointerToBase(e);
       if (!p) return;
@@ -257,6 +261,20 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
     svg.addEventListener("wheel", applyWheelZoom, { passive: false });
     return () => svg.removeEventListener("wheel", applyWheelZoom);
   }, [applyWheelZoom]);
+
+  // Button zoom — steps toward/away from the frame center. Always visible,
+  // so zooming works with a touchpad, touchscreen, or no gesture at all.
+  const zoomTo = (next: number) => {
+    const clamped = Math.min(8, Math.max(0.5, next));
+    if (clamped === zoom) return;
+    const cx = viewBox.vbX + viewBox.vbW / 2;
+    const cy = viewBox.vbY + viewBox.vbH / 2;
+    setPan({
+      x: cx - viewBox.vbX - (cx - viewBox.vbX) * clamped,
+      y: cy - viewBox.vbY - (cy - viewBox.vbY) * clamped,
+    });
+    setZoom(clamped);
+  };
 
   // Real-galaxy backdrop mapping — recomputed only when the viewBox reframes.
   const galaxy = useMemo(
@@ -496,7 +514,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
             <span className="uf-eyebrow flex items-center gap-1.5">
               <Sparkles className="h-3.5 w-3.5" aria-hidden /> Charted space
             </span>
-            <h2 className="text-xl mt-1">The Outer Rim — live survey chart</h2>
+            <h2 className="text-xl mt-1">The Orion Triangle — Live Survey Chart</h2>
             <p className="text-uf-muted text-xs mt-1 max-w-[56ch]">
               Canon sectors are fixed; emerald nodes are systems charted by
               members. Starnet transit lanes pulse toward warp gates. Clusters group nearby systems — click a node to read its
@@ -523,7 +541,8 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
             preserveAspectRatio="xMidYMid meet"
             className={`w-full h-full ${dragging ? "cursor-grabbing" : "cursor-crosshair"}`}
             role="img"
-            aria-label="Interactive galaxy map. Scroll to zoom, drag to pan, click empty space to propose a system."
+            aria-label="Interactive galaxy map. Pinch or use the zoom buttons to zoom, drag to pan, click empty space to propose a system."
+            style={{ touchAction: "pan-y" }}
             onClick={handleSvgClick}
             onPointerDown={onDragStart}
             onPointerMove={onDragMove}
@@ -531,7 +550,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
             onPointerLeave={onDragEnd}
             onDoubleClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
           >
-            <title>Outer Rim survey chart</title>
+            <title>The Orion Triangle — Live Survey Chart</title>
             <desc>
               Interactive SVG of Star Force Base 1198 space. Canon sectors link
               to lore; member-charted systems show surveys. Click empty space
@@ -929,24 +948,48 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
             )}
           </svg>
 
-          {zoom !== 1 && (
+          {/* Zoom controls — always visible so the chart works on a
+              touchpad, touchscreen, or any device without a wheel */}
+          <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5">
             <button
               type="button"
-              onClick={() => {
-                setZoom(1);
-                setPan({ x: 0, y: 0 });
-              }}
-              aria-label="Reset map zoom and position"
-              className="absolute top-3 right-3 z-10 rounded-full border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.85)] px-3 py-1.5 text-xs text-uf-muted hover:text-uf-text hover:border-[rgba(0,229,255,0.5)] transition-colors"
+              onClick={() => zoomTo(zoom * 1.4)}
+              disabled={zoom >= 8}
+              aria-label="Zoom in"
+              className="h-8 w-8 grid place-items-center rounded-full border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.85)] text-uf-text hover:border-[rgba(0,229,255,0.5)] hover:text-uf-cyan disabled:opacity-40 transition-colors"
             >
-              Reset view ✕
+              <Plus className="h-4 w-4" aria-hidden />
             </button>
-          )}
+            <button
+              type="button"
+              onClick={() => zoomTo(zoom / 1.4)}
+              disabled={zoom <= 0.5}
+              aria-label="Zoom out"
+              className="h-8 w-8 grid place-items-center rounded-full border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.85)] text-uf-text hover:border-[rgba(0,229,255,0.5)] hover:text-uf-cyan disabled:opacity-40 transition-colors"
+            >
+              <Minus className="h-4 w-4" aria-hidden />
+            </button>
+            {zoom !== 1 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setZoom(1);
+                  setPan({ x: 0, y: 0 });
+                }}
+                aria-label="Reset map zoom and position"
+                className="h-8 w-8 grid place-items-center rounded-full border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.85)] text-uf-muted hover:text-uf-text hover:border-[rgba(0,229,255,0.5)] transition-colors"
+              >
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            )}
+          </div>
 
           {/* Floating propose hint */}
           <div className="absolute bottom-3 left-3 pointer-events-none">
             <span className="text-[10px] uppercase tracking-[0.16em] text-uf-muted bg-[rgba(5,8,22,0.7)] border border-[color:var(--uf-border)] rounded-full px-2.5 py-1">
-              {isAuthenticated ? "Click empty space to chart a system" : "Sign in to chart a system"}
+              {isAuthenticated
+                ? "Pinch or +/− to zoom · drag to pan · click empty space to chart"
+                : "Sign in to chart a system"}
             </span>
           </div>
         </div>
