@@ -738,7 +738,7 @@ function Footer() {
         <div>
           <p className="text-uf-text uppercase tracking-[0.16em] text-xs mb-3">System</p>
           <p>System status: <span className="text-uf-green">Operational</span></p>
-          <p>Build 1198.2 · rev 2026-09-21</p>
+          <p>Build 1198.2 · rev 2026-09-21 · 06:45 UTC</p>
           <ul className="mt-3 space-y-2">
             <li><Link to="/search">Search</Link></li>
             <li><Link to="/privacy">Privacy Policy</Link></li>
