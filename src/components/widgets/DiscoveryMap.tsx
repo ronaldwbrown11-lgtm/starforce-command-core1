@@ -285,12 +285,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
 
   // Orion Triangle boundary — Betelgeuse, Bellatrix, and Rigel mark the
   // alliance frontier enclosing Sol, the capital, and the neighborhood.
-  const orionTriangle = [
-    { name: "Betelgeuse", dx: -150, dy: -190 },
-    { name: "Bellatrix", dx: -235, dy: 55 },
-    { name: "Rigel", dx: 185, dy: 150 },
-  ].map((v) => ({ ...v, x: galaxy.sol.x + v.dx, y: galaxy.sol.y + v.dy }));
-  const orionLabel = { x: galaxy.sol.x - 165, y: galaxy.sol.y + 30 };
+
 
   // Curated warp gates from the operator console. Each row links two sector
   // slugs; we resolve live positions client-side so moving a sector moves its
@@ -714,8 +709,8 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
             </g>
 
             {/* Operator-curated named boundaries — e.g. the Orion Triangle.
-                Falls back to the placeholder trio until one is defined. */}
-            {layers.sectors && (boundaries.length > 0 ? (
+                Pure operator data: nothing renders until one is defined. */}
+            {layers.sectors && boundaries.length > 0 && (
               <g aria-hidden="true">
                 {boundaries.map((b) => {
                   const labelAt = b.pts.reduce(
@@ -756,49 +751,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                   );
                 })}
               </g>
-            ) : (
-              <g aria-hidden="true">
-                <path
-                  d={`M ${orionTriangle[0].x} ${orionTriangle[0].y} L ${orionTriangle[1].x} ${orionTriangle[1].y} L ${orionTriangle[2].x} ${orionTriangle[2].y} Z`}
-                  fill="none"
-                  stroke="var(--uf-gold)"
-                  strokeWidth={0.7 * UI}
-                  opacity={0.4}
-                />
-                <text
-                  x={orionLabel.x}
-                  y={orionLabel.y}
-                  fontSize={8 * UI}
-                  fill="var(--uf-gold)"
-                  opacity={0.7}
-                  textAnchor="middle"
-                  letterSpacing={3 * UI}
-                >
-                  ORION TRIANGLE
-                </text>
-                {orionTriangle.map((v) => (
-                  <g key={v.name}>
-                    <title>{v.name}</title>
-                    <polygon
-                      points={trianglePoints(v.x, v.y, 4 * UI)}
-                      fill="var(--uf-navy)"
-                      stroke="var(--uf-gold)"
-                      strokeWidth={0.9 * UI}
-                    />
-                    <text
-                      x={v.x + (v.dx < 0 ? -6 * UI : 6 * UI)}
-                      y={v.y + 3 * UI}
-                      fontSize={8 * UI}
-                      fill="var(--uf-text)"
-                      textAnchor={v.dx < 0 ? "end" : "start"}
-                      opacity={0.9}
-                    >
-                      {v.name}
-                    </text>
-                  </g>
-                ))}
-              </g>
-            ))}
+            )}
 
             {/* Solar neighborhood — closest real systems to Earth */}
             {layers.sectors && (
