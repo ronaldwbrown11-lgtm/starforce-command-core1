@@ -29,6 +29,7 @@ import Resources from "@/pages/Resources";
 import Membership from "@/pages/Membership";
 import Support from "@/pages/Support";
 import CadetManual from "@/pages/CadetManual";
+import FirstWatch from "@/pages/FirstWatch";
 import { OperatorGuard } from "@/components/operator/OperatorGuard";
 import BlogPage from "@/pages/Blog";
 import BlogDetailPage from "@/pages/BlogDetail";
@@ -130,6 +131,7 @@ export const PUBLIC_ROUTES: PublicPageRoute[] = [
   { path: "/membership", label: "Membership", element: <Membership /> },
   { path: "/support", label: "Support", element: <Support /> },
   { path: "/manual", label: "Cadet Manual", element: <CadetManual /> },
+  { path: "/first-watch", label: "First Watch", element: <FirstWatch /> },
   { path: "/search", label: "Search", element: <SearchPage /> },
   { path: "/tools/assistant", label: "Tools Assistant", element: <ToolsAssistant /> },
   { path: "/account", label: "Account", element: <Account /> },

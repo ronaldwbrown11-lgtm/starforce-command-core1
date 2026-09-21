@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Link } from "react-router";
@@ -170,23 +170,6 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
     };
   };
 
-  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
-    e.preventDefault();
-    const p = pointerToBase(e);
-    if (!p) return;
-    const factor = e.deltaY < 0 ? 1 / 1.25 : 1.25;
-    const next = Math.min(8, Math.max(0.5, zoom * factor));
-    if (next === zoom) return;
-    // Keep the point under the cursor fixed while zooming.
-    const cx = viewBox.vbX + (p.x - viewBox.vbX) * zoom + pan.x;
-    const cy = viewBox.vbY + (p.y - viewBox.vbY) * zoom + pan.y;
-    setPan({
-      x: cx - viewBox.vbX - (p.x - viewBox.vbX) * next,
-      y: cy - viewBox.vbY - (p.y - viewBox.vbY) * next,
-    });
-    setZoom(next);
-  };
-
   const onDragStart = (e: React.PointerEvent<SVGSVGElement>) => {
     if (e.button !== 0) return;
     dragRef.current = { x: e.clientX, y: e.clientY };
@@ -201,7 +184,9 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
     const dy = e.clientY - dragRef.current.y;
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved.current = true;
     const rect = svg.getBoundingClientRect();
-    const vbScale = viewBox.vbW / rect.width;
+    // Divide by zoom: at 4× zoom the visible frame is 4× smaller in base
+    // units, so each screen pixel moves the chart 4× less in base space.
+    const vbScale = (viewBox.vbW / rect.width) / zoom;
     setPan((p) => ({
       x: p.x + dx * vbScale,
       y: p.y + dy * vbScale,
@@ -239,6 +224,39 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   // nodes, gates, and tooltips scale with the field of view so they stay
   // readable at any zoom. Clamped to sane bounds.
   const UI = Math.max(1, Math.min(2.6, viewBox.vbW / 800));
+
+  // Wheel zoom — attached as a native non-passive listener in the effect
+  // below. React's onWheel prop registers passively at the document root,
+  // so its preventDefault() is silently ignored and the page scrolls
+  // instead of the chart zooming — the bug that left zoom dead on the
+  // public Star Atlas page while the console happened to work.
+  const applyWheelZoom = useCallback(
+    (e: WheelEvent) => {
+      e.preventDefault();
+      const p = pointerToBase(e);
+      if (!p) return;
+      const factor = e.deltaY < 0 ? 1 / 1.25 : 1.25;
+      const next = Math.min(8, Math.max(0.5, zoom * factor));
+      if (next === zoom) return;
+      // Keep the point under the cursor fixed while zooming.
+      const cx = viewBox.vbX + (p.x - viewBox.vbX) * zoom + pan.x;
+      const cy = viewBox.vbY + (p.y - viewBox.vbY) * zoom + pan.y;
+      setPan({
+        x: cx - viewBox.vbX - (p.x - viewBox.vbX) * next,
+        y: cy - viewBox.vbY - (p.y - viewBox.vbY) * next,
+      });
+      setZoom(next);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [zoom, pan.x, pan.y, viewBox.vbX, viewBox.vbY, viewBox.vbW, viewBox.vbH],
+  );
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    svg.addEventListener("wheel", applyWheelZoom, { passive: false });
+    return () => svg.removeEventListener("wheel", applyWheelZoom);
+  }, [applyWheelZoom]);
 
   // Real-galaxy backdrop mapping — recomputed only when the viewBox reframes.
   const galaxy = useMemo(
@@ -507,7 +525,6 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
             role="img"
             aria-label="Interactive galaxy map. Scroll to zoom, drag to pan, click empty space to propose a system."
             onClick={handleSvgClick}
-            onWheel={handleWheel}
             onPointerDown={onDragStart}
             onPointerMove={onDragMove}
             onPointerUp={onDragEnd}
