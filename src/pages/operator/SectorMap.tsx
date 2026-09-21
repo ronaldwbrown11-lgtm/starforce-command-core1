@@ -45,10 +45,23 @@ type GateFormState = {
   note: string;
 };
 
+type BoundaryFormState = {
+  id?: Id<"mapBoundaries">;
+  name: string;
+  slugs: string[];
+  note: string;
+};
+
 const EMPTY_GATE_FORM: GateFormState = {
   label: "",
   fromSlug: "",
   toSlug: "",
+  note: "",
+};
+
+const EMPTY_BOUNDARY_FORM: BoundaryFormState = {
+  name: "",
+  slugs: [],
   note: "",
 };
 
@@ -59,10 +72,15 @@ export default function OperatorSectorMap() {
   const gates = useQuery(api.sectorMap.listGatesForOperator);
   const upsertGate = useMutation(api.sectorMap.upsertGate);
   const deleteGate = useMutation(api.sectorMap.deleteGate);
+  const boundaries = useQuery(api.sectorMap.listBoundariesForOperator);
+  const upsertBoundary = useMutation(api.sectorMap.upsertBoundary);
+  const deleteBoundary = useMutation(api.sectorMap.deleteBoundary);
   const [editing, setEditing] = useState<FormState | null>(null);
   const [busy, setBusy] = useState(false);
   const [gateEditing, setGateEditing] = useState<GateFormState | null>(null);
   const [gateBusy, setGateBusy] = useState(false);
+  const [boundaryEditing, setBoundaryEditing] = useState<BoundaryFormState | null>(null);
+  const [boundaryBusy, setBoundaryBusy] = useState(false);
 
   function startEdit(s?: SectorDoc) {
     setEditing(
@@ -165,6 +183,40 @@ export default function OperatorSectorMap() {
 
   const sectorName = (slug: string) =>
     sectors?.find((s) => s.slug === slug)?.name ?? slug;
+
+  async function saveBoundary() {
+    if (!boundaryEditing) return;
+    const name = boundaryEditing.name.trim();
+    if (!name) return toast.error("Boundary name is required.");
+    if (boundaryEditing.slugs.length < 3) {
+      return toast.error("A boundary needs at least 3 sector systems.");
+    }
+    setBoundaryBusy(true);
+    try {
+      await upsertBoundary({
+        id: boundaryEditing.id,
+        name,
+        sectorSlugs: boundaryEditing.slugs,
+        note: boundaryEditing.note.trim() || undefined,
+      });
+      toast.success(boundaryEditing.id ? "Boundary updated." : "Boundary added.");
+      setBoundaryEditing(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed.");
+    } finally {
+      setBoundaryBusy(false);
+    }
+  }
+
+  async function onDeleteBoundary(b: { _id: Id<"mapBoundaries">; name: string }) {
+    if (!window.confirm(`Delete boundary "${b.name}"?`)) return;
+    try {
+      await deleteBoundary({ id: b._id });
+      toast.success("Boundary removed.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed.");
+    }
+  }
 
   return (
     <OperatorShell>
@@ -320,6 +372,171 @@ export default function OperatorSectorMap() {
                       Edit
                     </NeonButton>
                     <NeonButton variant="danger" onClick={() => onDeleteGate(g)}>
+                      <Trash2 className="h-4 w-4" aria-hidden />
+                    </NeonButton>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </HoloCard>
+      </section>
+
+      <section aria-label="Named boundary management" className="mb-6">
+        <header className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Route className="h-5 w-5 text-uf-gold" aria-hidden />
+              Named boundaries
+              <span className="text-uf-muted text-sm">({boundaries?.length ?? "…"})</span>
+            </h2>
+            <p className="text-uf-muted text-xs mt-1 max-w-2xl">
+              Frontier regions drawn as a polygon through canon sector systems —
+              add the boundary systems as sectors first (with their lore), then
+              list them here in order. Rendered on the public map with triangle
+              markers at each vertex and the boundary's name along its center.
+            </p>
+          </div>
+          <NeonButton
+            variant="primary"
+            onClick={() => setBoundaryEditing(EMPTY_BOUNDARY_FORM)}
+            disabled={!sectors || sectors.length < 3}
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            New boundary
+          </NeonButton>
+        </header>
+
+        {boundaryEditing ? (
+          <HoloCard className="mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-semibold">
+                {boundaryEditing.id ? `Edit ${boundaryEditing.name}` : "Add boundary"}
+              </h3>
+              <button
+                type="button"
+                aria-label="Close boundary editor"
+                className="uf-btn uf-btn--ghost"
+                onClick={() => setBoundaryEditing(null)}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid gap-3">
+              <Field
+                label="Boundary name"
+                value={boundaryEditing.name}
+                onChange={(v) => setBoundaryEditing((f) => f && { ...f, name: v })}
+                placeholder="Orion Triangle"
+              />
+              <p className="text-xs uppercase tracking-[0.16em] text-uf-muted">
+                Vertex systems (in drawing order — click to add, arrows to reorder)
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {boundaryEditing.slugs.map((slug, i) => (
+                  <span
+                    key={`${slug}-${i}`}
+                    className="inline-flex items-center gap-1 rounded-full border border-[rgba(230,168,23,0.5)] bg-[rgba(230,168,23,0.1)] px-2.5 py-1 text-xs text-uf-text"
+                  >
+                    {i + 1}. {sectorName(slug)}
+                    <button
+                      type="button"
+                      aria-label={`Remove ${sectorName(slug)} from boundary`}
+                      className="ml-0.5 text-uf-muted hover:text-uf-text"
+                      onClick={() =>
+                        setBoundaryEditing((f) => f && ({ ...f, slugs: f.slugs.filter((_, j) => j !== i) }))
+                      }
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Move up"
+                      disabled={i === 0}
+                      className="ml-0.5 disabled:opacity-30 text-uf-muted hover:text-uf-text"
+                      onClick={() =>
+                        setBoundaryEditing((f) => {
+                          if (!f || i === 0) return f;
+                          const slugs = [...f.slugs];
+                          [slugs[i - 1], slugs[i]] = [slugs[i], slugs[i - 1]];
+                          return { ...f, slugs };
+                        })
+                      }
+                    >
+                      ↑
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <select
+                aria-label="Add a vertex system"
+                value=""
+                onChange={(e) => {
+                  const slug = e.target.value;
+                  if (!slug) return;
+                  setBoundaryEditing((f) =>
+                    f && !f.slugs.includes(slug) ? { ...f, slugs: [...f.slugs, slug] } : f,
+                  );
+                }}
+                className="w-full border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
+              >
+                <option value="">+ Add vertex system…</option>
+                {(sectors ?? [])
+                  .filter((s) => !boundaryEditing.slugs.includes(s.slug))
+                  .map((s) => (
+                    <option key={s._id} value={s.slug}>{s.name}</option>
+                  ))}
+              </select>
+              <Field
+                label="Note (optional)"
+                value={boundaryEditing.note}
+                onChange={(v) => setBoundaryEditing((f) => f && { ...f, note: v })}
+                placeholder="Alliance frontier enclosing Sol and the capital"
+              />
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <NeonButton variant="ghost" onClick={() => setBoundaryEditing(null)} disabled={boundaryBusy}>
+                Cancel
+              </NeonButton>
+              <NeonButton variant="primary" onClick={saveBoundary} loading={boundaryBusy} disabled={boundaryBusy}>
+                {boundaryEditing.id ? "Save changes" : "Add boundary"}
+              </NeonButton>
+            </div>
+          </HoloCard>
+        ) : null}
+
+        <HoloCard>
+          {boundaries === undefined ? (
+            <div className="uf-skeleton" style={{ height: 100 }} />
+          ) : boundaries.length === 0 ? (
+            <p className="uf-empty">
+              No boundaries defined. The public map shows the placeholder Orion
+              Triangle until you register your first one from your sectors.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-2 list-none p-0 m-0">
+              {boundaries.map((b) => (
+                <li
+                  key={b._id}
+                  className="flex flex-wrap items-center justify-between gap-3 border border-[color:var(--uf-border)] rounded-md px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="text-base font-semibold">{b.name}</p>
+                    <p className="text-uf-muted text-xs mt-1">
+                      {b.sectorSlugs.map(sectorName).join(" → ")} → closed
+                    </p>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <NeonButton
+                      variant="ghost"
+                      onClick={() =>
+                        setBoundaryEditing({ id: b._id, name: b.name, slugs: [...b.sectorSlugs], note: b.note ?? "" })
+                      }
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden />
+                      Edit
+                    </NeonButton>
+                    <NeonButton variant="danger" onClick={() => onDeleteBoundary(b)}>
                       <Trash2 className="h-4 w-4" aria-hidden />
                     </NeonButton>
                   </div>

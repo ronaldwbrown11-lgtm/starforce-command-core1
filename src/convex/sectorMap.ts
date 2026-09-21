@@ -104,11 +104,18 @@ export const deleteSector = mutation({
     const { me } = await requireOperatorCapability(ctx, SECTOR_CAPS);
     const existing = await ctx.db.get(args.id);
     if (!existing) throw new Error("Sector not found.");
-    // Cascade: remove every gate touching this sector so no lane dangles.
+    // Cascade: remove every gate touching this sector so no lane dangles,
+    // and every boundary that uses this sector as a vertex.
     const gates = await ctx.db.query("warpGates").collect();
     for (const g of gates) {
       if (g.fromSlug === existing.slug || g.toSlug === existing.slug) {
         await ctx.db.delete(g._id);
+      }
+    }
+    const boundaries = await ctx.db.query("mapBoundaries").collect();
+    for (const b of boundaries) {
+      if (b.sectorSlugs.includes(existing.slug)) {
+        await ctx.db.delete(b._id);
       }
     }
     await ctx.db.delete(args.id);
@@ -200,6 +207,82 @@ export const upsertGate = mutation({
       createdAt: now,
     });
     return { ok: true, id };
+  },
+});
+
+// =========================================================================
+// Named map boundaries — ordered polygon through canon sector slugs (e.g.
+// the Orion Triangle). Deleting a sector cascades: any boundary whose vertex
+// list contains it is removed with it.
+// =========================================================================
+
+export const listBoundariesForOperator = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireOperatorCapability(ctx, SECTOR_CAPS);
+    return await ctx.db.query("mapBoundaries").collect();
+  },
+});
+
+export const upsertBoundary = mutation({
+  args: {
+    id: v.optional(v.id("mapBoundaries")),
+    name: v.string(),
+    sectorSlugs: v.array(v.string()),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, SECTOR_CAPS);
+    const name = args.name.trim().slice(0, 80);
+    if (!name) throw new Error("Boundary name is required.");
+    const slugs = [...new Set(args.sectorSlugs.map((s) => s.trim()).filter(Boolean))];
+    if (slugs.length < 3) throw new Error("A boundary needs at least 3 sector systems.");
+    if (slugs.length > 16) throw new Error("A boundary can span at most 16 systems.");
+    // Every vertex must be a real sector.
+    for (const slug of slugs) {
+      const s = await ctx.db
+        .query("sectorMap")
+        .withIndex("by_slug", (q) => q.eq("slug", slug))
+        .first();
+      if (!s) throw new Error(`Unknown sector "${slug}" in the boundary.`);
+    }
+    const note = (args.note ?? "").trim().slice(0, 280) || undefined;
+    const now = Date.now();
+    let id: string;
+    if (args.id) {
+      const existing = await ctx.db.get(args.id);
+      if (!existing) throw new Error("Boundary not found.");
+      await ctx.db.patch(args.id, { name, sectorSlugs: slugs, note });
+      id = args.id;
+    } else {
+      id = await ctx.db.insert("mapBoundaries", { name, sectorSlugs: slugs, note, createdAt: now });
+    }
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: args.id ? "mapBoundary.edit" : "mapBoundary.create",
+      target: `boundary:${id}`,
+      meta: JSON.stringify({ name, vertices: slugs.length }),
+      createdAt: now,
+    });
+    return { ok: true, id };
+  },
+});
+
+export const deleteBoundary = mutation({
+  args: { id: v.id("mapBoundaries") },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, SECTOR_CAPS);
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error("Boundary not found.");
+    await ctx.db.delete(args.id);
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "mapBoundary.delete",
+      target: `boundary:${args.id}`,
+      meta: JSON.stringify({ name: existing.name }),
+      createdAt: Date.now(),
+    });
+    return { ok: true };
   },
 });
 

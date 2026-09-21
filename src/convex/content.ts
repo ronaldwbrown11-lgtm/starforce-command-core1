@@ -245,6 +245,13 @@ export const warpGates = query({
   handler: async (ctx) => ctx.db.query("warpGates").withIndex("by_fromSlug").collect(),
 });
 
+// Public named boundaries (e.g. the Orion Triangle) — sector slug lists the
+// widget joins with live sector positions client-side.
+export const mapBoundaries = query({
+  args: {},
+  handler: async (ctx) => ctx.db.query("mapBoundaries").collect(),
+});
+
 export const listTransmissions = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, { limit }) => {

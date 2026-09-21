@@ -228,6 +228,22 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   // slugs; we resolve live positions client-side so moving a sector moves its
   // lanes and gates too.
   const gateRows = useQuery(api.content.warpGates);
+  const boundaryRows = useQuery(api.content.mapBoundaries);
+
+  // Curated boundary polygons resolved against live sector positions.
+  const boundaries = useMemo(() => {
+    const bySlug = new Map((sectors ?? []).map((s) => [s.slug, s]));
+    return (boundaryRows ?? [])
+      .map((b) => {
+        const pts = b.sectorSlugs
+          .map((slug) => bySlug.get(slug))
+          .filter((s): s is NonNullable<typeof s> => !!s)
+          .map((s) => ({ x: s.x, y: s.y }));
+        if (pts.length < 3) return null;
+        return { id: b._id as string, name: b.name, pts };
+      })
+      .filter((b): b is NonNullable<typeof b> => b !== null);
+  }, [boundaryRows, sectors]);
 
   // Curated lanes + gate markers. When no gates are defined yet, we fall back
   // to the original pairwise connection lines so the chart still reads well.
@@ -594,9 +610,50 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
               </text>
             </g>
 
-            {/* Orion Triangle boundary — thin gold line through the three
-                vertex systems, naming the alliance frontier */}
-            {layers.sectors && (
+            {/* Operator-curated named boundaries — e.g. the Orion Triangle.
+                Falls back to the placeholder trio until one is defined. */}
+            {layers.sectors && (boundaries.length > 0 ? (
+              <g aria-hidden="true">
+                {boundaries.map((b) => {
+                  const labelAt = b.pts.reduce(
+                    (acc, p) => ({ x: acc.x + p.x / b.pts.length, y: acc.y + p.y / b.pts.length }),
+                    { x: 0, y: 0 },
+                  );
+                  return (
+                    <g key={b.id}>
+                      <title>{b.name}</title>
+                      <path
+                        d={`M ${b.pts.map((p) => `${p.x} ${p.y}`).join(" L ")} Z`}
+                        fill="none"
+                        stroke="var(--uf-gold)"
+                        strokeWidth={0.7 * UI}
+                        opacity={0.4}
+                      />
+                      <text
+                        x={labelAt.x}
+                        y={labelAt.y}
+                        fontSize={8 * UI}
+                        fill="var(--uf-gold)"
+                        opacity={0.75}
+                        textAnchor="middle"
+                        letterSpacing={3 * UI}
+                      >
+                        {b.name.toUpperCase()}
+                      </text>
+                      {b.pts.map((p, i) => (
+                        <polygon
+                          key={`${b.id}-${i}`}
+                          points={trianglePoints(p.x, p.y, 4 * UI)}
+                          fill="var(--uf-navy)"
+                          stroke="var(--uf-gold)"
+                          strokeWidth={0.9 * UI}
+                        />
+                      ))}
+                    </g>
+                  );
+                })}
+              </g>
+            ) : (
               <g aria-hidden="true">
                 <path
                   d={`M ${orionTriangle[0].x} ${orionTriangle[0].y} L ${orionTriangle[1].x} ${orionTriangle[1].y} L ${orionTriangle[2].x} ${orionTriangle[2].y} Z`}
@@ -638,7 +695,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                   </g>
                 ))}
               </g>
-            )}
+            ))}
 
             {/* Solar neighborhood — closest real systems to Earth */}
             {layers.sectors && (

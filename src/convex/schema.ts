@@ -694,6 +694,16 @@ const schema = defineSchema(
       .index("by_fromSlug", ["fromSlug"])
       .index("by_toSlug", ["toSlug"]),
 
+    // Operator-curated named boundaries on the galaxy map (e.g. the Orion
+    // Triangle): an ordered list of canon sector slugs forms the polygon;
+    // deleting a sector removes its boundaries with it.
+    mapBoundaries: defineTable({
+      name: v.string(),
+      sectorSlugs: v.array(v.string()),
+      note: v.optional(v.string()),
+      createdAt: v.number(),
+    }),
+
     // Member-proposed star systems charted onto the galaxy map. Members
     // click an empty region to propose a system; operators approve/reject.
     discoveries: defineTable({
