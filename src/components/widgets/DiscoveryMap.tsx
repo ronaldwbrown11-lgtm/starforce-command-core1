@@ -118,6 +118,15 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   const vote = useMutation(api.discoveries.voteDiscovery);
 
   const svgRef = useRef<SVGSVGElement>(null);
+  // Zoom/pan state — the base viewBox from sector data, plus a user transform
+  // on top. Wheel zooms toward the cursor (0.5× to 8× of the base frame);
+  // drag pans; double-click and the ✕ control reset. Click-to-propose still
+  // works because it resolves coordinates through the live CTM.
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const dragRef = useRef<{ x: number; y: number } | null>(null);
+  const dragMoved = useRef(false);
   const [proposeOpen, setProposeOpen] = useState(false);
   const [proposePos, setProposePos] = useState<{ x: number; y: number } | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
@@ -144,6 +153,65 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
     () => (missions ?? []).filter((m) => m.missionStatus === "active"),
     [missions],
   );
+
+  // Point the pointer is over, in base-viewBox coordinates (zoom/pan applied).
+  const pointerToBase = (e: { clientX: number; clientY: number }) => {
+    const svg = svgRef.current;
+    if (!svg) return null;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const p = pt.matrixTransform(ctm.inverse());
+    return {
+      x: (p.x - viewBox.vbX - pan.x) / zoom + viewBox.vbX,
+      y: (p.y - viewBox.vbY - pan.y) / zoom + viewBox.vbY,
+    };
+  };
+
+  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    e.preventDefault();
+    const p = pointerToBase(e);
+    if (!p) return;
+    const factor = e.deltaY < 0 ? 1 / 1.25 : 1.25;
+    const next = Math.min(8, Math.max(0.5, zoom * factor));
+    if (next === zoom) return;
+    // Keep the point under the cursor fixed while zooming.
+    const cx = viewBox.vbX + (p.x - viewBox.vbX) * zoom + pan.x;
+    const cy = viewBox.vbY + (p.y - viewBox.vbY) * zoom + pan.y;
+    setPan({
+      x: cx - viewBox.vbX - (p.x - viewBox.vbX) * next,
+      y: cy - viewBox.vbY - (p.y - viewBox.vbY) * next,
+    });
+    setZoom(next);
+  };
+
+  const onDragStart = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (e.button !== 0) return;
+    dragRef.current = { x: e.clientX, y: e.clientY };
+    dragMoved.current = false;
+    setDragging(true);
+  };
+  const onDragMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!dragging || !dragRef.current) return;
+    const svg = svgRef.current;
+    if (!svg) return;
+    const dx = e.clientX - dragRef.current.x;
+    const dy = e.clientY - dragRef.current.y;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved.current = true;
+    const rect = svg.getBoundingClientRect();
+    const vbScale = viewBox.vbW / rect.width;
+    setPan((p) => ({
+      x: p.x + dx * vbScale,
+      y: p.y + dy * vbScale,
+    }));
+    dragRef.current = { x: e.clientX, y: e.clientY };
+  };
+  const onDragEnd = () => {
+    dragRef.current = null;
+    setDragging(false);
+  };
 
   const loading = sectors === undefined || discoveries === undefined;
 
@@ -354,16 +422,15 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   };
 
   const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
-    const svg = svgRef.current;
-    if (!svg) return;
     // Only clicks on the empty chart background reach here — node clicks
-    // stop propagation first.
-    const ctm = svg.getScreenCTM();
-    if (!ctm) return;
-    const pt = svg.createSVGPoint();
-    pt.x = e.clientX;
-    pt.y = e.clientY;
-    const p = pt.matrixTransform(ctm.inverse());
+    // stop propagation first. A drag-release also lands here, so ignore
+    // clicks that follow real pointer movement.
+    if (dragMoved.current) {
+      dragMoved.current = false;
+      return;
+    }
+    const p = pointerToBase(e);
+    if (!p) return;
     openProposeAt(p.x, p.y);
   };
 
@@ -439,12 +506,18 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
         >
           <svg
             ref={svgRef}
-            viewBox={`${viewBox.vbX} ${viewBox.vbY} ${viewBox.vbW} ${viewBox.vbH}`}
+            viewBox={`${viewBox.vbX + pan.x} ${viewBox.vbY + pan.y} ${viewBox.vbW / zoom} ${viewBox.vbH / zoom}`}
             preserveAspectRatio="xMidYMid meet"
-            className="w-full h-full cursor-crosshair"
+            className={`w-full h-full ${dragging ? "cursor-grabbing" : "cursor-crosshair"}`}
             role="img"
-            aria-label="Interactive galaxy map. Click empty space to propose a system."
+            aria-label="Interactive galaxy map. Scroll to zoom, drag to pan, click empty space to propose a system."
             onClick={handleSvgClick}
+            onWheel={handleWheel}
+            onPointerDown={onDragStart}
+            onPointerMove={onDragMove}
+            onPointerUp={onDragEnd}
+            onPointerLeave={onDragEnd}
+            onDoubleClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
           >
             <title>Outer Rim survey chart</title>
             <desc>
@@ -584,7 +657,17 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                 <circle cx={galaxy.sol.x} cy={galaxy.sol.y} r={10 * UI} fill="var(--uf-gold)" fillOpacity={0.12} className="uf-warp-gate" />
                 <circle cx={galaxy.sol.x} cy={galaxy.sol.y} r={5.5 * UI} fill="none" stroke="var(--uf-gold)" strokeWidth={1 * UI} opacity={0.8} />
                 <circle cx={galaxy.sol.x} cy={galaxy.sol.y} r={2 * UI} fill="var(--uf-gold)" />
-                <text x={galaxy.sol.x + 9 * UI} y={galaxy.sol.y - 6 * UI} fontSize={11 * UI} fill="var(--uf-gold)" fontWeight={600}>
+                <text
+                  x={galaxy.sol.x + 9 * UI}
+                  y={galaxy.sol.y - 6 * UI}
+                  fontSize={11 * UI}
+                  fill="var(--uf-gold)"
+                  fontWeight={600}
+                  stroke="#050816"
+                  strokeWidth={3 * UI}
+                  paintOrder="stroke"
+                  strokeLinejoin="round"
+                >
                   Sol
                 </text>
               </a>
@@ -602,10 +685,30 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                 stroke="var(--uf-navy)"
                 strokeWidth={0.4 * UI}
               />
-              <text x={uma47.x + 9 * UI} y={uma47.y + 2 * UI} fontSize={9.5 * UI} fill="var(--uf-text)" fontWeight={600}>
+              <text
+                x={uma47.x + 9 * UI}
+                y={uma47.y + 2 * UI}
+                fontSize={9.5 * UI}
+                fill="var(--uf-text)"
+                fontWeight={600}
+                stroke="#050816"
+                strokeWidth={3 * UI}
+                paintOrder="stroke"
+                strokeLinejoin="round"
+              >
                 47 Ursae Majoris
               </text>
-              <text x={uma47.x + 9 * UI} y={uma47.y + 12 * UI} fontSize={6.5 * UI} fill="var(--uf-gold)" letterSpacing={1.5 * UI}>
+              <text
+                x={uma47.x + 9 * UI}
+                y={uma47.y + 12 * UI}
+                fontSize={6.5 * UI}
+                fill="var(--uf-gold)"
+                letterSpacing={1.5 * UI}
+                stroke="#050816"
+                strokeWidth={2.5 * UI}
+                paintOrder="stroke"
+                strokeLinejoin="round"
+              >
                 ALLIANCE CAPITAL
               </text>
             </g>
@@ -705,7 +808,17 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                     <title>{`${s.name} — ${s.dist} from Sol`}</title>
                     <circle cx={s.x} cy={s.y} r={3.5 * UI} fill="none" stroke="var(--uf-text)" strokeWidth={0.4 * UI} opacity={0.35} />
                     <circle cx={s.x} cy={s.y} r={1.6 * UI} fill="var(--uf-text)" opacity={0.9} />
-                    <text x={s.lx} y={s.ly} fontSize={6.5 * UI} fill="var(--uf-muted)" textAnchor={s.anchor as "start" | "end"}>
+                    <text
+                      x={s.lx}
+                      y={s.ly}
+                      fontSize={6.5 * UI}
+                      fill="var(--uf-muted)"
+                      textAnchor={s.anchor as "start" | "end"}
+                      stroke="#050816"
+                      strokeWidth={2.2 * UI}
+                      paintOrder="stroke"
+                      strokeLinejoin="round"
+                    >
                       {s.name}
                     </text>
                   </g>
@@ -728,13 +841,34 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                       aria-label={`Open ${s.name} lore (${s.loreCount ?? 0} entries)`}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <circle cx={s.x} cy={s.y} r={r + 4 * UI} fill={hue.glow} fillOpacity={0.1} />
-                      <circle cx={s.x} cy={s.y} r={r} fill={hue.glow} fillOpacity={0.25} stroke={hue.glow} strokeWidth={1.2 * UI} />
-                      <circle cx={s.x} cy={s.y} r={2.5 * UI} fill={hue.glow} />
-                      <text x={s.x} y={s.y + r + 12 * UI} fontSize={11 * UI} fill="var(--uf-text)" textAnchor="middle">
+                      <circle cx={s.x} cy={s.y} r={r + 5 * UI} fill={hue.glow} fillOpacity={0.2} />
+                      <circle cx={s.x} cy={s.y} r={r} fill={hue.glow} fillOpacity={0.42} stroke={hue.glow} strokeWidth={1.8 * UI} />
+                      <circle cx={s.x} cy={s.y} r={3 * UI} fill="var(--uf-text)" fillOpacity={0.95} />
+                      <text
+                        x={s.x}
+                        y={s.y + r + 12 * UI}
+                        fontSize={11 * UI}
+                        fill="var(--uf-text)"
+                        textAnchor="middle"
+                        stroke="#050816"
+                        strokeWidth={3 * UI}
+                        paintOrder="stroke"
+                        strokeLinejoin="round"
+                        fontWeight={600}
+                      >
                         {s.name}
                       </text>
-                      <text x={s.x} y={s.y + r + 24 * UI} fontSize={9 * UI} fill="var(--uf-muted)" textAnchor="middle">
+                      <text
+                        x={s.x}
+                        y={s.y + r + 24 * UI}
+                        fontSize={9 * UI}
+                        fill="var(--uf-muted)"
+                        textAnchor="middle"
+                        stroke="#050816"
+                        strokeWidth={2.5 * UI}
+                        paintOrder="stroke"
+                        strokeLinejoin="round"
+                      >
                         {s.loreCount ?? 0} lore
                       </text>
                     </a>
@@ -824,6 +958,20 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
               </g>
             )}
           </svg>
+
+          {zoom !== 1 && (
+            <button
+              type="button"
+              onClick={() => {
+                setZoom(1);
+                setPan({ x: 0, y: 0 });
+              }}
+              aria-label="Reset map zoom and position"
+              className="absolute top-3 right-3 z-10 rounded-full border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.85)] px-3 py-1.5 text-xs text-uf-muted hover:text-uf-text hover:border-[rgba(0,229,255,0.5)] transition-colors"
+            >
+              Reset view ✕
+            </button>
+          )}
 
           {/* Floating propose hint */}
           <div className="absolute bottom-3 left-3 pointer-events-none">
