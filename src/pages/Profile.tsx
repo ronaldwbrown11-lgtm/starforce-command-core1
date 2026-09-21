@@ -12,6 +12,8 @@ import {
 } from "@/components/uf";
 import { ProfileEditor } from "@/components/ProfileEditor";
 import { AchievementBadges } from "@/components/widgets/AchievementBadges";
+import { RibbonRack } from "@/components/widgets/RibbonRack";
+import { MemberLockerShowcase } from "@/components/widgets/LockerPanel";
 import { ServiceDossierPanel } from "@/components/widgets/ServiceDossierPanel";
 import { FleetAffiliation } from "@/components/widgets/FleetAffiliation";
 import { Flair } from "@/components/widgets/Flair";
@@ -313,6 +315,15 @@ export default function Profile() {
         <div className="mt-6">
           <ServiceDossierPanel userId={profile._id} />
         </div>
+        <div className="mt-6">
+          <HoloCard>
+            <span className="uf-eyebrow">Ribbon rack</span>
+            <div className="mt-3">
+              <RibbonRack userId={profile._id} />
+            </div>
+          </HoloCard>
+        </div>
+        <MemberLockerShowcase userId={profile._id} />
         {contributions !== undefined ? (
           <div className="mt-6">
             <ServiceRecord contributions={contributions} />

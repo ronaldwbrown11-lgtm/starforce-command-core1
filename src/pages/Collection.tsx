@@ -14,6 +14,8 @@ import {
   Trophy,
   UserCircle,
 } from "lucide-react";
+import { MyLocker } from "@/components/widgets/LockerPanel";
+import { RibbonRack } from "@/components/widgets/RibbonRack";
 
 // ---------------------------------------------------------------------------
 // Member Collection — the binder. One page surfacing everything a member has
@@ -38,6 +40,7 @@ export default function Collection() {
   const visits = useQuery(api.engagement.myAtlasVisits, isAuthenticated ? {} : "skip");
   const streak = useQuery(api.engagement.myStreak, isAuthenticated ? {} : "skip");
   const referral = useQuery(api.engagement.myReferral, isAuthenticated ? {} : "skip");
+  const rack = useQuery(api.honors.memberRibbonRack, isAuthenticated ? { userId: user?._id as any } : "skip");
 
   const frame = user?.frame;
   const title = user?.title;
@@ -282,6 +285,24 @@ export default function Collection() {
           </HoloCard>
         </section>
       </div>
+
+      {/* ---- Ribbon rack ---- */}
+      <section aria-labelledby="col-rack" className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <h2 id="col-rack" className="uf-eyebrow">
+            Ribbon rack
+          </h2>
+          <Link to="/awards" className="text-uf-cyan text-xs hover:underline">
+            Decorations catalog →
+          </Link>
+        </div>
+        <RibbonRack entries={rack ?? []} />
+      </section>
+
+      {/* ---- Quartermaster's Locker ---- */}
+      <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+        <MyLocker />
+      </section>
 
       {/* ---- Badges ---- */}
       <section aria-labelledby="col-badges" className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">

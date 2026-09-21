@@ -31,6 +31,7 @@ const NAV = [
   { label: "Billing", href: "/operator/billing", icon: CreditCard },
   { label: "Lore Contests", href: "/operator/contests", icon: Award },
   { label: "Lore Arcs", href: "/operator/arcs", icon: BookOpenText },
+  { label: "Honors & Locker", href: "/operator/honors", icon: Award },
   { label: "Requisition Depot", href: "/operator/store", icon: ShoppingBag },
   { label: "ARG Campaigns", href: "/operator/arg", icon: RadioTower },
   { label: "Captain's Log", href: "/operator/log", icon: ShipWheel },

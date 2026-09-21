@@ -53,6 +53,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Star Atlas", labelKey: "nav.starAtlas", href: "/map", desc: "Interactive galaxy", descKey: "desc.starAtlas" },
       { label: "Transmissions", labelKey: "nav.videos", href: "/videos", desc: "Video & audio", descKey: "desc.videos" },
       { label: "Missions", labelKey: "nav.missions", href: "/missions", desc: "Active operations", descKey: "desc.missions" },
+      { label: "Awards & Honors", labelKey: "nav.awards", href: "/awards", desc: "Ribbons, medals & the Locker", descKey: "desc.awards" },
       { label: "Signal Vault", labelKey: "nav.vault", href: "/vault", desc: "ARG puzzles", descKey: "desc.vault" },
     ],
   },

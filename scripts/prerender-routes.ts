@@ -62,6 +62,12 @@ const ROUTES: Route[] = [
       "Collaborative storylines written by the fleet. Contribute a chapter to an open arc and earn your place in canon.",
   },
   {
+    path: "/awards",
+    title: "Awards & Honors — Star Force Base 1198",
+    description:
+      "Service ribbons, achievement badges, medals, and the Quartermaster's Locker — the decorations and collectible assets of the Star Force fleet.",
+  },
+  {
     path: "/vault",
     title: "Signal Vault — Star Force Base 1198",
     description:

@@ -1345,6 +1345,95 @@ const schema = defineSchema(
     })
       .index("by_user", ["userId"])
       .index("by_user_product", ["userId", "productId"]),
+
+    // =======================================================================
+    // Honors system — operator-managed service ribbons, badges & medals.
+    // Images are uploaded from the operator console and pinned in storage.
+    // =======================================================================
+    honors: defineTable({
+      awardId: v.string(), // stable id, e.g. "lore_service_ribbon"
+      name: v.string(),
+      category: v.string(), // "ribbon" | "badge" | "medal"
+      description: v.string(),
+      // Optional image; falls back to a procedural ribbon glyph when unset.
+      imageStorageId: v.optional(v.id("_storage")),
+      imageMeta: v.optional(
+        v.object({
+          mimeType: v.string(),
+          byteSize: v.number(),
+          altText: v.optional(v.string()),
+        }),
+      ),
+      precedence: v.optional(v.number()), // display order, lower = higher honor
+      active: v.optional(v.boolean()), // false = retired from new awards
+      createdBy: v.id("users"),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_award_id", ["awardId"])
+      .index("by_category", ["category"]),
+
+    // A member holding an honor. One row per (member, honor); revocation
+    // deletes the row and writes an audit entry.
+    memberAwards: defineTable({
+      userId: v.id("users"),
+      awardId: v.string(), // joins to honors.awardId
+      awardedAt: v.number(),
+      awardedBy: v.id("users"),
+      citation: v.optional(v.string()), // optional commendation text
+    })
+      .index("by_user", ["userId"])
+      .index("by_user_award", ["userId", "awardId"])
+      .index("by_award", ["awardId"]),
+
+    // =======================================================================
+    // Quartermaster's Locker — collectible digital assets. Operators mint
+    // items; grants are operator-issued (trading stays operator-brokered so
+    // items can't be duplicated by client-side logic).
+    // =======================================================================
+    vaultItems: defineTable({
+      itemId: v.string(), // stable id, e.g. "bp_vedae_drydock"
+      name: v.string(),
+      kind: v.string(), // "blueprint" | "insignia" | "manual" | "artifact"
+      description: v.string(),
+      classification: v.optional(v.string()), // e.g. "Open", "Classified"
+      // Cover image shown on profile dossiers and the Collection binder.
+      coverStorageId: v.optional(v.id("_storage")),
+      coverMeta: v.optional(
+        v.object({
+          mimeType: v.string(),
+          byteSize: v.number(),
+          altText: v.optional(v.string()),
+        }),
+      ),
+      // Optional payload file (the actual blueprint PDF, hi-res patch, etc.)
+      fileStorageId: v.optional(v.id("_storage")),
+      fileMeta: v.optional(
+        v.object({
+          fileName: v.string(),
+          mimeType: v.string(),
+          byteSize: v.number(),
+        }),
+      ),
+      active: v.optional(v.boolean()),
+      createdBy: v.id("users"),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_item_id", ["itemId"])
+      .index("by_kind", ["kind"]),
+
+    // A member holding a vault item. One row per (member, item).
+    vaultGrants: defineTable({
+      userId: v.id("users"),
+      itemId: v.string(), // joins to vaultItems.itemId
+      grantedAt: v.number(),
+      grantedBy: v.id("users"),
+      note: v.optional(v.string()),
+    })
+      .index("by_user", ["userId"])
+      .index("by_user_item", ["userId", "itemId"])
+      .index("by_item", ["itemId"]),
   },
   {
     schemaValidation: false,
