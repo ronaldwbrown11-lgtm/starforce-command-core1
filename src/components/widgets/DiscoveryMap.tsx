@@ -9,6 +9,11 @@ import { toast } from "sonner";
 import { MapPin, Minus, Plus, RotateCcw, Sparkles } from "lucide-react";
 import milkyWayUrl from "@/assets/milky-way-map.jpg";
 
+// Zoom limits — the deep 40× max exists so operators can zoom from the full
+// galaxy down to a single sector cluster for charting and edits.
+const MAP_MIN_ZOOM = 0.5;
+const MAP_MAX_ZOOM = 40;
+
 // Deterministic pseudo-random stars for the chart backdrop (no Math.random
 // so the map is stable between renders).
 function seeded(i: number) {
@@ -127,6 +132,9 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   const dragMoved = useRef(false);
+  // Last pointer position (client coords) — lets button zooms anchor to
+  // wherever the user is pointing, so "hover an area, tap +" dives there.
+  const lastPointerRef = useRef<{ x: number; y: number } | null>(null);
   const [proposeOpen, setProposeOpen] = useState(false);
   const [proposePos, setProposePos] = useState<{ x: number; y: number } | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
@@ -176,7 +184,8 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
     dragMoved.current = false;
     setDragging(true);
   };
-  const onDragMove = (e: React.PointerEvent<SVGSVGElement>) => {
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    lastPointerRef.current = { x: e.clientX, y: e.clientY };
     if (!dragging || !dragRef.current) return;
     const svg = svgRef.current;
     if (!svg) return;
@@ -240,7 +249,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
       const p = pointerToBase(e);
       if (!p) return;
       const factor = e.deltaY < 0 ? 1 / 1.25 : 1.25;
-      const next = Math.min(8, Math.max(0.5, zoom * factor));
+      const next = Math.min(MAP_MAX_ZOOM, Math.max(MAP_MIN_ZOOM, zoom * factor));
       if (next === zoom) return;
       // Keep the point under the cursor fixed while zooming.
       const cx = viewBox.vbX + (p.x - viewBox.vbX) * zoom + pan.x;
@@ -262,19 +271,39 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
     return () => svg.removeEventListener("wheel", applyWheelZoom);
   }, [applyWheelZoom]);
 
-  // Button zoom — steps toward/away from the frame center. Always visible,
-  // so zooming works with a touchpad, touchscreen, or no gesture at all.
+  // Button zoom — anchored to the pointer when it's over the chart (hover
+  // an area, tap +, dive straight in), frame center otherwise. Always
+  // visible, so zooming works with a touchpad, touchscreen, or no gesture.
   const zoomTo = (next: number) => {
-    const clamped = Math.min(8, Math.max(0.5, next));
+    const clamped = Math.min(MAP_MAX_ZOOM, Math.max(MAP_MIN_ZOOM, next));
     if (clamped === zoom) return;
-    const cx = viewBox.vbX + viewBox.vbW / 2;
-    const cy = viewBox.vbY + viewBox.vbH / 2;
+    const svg = svgRef.current;
+    const lp = lastPointerRef.current;
+    let ax: number, ay: number; // anchor point, base-viewBox coords
+    if (svg && lp) {
+      const rect = svg.getBoundingClientRect();
+      const inside =
+        lp.x >= rect.left && lp.x <= rect.right && lp.y >= rect.top && lp.y <= rect.bottom;
+      const p = inside ? pointerToBase({ clientX: lp.x, clientY: lp.y }) : null;
+      if (p) {
+        ax = p.x;
+        ay = p.y;
+      } else {
+        ax = viewBox.vbX + viewBox.vbW / 2;
+        ay = viewBox.vbY + viewBox.vbH / 2;
+      }
+    } else {
+      ax = viewBox.vbX + viewBox.vbW / 2;
+      ay = viewBox.vbY + viewBox.vbH / 2;
+    }
+    // Keep the anchor point fixed under the transform, like wheel zoom.
     setPan({
-      x: cx - viewBox.vbX - (cx - viewBox.vbX) * clamped,
-      y: cy - viewBox.vbY - (cy - viewBox.vbY) * clamped,
+      x: ax - viewBox.vbX - (ax - viewBox.vbX) * clamped,
+      y: ay - viewBox.vbY - (ay - viewBox.vbY) * clamped,
     });
     setZoom(clamped);
   };
+  const zoomBy = (f: number) => zoomTo(zoom * f);
 
   // Real-galaxy backdrop mapping — recomputed only when the viewBox reframes.
   const galaxy = useMemo(
@@ -545,7 +574,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
             style={{ touchAction: "pan-y" }}
             onClick={handleSvgClick}
             onPointerDown={onDragStart}
-            onPointerMove={onDragMove}
+            onPointerMove={onPointerMove}
             onPointerUp={onDragEnd}
             onPointerLeave={onDragEnd}
             onDoubleClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
@@ -948,26 +977,28 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
             )}
           </svg>
 
-          {/* Zoom controls — always visible so the chart works on a
-              touchpad, touchscreen, or any device without a wheel */}
-          <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5">
+          {/* Zoom controls — bottom of the chart where the densest systems
+              and most editing happen. Big 44px+ targets (WCAG 2.2 AA), and
+              each tap zooms toward the pointer so you can aim at an area
+              and dive straight in. */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
             <button
               type="button"
-              onClick={() => zoomTo(zoom * 1.4)}
-              disabled={zoom >= 8}
+              onClick={() => zoomBy(1.5)}
+              disabled={zoom >= MAP_MAX_ZOOM}
               aria-label="Zoom in"
-              className="h-8 w-8 grid place-items-center rounded-full border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.85)] text-uf-text hover:border-[rgba(0,229,255,0.5)] hover:text-uf-cyan disabled:opacity-40 transition-colors"
+              className="h-11 w-11 grid place-items-center rounded-full border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.9)] text-uf-text hover:border-[rgba(0,229,255,0.6)] hover:text-uf-cyan active:scale-95 disabled:opacity-40 transition-all"
             >
-              <Plus className="h-4 w-4" aria-hidden />
+              <Plus className="h-5 w-5" aria-hidden />
             </button>
             <button
               type="button"
-              onClick={() => zoomTo(zoom / 1.4)}
-              disabled={zoom <= 0.5}
+              onClick={() => zoomBy(1 / 1.5)}
+              disabled={zoom <= MAP_MIN_ZOOM}
               aria-label="Zoom out"
-              className="h-8 w-8 grid place-items-center rounded-full border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.85)] text-uf-text hover:border-[rgba(0,229,255,0.5)] hover:text-uf-cyan disabled:opacity-40 transition-colors"
+              className="h-11 w-11 grid place-items-center rounded-full border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.9)] text-uf-text hover:border-[rgba(0,229,255,0.6)] hover:text-uf-cyan active:scale-95 disabled:opacity-40 transition-all"
             >
-              <Minus className="h-4 w-4" aria-hidden />
+              <Minus className="h-5 w-5" aria-hidden />
             </button>
             {zoom !== 1 && (
               <button
@@ -977,15 +1008,15 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                   setPan({ x: 0, y: 0 });
                 }}
                 aria-label="Reset map zoom and position"
-                className="h-8 w-8 grid place-items-center rounded-full border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.85)] text-uf-muted hover:text-uf-text hover:border-[rgba(0,229,255,0.5)] transition-colors"
+                className="h-11 w-11 grid place-items-center rounded-full border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.9)] text-uf-muted hover:text-uf-text hover:border-[rgba(0,229,255,0.6)] active:scale-95 transition-all"
               >
-                <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                <RotateCcw className="h-4 w-4" aria-hidden />
               </button>
             )}
           </div>
 
-          {/* Floating propose hint */}
-          <div className="absolute bottom-3 left-3 pointer-events-none">
+          {/* Floating propose hint — top-left, clear of the bottom controls */}
+          <div className="absolute top-3 left-3 pointer-events-none">
             <span className="text-[10px] uppercase tracking-[0.16em] text-uf-muted bg-[rgba(5,8,22,0.7)] border border-[color:var(--uf-border)] rounded-full px-2.5 py-1">
               {isAuthenticated
                 ? "Pinch or +/− to zoom · drag to pan · click empty space to chart"
