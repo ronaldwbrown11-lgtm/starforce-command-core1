@@ -22,7 +22,10 @@ import { DAILY_LIMITS } from "./aiAssistantHelpers";
 //   4. produce a polished draft
 //
 // Provider: Groq Cloud (same key as the Canon Scanner — GROQ_API_KEY).
-// Metered per tier per day via aiAssistantLogs (free 3, paid 25+).
+// Metered two ways via aiAssistantLogs + users.monthlyAiUsed:
+//   • daily pace cap (aiAssistantLogs) — free 3, paid 25–75/day
+//   • monthly pool (users.monthlyAiUsed) — the advertised 10 → 2,000/mo
+// Operators bypass both.
 // =========================================================================
 
 export type AssistantIssue = {
@@ -38,6 +41,8 @@ export type AssistantResult = {
   suggestions?: string[];
   polishedDraft?: string;
   usesLeft?: number;
+  /** Runs remaining in the monthly pool; -1 = operator/unlimited. */
+  monthLeft?: number;
 };
 
 const SYSTEM_PROMPT = `You are the Lore Assistant aboard Star Force Base 1198, an AI editor who enforces the fleet's canon. You validate timelines, flag character and relationship inconsistencies, check faction lore, and help members polish their submissions — without inventing new canon facts.
@@ -89,6 +94,27 @@ export const loreAssistant = action({
         ok: false,
         error: `Daily assistant allowance reached (${limit}/day). Paid tiers get 25+ runs — upgrade for the full toolkit.`,
         usesLeft: 0,
+      };
+    }
+
+    // Monthly pool — the advertised per-tier budget (10 → 2,000/mo). This is
+    // the real enforcement that makes the membership page copy literally
+    // true; the daily cap above just paces it. Operators bypass (-1).
+    const monthly = await ctx.runQuery(
+      internal.aiAssistantHelpers.getMonthlyAiState,
+      { userId },
+    );
+    if (!monthly) {
+      return { ok: false, error: "Account not found." };
+    }
+    const monthPool = monthly.isOperator ? -1 : monthly.pool;
+    const monthLeft = monthPool < 0 ? -1 : Math.max(0, monthPool - monthly.aiUsed);
+    if (monthLeft === 0) {
+      return {
+        ok: false,
+        error: `Monthly assistant pool reached (${monthly.pool}/mo). It refreshes on your cycle — upgrade for a bigger pool.`,
+        usesLeft: 0,
+        monthLeft: 0,
       };
     }
 
@@ -153,6 +179,10 @@ export const loreAssistant = action({
       const parsed = extractJson(content) as Record<string, unknown>;
 
       await ctx.runMutation(internal.aiAssistantHelpers.recordAssistantUse, { userId });
+      await ctx.runMutation(internal.aiAssistantHelpers.consumeMonthlyAi, {
+        userId,
+        periodStart: monthly.periodStart,
+      });
 
       const issues = Array.isArray(parsed.issues)
         ? (parsed.issues as AssistantIssue[]).slice(0, 8)
@@ -176,6 +206,7 @@ export const loreAssistant = action({
             ? parsed.polishedDraft.slice(0, 12000)
             : "",
         usesLeft: usesLeft - 1,
+        monthLeft: monthLeft < 0 ? -1 : Math.max(0, monthLeft - 1),
       };
     } catch (e) {
       return {

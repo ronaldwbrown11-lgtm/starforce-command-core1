@@ -15,6 +15,7 @@ type AssistantResult = {
   suggestions?: string[];
   polishedDraft?: string;
   usesLeft?: number;
+  monthLeft?: number;
 };
 
 export default function ToolsAssistant() {
@@ -125,6 +126,8 @@ export default function ToolsAssistant() {
                   {result?.usesLeft !== undefined && !running && (
                     <span className="text-xs text-uf-muted">
                       {result.usesLeft} use{result.usesLeft === 1 ? "" : "s"} left today
+                      {result.monthLeft !== undefined && result.monthLeft >= 0 &&
+                        ` · ${result.monthLeft} in your monthly pool`}
                     </span>
                   )}
                 </div>
@@ -166,6 +169,8 @@ export default function ToolsAssistant() {
                       {result.usesLeft !== undefined && (
                         <span className="text-xs text-uf-muted">
                           {result.usesLeft} use{result.usesLeft === 1 ? "" : "s"} left today
+                          {result.monthLeft !== undefined && result.monthLeft >= 0 &&
+                            ` · ${result.monthLeft} in your monthly pool`}
                         </span>
                       )}
                     </div>
@@ -235,15 +240,31 @@ export default function ToolsAssistant() {
               </ul>
             </HoloCard>
             <HoloCard>
-              <span className="uf-eyebrow">Daily allowance</span>
+              <span className="uf-eyebrow">Monthly pool & daily pace</span>
               <ul className="mt-3 flex flex-col gap-2 text-sm list-none p-0 m-0">
-                <li className="flex justify-between">
+                <li className="flex justify-between gap-3">
                   <span className="text-uf-muted">Free</span>
-                  <span className="text-uf-text">3 runs</span>
+                  <span className="text-uf-text text-right">10 runs/mo · 3/day pace</span>
                 </li>
-                <li className="flex justify-between">
-                  <span className="text-uf-muted">Cadet / Officer / Command / G.I.A.</span>
-                  <span className="text-uf-text">25–50 runs</span>
+                <li className="flex justify-between gap-3">
+                  <span className="text-uf-muted">Cadet</span>
+                  <span className="text-uf-text text-right">100/mo · 25/day</span>
+                </li>
+                <li className="flex justify-between gap-3">
+                  <span className="text-uf-muted">Officer</span>
+                  <span className="text-uf-text text-right">300/mo · 25/day</span>
+                </li>
+                <li className="flex justify-between gap-3">
+                  <span className="text-uf-muted">Command</span>
+                  <span className="text-uf-text text-right">750/mo · 50/day</span>
+                </li>
+                <li className="flex justify-between gap-3">
+                  <span className="text-uf-muted">Elite</span>
+                  <span className="text-uf-text text-right">1,200/mo · 75/day</span>
+                </li>
+                <li className="flex justify-between gap-3">
+                  <span className="text-uf-muted">G.I.A. Agent</span>
+                  <span className="text-uf-text text-right">2,000/mo · 75/day</span>
                 </li>
               </ul>
               <Link to="/membership" className="text-uf-cyan text-sm mt-3 inline-block">
