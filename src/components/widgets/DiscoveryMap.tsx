@@ -183,6 +183,7 @@ function SectorChart({
   onSeed,
   seeding = false,
   seedResult = null,
+  focusName = null,
 }: {
   sector: SectorRow;
   systems: SectorSystem[];
@@ -195,6 +196,8 @@ function SectorChart({
   seeding?: boolean;
   /** Last seed result summary — null when no seed has run this session. */
   seedResult?: { added: number; skipped: number } | null;
+  /** Optional system name to center the camera on when the chart opens. */
+  focusName?: string | null;
 }) {
   const { isAuthenticated, user } = useAuth();
   const addSystem = useMutation(api.sectorMap.addSystem);
@@ -214,6 +217,40 @@ function SectorChart({
     return { vbX: sector.x - r, vbY: sector.y - r, vbW: r * 2, vbH: r * 2 };
   }, [sector]);
 
+  // Content-driven camera — frames the chart's ACTUAL systems rather than a
+  // fixed ring-sized window, so a seeded catalog spreads across the view at
+  // true relative bearings instead of clumping at dead center. With focusName,
+  // the camera centers on that system and sizes itself to its nearest
+  // neighbours: diving into 47 Ursae Majoris shows ITS neighbourhood spread
+  // out, not the same wide frame re-centered.
+  const cam = useMemo(() => {
+    const focus = focusName
+      ? systems.find((s) => s.title.toLowerCase() === focusName.toLowerCase())
+      : undefined;
+    if (systems.length === 0) return frame;
+    const pad = Math.max(24, frame.vbW * 0.1);
+    const xs = systems.map((s) => s.x);
+    const ys = systems.map((s) => s.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const contentSpan = Math.max(maxX - minX, maxY - minY, 26) + pad * 2;
+    if (focus) {
+      const near = systems
+        .filter((s) => s.key !== focus.key)
+        .map((s) => Math.hypot(s.x - focus.x, s.y - focus.y))
+        .sort((a, b) => a - b);
+      const third = near[Math.min(2, near.length - 1)];
+      const span = Math.max(Math.min((third ?? frame.vbW * 0.5) * 4.5, contentSpan), 30);
+      return { vbX: focus.x - span / 2, vbY: focus.y - span / 2, vbW: span, vbH: span };
+    }
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    const span = Math.max(contentSpan, frame.vbW * 0.3);
+    return { vbX: cx - span / 2, vbY: cy - span / 2, vbW: span, vbH: span };
+  }, [systems, frame, focusName]);
+
   const localToBase = (e: { clientX: number; clientY: number }) => {
     const svg = svgRef.current;
     if (!svg) return null;
@@ -224,19 +261,19 @@ function SectorChart({
     pt.y = e.clientY;
     const p = pt.matrixTransform(ctm.inverse());
     return {
-      x: (p.x - frame.vbX - pan.x) / zoom + frame.vbX,
-      y: (p.y - frame.vbY - pan.y) / zoom + frame.vbY,
+      x: (p.x - cam.vbX - pan.x) / zoom + cam.vbX,
+      y: (p.y - cam.vbY - pan.y) / zoom + cam.vbY,
     };
   };
 
   const zoomTo = (next: number) => {
     const clamped = Math.min(MAP_MAX_ZOOM, Math.max(MAP_MIN_ZOOM, next));
     if (clamped === zoom) return;
-    const cx = frame.vbX + frame.vbW / 2;
-    const cy = frame.vbY + frame.vbH / 2;
+    const cx = cam.vbX + cam.vbW / 2;
+    const cy = cam.vbY + cam.vbH / 2;
     setPan({
-      x: cx - frame.vbX - (cx - frame.vbX) * clamped,
-      y: cy - frame.vbY - (cy - frame.vbY) * clamped,
+      x: cx - cam.vbX - (cx - cam.vbX) * clamped,
+      y: cy - cam.vbY - (cy - cam.vbY) * clamped,
     });
     setZoom(clamped);
   };
@@ -267,15 +304,58 @@ function SectorChart({
   const localStars = useMemo(
     () =>
       Array.from({ length: 40 }, (_, i) => ({
-        x: frame.vbX + seeded(i) * frame.vbW,
-        y: frame.vbY + seeded(i * 2 + 1) * frame.vbH,
+        x: cam.vbX + seeded(i) * cam.vbW,
+        y: cam.vbY + seeded(i * 2 + 1) * cam.vbH,
         r: 0.5 + seeded(i * 3 + 2) * 1.1,
         o: 0.12 + seeded(i * 5 + 3) * 0.4,
       })),
-    [frame],
+    [cam],
   );
 
-  const localUI = Math.max(1, Math.min(3, (frame.vbW / 200) * zoom));
+  const localUI = Math.max(1, Math.min(3, (cam.vbW / 200) * zoom));
+
+  // De-collided label slots — catalog stars can sit fractions of a unit
+  // apart (Proxima vs Alpha Centauri), so fixed label offsets overlap into
+  // an unreadable smudge. Each system takes the first free slot around its
+  // star: below, above, right, left, then one row further out.
+  const labelSlots = useMemo(() => {
+    const ui = localUI;
+    const est = (t: string) => Math.max(44, t.length * 5.4 * ui);
+    type Slot = { x: number; y: number; anchor: "start" | "middle" | "end" };
+    type Box = { x: number; y: number; w: number; h: number };
+    const placed: Box[] = [];
+    const out = new Map<string, Slot>();
+    const sorted = [...systems].sort((a, b) => a.x - b.x);
+    for (const s of sorted) {
+      const w = est(s.title);
+      const h = 11 * ui;
+      const cands: { slot: Slot; box: Box }[] = [
+        { slot: { x: s.x, y: s.y + 17 * ui, anchor: "middle" }, box: { x: s.x - w / 2, y: s.y + 17 * ui - h + 2, w, h } },
+        { slot: { x: s.x, y: s.y - 12 * ui, anchor: "middle" }, box: { x: s.x - w / 2, y: s.y - 12 * ui - h + 2, w, h } },
+        { slot: { x: s.x + 12 * ui, y: s.y + 3 * ui, anchor: "start" }, box: { x: s.x + 12 * ui, y: s.y + 3 * ui - h + 2, w, h } },
+        { slot: { x: s.x - 12 * ui, y: s.y + 3 * ui, anchor: "end" }, box: { x: s.x - 12 * ui - w, y: s.y + 3 * ui - h + 2, w, h } },
+        { slot: { x: s.x, y: s.y + 29 * ui, anchor: "middle" }, box: { x: s.x - w / 2, y: s.y + 29 * ui - h + 2, w, h } },
+        { slot: { x: s.x, y: s.y - 24 * ui, anchor: "middle" }, box: { x: s.x - w / 2, y: s.y - 24 * ui - h + 2, w, h } },
+      ];
+      let chosen = cands[0];
+      for (const c of cands) {
+        const hit = placed.some(
+          (p) =>
+            p.x < c.box.x + c.box.w + 2 &&
+            c.box.x < p.x + p.w + 2 &&
+            p.y < c.box.y + c.box.h &&
+            c.box.y < p.y + p.h,
+        );
+        if (!hit) {
+          chosen = c;
+          break;
+        }
+      }
+      placed.push(chosen.box);
+      out.set(s.key, chosen.slot);
+    }
+    return out;
+  }, [systems, localUI]);
 
   return (
     <div
@@ -289,7 +369,7 @@ function SectorChart({
     >
       <svg
         ref={svgRef}
-        viewBox={`${frame.vbX + pan.x} ${frame.vbY + pan.y} ${frame.vbW / zoom} ${frame.vbH / zoom}`}
+        viewBox={`${cam.vbX + pan.x} ${cam.vbY + pan.y} ${cam.vbW / zoom} ${cam.vbH / zoom}`}
         preserveAspectRatio="xMidYMid meet"
         className={`w-full h-full ${dragging ? "cursor-grabbing" : "cursor-crosshair"}`}
         role="img"
@@ -343,6 +423,7 @@ function SectorChart({
         {systems.map((sys) => {
           const hovered = hoverKey === sys.key;
           const color = sys.kind === "canon" ? "var(--uf-cyan)" : "var(--uf-green)";
+          const slot = labelSlots.get(sys.key) ?? { x: sys.x, y: sys.y + 17 * localUI, anchor: "middle" as const };
           return (
             <g
               key={sys.key}
@@ -363,47 +444,38 @@ function SectorChart({
                   <circle cx={sys.x} cy={sys.y} r={2.2 * localUI} fill={color} />
                 </>
               )}
-              <text
-                x={sys.x}
-                y={sys.y + 17 * localUI}
-                fontSize={9.5 * localUI}
-                fill="var(--uf-text)"
-                textAnchor="middle"
-                stroke="#050816"
-                strokeWidth={2.5 * localUI}
-                paintOrder="stroke"
-                strokeLinejoin="round"
-                fontWeight={hovered ? 700 : 500}
-              >
-                {sys.title}
-              </text>
-              <text
-                x={sys.x}
-                y={sys.y + 27 * localUI}
-                fontSize={7 * localUI}
-                fill={color}
-                textAnchor="middle"
-                letterSpacing={1.2 * localUI}
-                stroke="#050816"
-                strokeWidth={2 * localUI}
-                paintOrder="stroke"
-                strokeLinejoin="round"
-              >
-                {sys.kind === "canon" ? "CANON SYSTEM" : "MEMBER CHART"}
-              </text>
-              {/* Catalog distance badge for real stars */}
-        {sys.kind === "canon" && sys.distLy != null && (
-          <text
-            x={sys.x}
-            y={sys.y + 22 * localUI}
-            fontSize={8 * localUI}
-            fill="var(--uf-muted)"
-            textAnchor="middle"
-            letterSpacing={0.6 * localUI}
-          >
-            {sys.distLy % 1 === 0 ? sys.distLy : sys.distLy.toFixed(2)} ly
-          </text>
-        )}
+              {[
+                { t: sys.title, size: 9.5, fill: "var(--uf-text)", weight: hovered ? 700 : 500, ls: 0 },
+                ...(sys.kind === "canon" && sys.distLy != null
+                  ? [
+                      {
+                        t: `${sys.distLy % 1 === 0 ? sys.distLy : sys.distLy.toFixed(2)} ly`,
+                        size: 8,
+                        fill: "var(--uf-muted)",
+                        weight: 500,
+                        ls: 0.6,
+                      },
+                    ]
+                  : []),
+                { t: sys.kind === "canon" ? "CANON SYSTEM" : "MEMBER CHART", size: 7, fill: color, weight: 500, ls: 1.2 },
+              ].map((ln, li) => (
+                <text
+                  key={li}
+                  x={slot.x}
+                  y={slot.y + li * 10 * localUI}
+                  fontSize={ln.size * localUI}
+                  fill={ln.fill}
+                  textAnchor={slot.anchor}
+                  fontWeight={ln.weight}
+                  letterSpacing={ln.ls * localUI}
+                  stroke="#050816"
+                  strokeWidth={2.2 * localUI}
+                  paintOrder="stroke"
+                  strokeLinejoin="round"
+                >
+                  {ln.t}
+                </text>
+              ))}
         {isOperator && sys.kind === "canon" && (
                 <g
                   role="button"
@@ -483,6 +555,9 @@ function SectorChart({
         >
           ← Galaxy
         </button>
+        <span className="rounded-full border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.85)] px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-uf-text">
+          {sector.name}
+        </span>
         {canSeed && onSeed && (
           <button
             type="button"
@@ -562,12 +637,16 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   // ------------------------------------------------------------------
   const [overlaySectorName, setOverlaySectorName] = useState<string | null>(null);
   const [pendingSectorName, setPendingSectorName] = useState<string | null>(null);
+  // When a dive starts FROM a specific star (e.g. 47 Ursae Majoris), the
+  // sector chart centers its camera on that system's neighbourhood.
+  const [focusSystemName, setFocusSystemName] = useState<string | null>(null);
   // Camera dive: animates zoom/pan to frame the sector ("zoom to a selected
   // area"), then opens the focused chart on arrival. Both behaviors, one click.
-  const enterSector = (name: string) => {
+  const enterSector = (name: string, focusName?: string | null) => {
     if (diveRef.current) return;
     const target = (sectors ?? []).find((s) => s.name === name);
     if (!target) return;
+    setFocusSystemName(focusName ?? null);
     setPendingSectorName(name);
     diveRef.current = animateCamera(
       {
@@ -593,7 +672,10 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   };
   // Immediate entry used by the sector chart's "← Galaxy" flow internals
   // (and by keyboard activation on the seed button path).
-  const exitToGalaxy = () => setOverlaySectorName(null);
+  const exitToGalaxy = () => {
+    setOverlaySectorName(null);
+    setFocusSystemName(null);
+  };
 
   const svgRef = useRef<SVGSVGElement>(null);
   const diveRef = useRef<(() => void) | null>(null);
@@ -1574,13 +1656,13 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
               onClick={(e) => {
                 e.stopPropagation();
                 const sol = (sectors ?? []).find((s) => /sol/i.test(s.name));
-                if (sol) enterSector(sol.name);
+                if (sol) enterSector(sol.name, "47 Ursae Majoris");
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
                   const sol = (sectors ?? []).find((s) => /sol/i.test(s.name));
-                  if (sol) enterSector(sol.name);
+                  if (sol) enterSector(sol.name, "47 Ursae Majoris");
                 }
               }}
               className="cursor-pointer"
@@ -1895,9 +1977,11 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
           {activeSector && (
             <div className="absolute inset-0 z-20 bg-[rgba(5,8,22,0.97)]">
               <SectorChart
+                key={activeSector.slug}
                 sector={activeSector}
                 systems={sectorSystems}
                 height={height}
+                focusName={focusSystemName}
                 onBack={exitToGalaxy}
                 onPropose={(x, y) => openProposeAt(x, y)}
                 canSeed={isOperator}
