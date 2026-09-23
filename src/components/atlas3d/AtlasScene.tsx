@@ -1,7 +1,8 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Billboard, Line, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
+import milkyWayUrl from "@/assets/milky-way-map.jpg";
 import {
   pointInBounds,
   toScene,
@@ -41,19 +42,64 @@ function LevelGroup({ frame, children }: { frame: SceneFrame | null; children: R
 }
 
 function GalaxyDisk() {
-  // Procedural starfield on the disk plane + a dark base disc.
+  // Real Milky Way survey plate as the disk face, lit with a gentle tilt so
+  // the galaxy reads as a three-dimensional object rather than a flat
+  // sprite. The texture loads off the suspense path: while it streams (or
+  // if it fails entirely) a procedural spiral dust field renders instead,
+  // so the galaxy view is never blank.
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      milkyWayUrl,
+      (t) => {
+        if (cancelled) {
+          t.dispose();
+          return;
+        }
+        t.colorSpace = THREE.SRGBColorSpace;
+        t.anisotropy = 8;
+        setTexture(t);
+      },
+      undefined,
+      () => {
+        /* load failed — the procedural fallback keeps rendering */
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Sparse far-side sparkle that catches parallax as the camera orbits.
   const positions = useMemo(() => {
-    const N = 2600;
+    const N = 900;
     const arr = new Float32Array(N * 3);
     for (let i = 0; i < N; i++) {
-      // Radial density falloff + spiral-arm clumping.
-      const arm = Math.floor(Math.random() * 2) * Math.PI;
+      const r = Math.pow(Math.random(), 0.75) * 1.02;
+      const theta = Math.random() * Math.PI * 2;
+      const y = (Math.random() - 0.5) * 0.01 * (1 + r);
+      arr[i * 3] = Math.cos(theta) * r;
+      arr[i * 3 + 1] = y;
+      arr[i * 3 + 2] = Math.sin(theta) * r;
+    }
+    return arr;
+  }, []);
+
+  // Procedural spiral dust used until (and unless) the plate is loaded.
+  const spiralPositions = useMemo(() => {
+    const N = 2400;
+    const arr = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      const arm = Math.floor(Math.random() * 4) * (Math.PI / 2);
       const t = Math.random();
-      const r = Math.pow(t, 0.62);
-      const swirl = r * 4.2 + arm + (Math.random() - 0.5) * 0.7;
-      const jitter = (Math.random() - 0.5) * (0.25 + r * 0.3);
+      const r = Math.pow(t, 0.6);
+      const swirl = r * 3.6 + arm + (Math.random() - 0.5) * 0.55;
+      const jitter = (Math.random() - 0.5) * (0.22 + r * 0.3);
       const theta = swirl + jitter;
-      const y = (Math.random() - 0.5) * 0.012 * (1 + r);
+      const y = (Math.random() - 0.5) * 0.014 * (1 + r);
       arr[i * 3] = Math.cos(theta) * r;
       arr[i * 3 + 1] = y;
       arr[i * 3 + 2] = Math.sin(theta) * r;
@@ -67,27 +113,54 @@ function GalaxyDisk() {
     return g;
   }, [positions]);
 
+  const spiralGeo = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(spiralPositions, 3));
+    return g;
+  }, [spiralPositions]);
+
   return (
-    <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[1, 96]} />
-        <meshBasicMaterial color={ATLAS_COLORS.disk} transparent opacity={0.92} depthWrite={false} />
+    <group rotation={[0.06, 0, 0.03]}>
+      {texture ? (
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[1, 128]} />
+          <meshBasicMaterial map={texture} toneMapped={false} transparent depthWrite={false} />
+        </mesh>
+      ) : (
+        <>
+          <mesh rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[1, 96]} />
+            <meshBasicMaterial color={ATLAS_COLORS.disk} transparent opacity={0.92} depthWrite={false} />
+          </mesh>
+          <points geometry={spiralGeo}>
+            <pointsMaterial
+              size={0.0045}
+              color="#9db8e8"
+              transparent
+              opacity={0.7}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              sizeAttenuation
+            />
+          </points>
+        </>
+      )}
+      {/* Thin additive halo so the rim glows instead of cutting off hard. */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
+        <ringGeometry args={[0.94, 1.03, 128]} />
+        <meshBasicMaterial color="#35507a" transparent opacity={0.28} blending={THREE.AdditiveBlending} depthWrite={false} />
       </mesh>
       <points geometry={starGeo}>
         <pointsMaterial
-          size={0.006}
-          color="#8fb8ff"
+          size={0.005}
+          color="#cfe0ff"
           transparent
-          opacity={0.85}
+          opacity={0.55}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           sizeAttenuation
         />
       </points>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.985, 1.0, 128]} />
-        <meshBasicMaterial color="#22406a" transparent opacity={0.6} depthWrite={false} />
-      </mesh>
     </group>
   );
 }

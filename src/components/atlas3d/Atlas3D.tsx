@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -165,18 +166,27 @@ export default function Atlas3D() {
               Seed the four canon quadrants, real-star anchors, and the Sol
               neighbourhood to begin charting.
             </p>
-            <button
-              type="button"
-              className="uf-btn uf-btn--primary mt-2 text-sm cursor-pointer"
-              onClick={() =>
-                guard(async () => {
-                  await seedAtlasM({});
-                  return undefined;
-                }, "Atlas seeded.")
-              }
-            >
-              Seed the atlas
-            </button>
+            {isAuthenticated ? (
+              <button
+                type="button"
+                className="uf-btn uf-btn--primary mt-2 text-sm cursor-pointer"
+                onClick={() =>
+                  guard(async () => {
+                    await seedAtlasM({});
+                    return undefined;
+                  }, "Atlas seeded.")
+                }
+              >
+                Seed the atlas
+              </button>
+            ) : (
+              <Link
+                to="/auth?returnTo=/map"
+                className="uf-btn uf-btn--primary mt-2 text-sm inline-block"
+              >
+                Sign in to chart the atlas
+              </Link>
+            )}
           </div>
         </div>
       ) : null}
