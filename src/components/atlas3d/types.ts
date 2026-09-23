@@ -107,12 +107,10 @@ export function pointInBounds(p: Vec3, b: { minX: number; maxX: number; minY: nu
 }
 
 // =========================================================================
-// Per-level content framing. THE core fix for "47 Ursae Majoris renders as
-// a cluster of circles": each level below galaxy computes a LOCAL frame from
-// the content it actually shows, so drilling in spreads the children across
-// the screen instead of leaving them as a microscopic clump inside huge
-// parent bounds. Every level-level view is just "a nicely filled unit area",
-// and the camera rig only needs (center, scale, distance).
+// Per-level content framing. Each level below galaxy computes a LOCAL frame
+// from the content it actually shows: the LevelGroup scales content up so it
+// fills the view, and the camera stays at a FIXED distance — the group scale
+// does the zooming. Screen-constant dot/label sizes divide by this scale.
 // =========================================================================
 
 export type AtlasFrame = {
@@ -120,23 +118,27 @@ export type AtlasFrame = {
   center: [number, number, number];
   /** Scene-space zoom factor applied to content at this level (1 = galaxy). */
   scale: number;
-  /** Suggested camera distance for this level. */
+  /** Fixed camera distance (the same for every level). */
   distance: number;
 };
 
-/** Round a zoom factor up to a power of two — keeps levels comparable. */
+/** Shared camera distance for every level — the frame scale does the zoom. */
+export const FRAME_DISTANCE = 2.2;
+
+const MAX_SCALE = 8192;
+
+/** Round a zoom factor to the nearest power of two (min 1). */
 function snapScale(s: number): number {
-  return Math.pow(2, Math.max(0, Math.ceil(Math.log2(Math.max(1, s)))));
+  return Math.min(MAX_SCALE, Math.pow(2, Math.round(Math.log2(Math.max(1, s)))));
 }
 
-/** Content bbox in canonical units, with a fallback hint when <2 items. */
+/** Content bbox in canonical units. Empty/point sets fall back to the bounds. */
 function contentSpread(
   items: AtlasSystem[],
   b: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number },
-  fallbackFraction: number,
 ): { center: Vec3; planarSpan: number } {
   if (items.length < 2) {
-    return { center: boundsCenter(b), planarSpan: Math.max(boundsSpan(b), 100) * fallbackFraction };
+    return { center: boundsCenter(b), planarSpan: Math.max(boundsSpan(b), 100) };
   }
   let minX = Infinity, minY = Infinity, minZ = Infinity;
   let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
@@ -148,47 +150,59 @@ function contentSpread(
     minZ = Math.min(minZ, s.z);
     maxZ = Math.max(maxZ, s.z);
   }
-  const sx = maxX - minX;
-  const sy = maxY - minY;
-  const sz = maxZ - minZ;
-  const planar = Math.max(sx, sy, sz) || Math.max(boundsSpan(b), 100) * fallbackFraction;
+  const planar = Math.max(maxX - minX, maxY - minY, maxZ - minZ);
   return {
     center: { x: (minX + maxX) / 2, y: (minY + maxY) / 2, z: (minZ + maxZ) / 2 },
-    planarSpan: planar,
+    planarSpan: planar || Math.max(boundsSpan(b), 100),
   };
 }
 
-/** Quadrant level: frame the quadrant's real content (stars inside bounds). */
+/** Zoom that fills the view with content of the given canonical span. */
+function zoomForSpan(span: number): number {
+  return snapScale((1.6 * GALAXY_RADIUS) / Math.max(span, 0.5));
+}
+
+/** Quadrant level: frame the quadrant's real stars (fallback: its volume). */
 export function computeQuadrantFrame(quadrant: AtlasQuadrant, systems: AtlasSystem[]): AtlasFrame {
   const inside = systems.filter((s) => pointInBounds(s, quadrant));
-  const { center, planarSpan } = contentSpread(inside, quadrant, 0.2);
-  // Cap the zoom by the quadrant's own size so an empty quadrant still
-  // renders as a roomy volume rather than an unbounded blow-up.
-  const maxScale = snapScale(1.8 / Math.max(boundsSpan(quadrant), 100));
-  const scale = snapScale(Math.min(maxScale, 1.6 / (planarSpan / GALAXY_RADIUS)));
+  const { center, planarSpan } = contentSpread(inside, quadrant);
   return {
     center: toScene(center),
-    scale,
-    distance: 1.15 / Math.pow(2, Math.log2(scale) / 2) + 0.85,
+    scale: zoomForSpan(planarSpan),
+    distance: FRAME_DISTANCE,
   };
 }
 
 /** Sector level: frame the sector's systems + real stars in/near bounds. */
 export function computeSectorFrame(sector: AtlasSector, systems: AtlasSystem[]): AtlasFrame {
   const inside = systems.filter((s) => s.sectorKey === sector.key || pointInBounds(s, sector));
-  const { center, planarSpan } = contentSpread(inside, sector, 0.15);
-  const maxScale = snapScale(2.6 / Math.max(boundsSpan(sector), 1));
-  const scale = snapScale(Math.min(maxScale, 1.6 / (planarSpan / GALAXY_RADIUS)));
+  const { center, planarSpan } = contentSpread(inside, sector);
   return {
     center: toScene(center),
-    scale,
-    distance: 1.15 / Math.pow(2, Math.log2(scale) / 2) + 0.85,
+    scale: zoomForSpan(planarSpan),
+    distance: FRAME_DISTANCE,
   };
 }
 
-/** System level: blow the focused system up to a comfortable local view. */
-export function computeSystemFrame(system: AtlasSystem): AtlasFrame {
-  return { center: toScene(system), scale: 768, distance: 0.42 };
+/** System level: the focused system plus its sector-mates, zoomed deeper. */
+export function computeSystemFrame(system: AtlasSystem, systems: AtlasSystem[]): AtlasFrame {
+  const local = systems.filter((s) => s.sectorKey && s.sectorKey === system.sectorKey);
+  const content = local.length >= 2 ? local : [system];
+  const bbox = {
+    minX: Math.min(...content.map((s) => s.x)),
+    maxX: Math.max(...content.map((s) => s.x)),
+    minY: Math.min(...content.map((s) => s.y)),
+    maxY: Math.max(...content.map((s) => s.y)),
+    minZ: Math.min(...content.map((s) => s.z)),
+    maxZ: Math.max(...content.map((s) => s.z)),
+  };
+  const { center, planarSpan } = contentSpread(content, bbox);
+  // One level deeper than the sector view of the same content.
+  return {
+    center: toScene(center),
+    scale: snapScale(zoomForSpan(planarSpan) * 4),
+    distance: FRAME_DISTANCE,
+  };
 }
 
 /** Palette per the atlas style guide. */

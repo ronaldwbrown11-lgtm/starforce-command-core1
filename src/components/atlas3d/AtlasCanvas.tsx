@@ -29,7 +29,7 @@ function frameFor(
   const s = level === "sector" ? snapshot.sectors.find((x) => x.key === sectorKey) : undefined;
   if (s) return computeSectorFrame(s, snapshot.systems);
   const sys = level === "system" ? snapshot.systems.find((x) => x.key === systemKey) : undefined;
-  if (sys) return computeSystemFrame(sys);
+  if (sys) return computeSystemFrame(sys, snapshot.systems);
   return { center: [0, 0, 0], scale: 1, distance: 2.6 };
 }
 

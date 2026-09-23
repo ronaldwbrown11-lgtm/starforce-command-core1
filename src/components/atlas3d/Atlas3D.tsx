@@ -79,6 +79,63 @@ export default function Atlas3D() {
     else if (level === "quadrant") setLevel("galaxy");
   };
 
+  // ---- Smart level jumping (HUD buttons + G/Q/S/Y keys) -------------------
+  // Every level button is always enabled: if you jump to a level you haven't
+  // drilled into yet, we auto-pick a sensible target (the quadrant holding
+  // Sol → its first sector → that sector's first system) instead of doing
+  // nothing. This is why "only G worked" before.
+  const jumpTo = (lv: AtlasLevel) => {
+    if (!snapshot) return;
+    if (lv === "galaxy") {
+      setLevel("galaxy");
+      setSectorKey(null);
+      setSystemKey(null);
+      return;
+    }
+    // Resolve quadrant: current → quadrant containing Sol → first.
+    let qKey = quadrantKey;
+    if (!qKey || !snapshot.quadrants.some((q) => q.key === qKey)) {
+      const sol = snapshot.systems.find((s) => s.key === "sol") ?? snapshot.systems.find((s) => s.isRealStar);
+      const containing = sol ? snapshot.quadrants.find((q) => q.minX <= sol.x && sol.x <= q.maxX && q.minY <= sol.y && sol.y <= q.maxY) : undefined;
+      qKey = containing?.key ?? snapshot.quadrants[0]?.key ?? null;
+    }
+    if (!qKey) return;
+    setQuadrantKey(qKey);
+    if (lv === "quadrant") {
+      setLevel("quadrant");
+      setSectorKey(null);
+      setSystemKey(null);
+      return;
+    }
+    // Resolve sector: current (if inside the quadrant) → first in quadrant.
+    let sKey = sectorKey && snapshot.sectors.some((s) => s.key === sectorKey && s.quadrantKey === qKey)
+      ? sectorKey
+      : snapshot.sectors.find((s) => s.quadrantKey === qKey)?.key ?? null;
+    if (!sKey) {
+      setLevel("quadrant");
+      setSectorKey(null);
+      setSystemKey(null);
+      return;
+    }
+    setSectorKey(sKey);
+    if (lv === "sector") {
+      setLevel("sector");
+      setSystemKey(null);
+      return;
+    }
+    // Resolve system: current (if inside the sector) → first in sector.
+    const yKey =
+      systemKey && snapshot.systems.some((s) => s.key === systemKey && (s.sectorKey === sKey || !s.sectorKey))
+        ? systemKey
+        : snapshot.systems.find((s) => s.sectorKey === sKey)?.key ?? null;
+    if (!yKey) {
+      setLevel("sector");
+      return;
+    }
+    setSystemKey(yKey);
+    setLevel("system");
+  };
+
   // Keep the breadcrumb chain coherent when the snapshot shifts under us.
   useEffect(() => {
     if (!snapshot) return;
@@ -102,16 +159,16 @@ export default function Atlas3D() {
       const el = e.target as HTMLElement | null;
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT")) return;
       const k = e.key.toLowerCase();
-      if (k === "g") setLevel("galaxy");
-      if (k === "q" && quadrantKey) setLevel("quadrant");
-      if (k === "s" && sectorKey) setLevel("sector");
-      if (k === "y" && systemKey) setLevel("system");
+      if (k === "g") jumpTo("galaxy");
+      if (k === "q") jumpTo("quadrant");
+      if (k === "s") jumpTo("sector");
+      if (k === "y") jumpTo("system");
       if (k === "escape") goUp();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quadrantKey, sectorKey, systemKey]);
+  }, [snapshot, quadrantKey, sectorKey, systemKey]);
 
   const focusSector = level === "sector" ? snapshot?.sectors.find((s) => s.key === sectorKey) : undefined;
   const focusQuadrant = quadrantKey ? snapshot?.quadrants.find((q) => q.key === quadrantKey) : undefined;
@@ -202,19 +259,14 @@ export default function Atlas3D() {
         hoverInfo={hoverInfo}
         editing={editing}
         onEditingChange={setEditing}
-        onLevelChange={(lv) => {
-          setLevel(lv);
-          if (lv === "galaxy") {
-            setSectorKey(null);
-            setSystemKey(null);
-          }
-        }}
+        onLevelChange={(lv) => jumpTo(lv)}
         onQuadrantSelect={(key) => {
           setQuadrantKey(key);
           setLevel("quadrant");
           setSectorKey(null);
           setSystemKey(null);
         }}
+        onQuadrantsEmpty={snapshot ? snapshot.quadrants.length === 0 : true}
         onSectorSelect={(key) => pickSector(key)}
         onSystemSelect={(key) => {
           setSystemKey(key);

@@ -214,30 +214,50 @@ function boundsCenterOf(b: { minX: number; maxX: number; minY: number; maxY: num
 function QuadrantVolumes({
   snapshot,
   onPick,
+  interactive = true,
+  labelScale = 0.045,
 }: {
   snapshot: AtlasSnapshot;
   onPick: (key: string) => void;
+  interactive?: boolean;
+  labelScale?: number;
 }) {
   return (
     <group>
       {snapshot.quadrants.map((q) => {
         const c = boundsCenterOf(q);
+        const size: [number, number, number] = [
+          (q.maxX - q.minX) / 50000,
+          (q.maxZ - q.minZ) / 50000,
+          (q.maxY - q.minY) / 50000,
+        ];
         return (
           <group key={q.key} position={toScene(c)}>
-            <VolumeBox bounds={q} color={q.color} opacity={0.05} edgeOpacity={0.35} />
-            <mesh
-              onClick={(e) => {
-                e.stopPropagation();
-                onPick(q.key);
-              }}
-              onPointerOver={() => (document.body.style.cursor = "pointer")}
-              onPointerOut={() => (document.body.style.cursor = "auto")}
-            >
-              <boxGeometry args={[(q.maxX - q.minX) / 50000, (q.maxZ - q.minZ) / 50000, (q.maxY - q.minY) / 50000]} />
-              <meshBasicMaterial transparent opacity={0.001} depthWrite={false} />
+            <mesh>
+              <boxGeometry args={size} />
+              <meshBasicMaterial
+                color={q.color}
+                transparent
+                opacity={interactive ? 0.055 : 0.035}
+                depthWrite={false}
+              />
             </mesh>
-            <Billboard>
-              <Text fontSize={0.045} color={q.color} anchorX="center" anchorY="middle" outlineWidth={0.002} outlineColor="#000000">
+            <QuadrantEdges color={q.color} size={size} interactive={interactive} />
+            {interactive ? (
+              <mesh
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPick(q.key);
+                }}
+                onPointerOver={() => (document.body.style.cursor = "pointer")}
+                onPointerOut={() => (document.body.style.cursor = "auto")}
+              >
+                <boxGeometry args={size} />
+                <meshBasicMaterial transparent opacity={0.001} depthWrite={false} />
+              </mesh>
+            ) : null}
+            <Billboard position={[0, size[1] / 2 + labelScale * 1.2, 0]}>
+              <Text fontSize={labelScale} color={q.color} anchorX="center" anchorY="middle" outlineWidth={labelScale * 0.12} outlineColor="#000000">
                 {q.name}
               </Text>
             </Billboard>
@@ -248,18 +268,47 @@ function QuadrantVolumes({
   );
 }
 
+function QuadrantEdges({
+  color,
+  size,
+  interactive,
+}: {
+  color: string;
+  size: [number, number, number];
+  interactive: boolean;
+}) {
+  const edges = useMemo(() => new THREE.EdgesGeometry(new THREE.BoxGeometry(...size)), [size[0], size[1], size[2]]);
+  return (
+    <lineSegments geometry={edges}>
+      <lineBasicMaterial color={color} transparent opacity={interactive ? 0.4 : 0.18} />
+    </lineSegments>
+  );
+}
+
 function SectorVolumes({
   sectors,
   onPick,
+  labelScale = 0.02,
+  hitFloor = 0,
 }: {
   sectors: AtlasSector[];
   onPick: (key: string) => void;
+  labelScale?: number;
+  /** Screen-relative minimum hit-box half-size in LOCAL units (~0.14/scale). */
+  hitFloor?: number;
 }) {
   return (
     <group>
       {sectors.map((s) => {
         const c = boundsCenterOf(s);
         const proposed = s.status === "proposed";
+        // Click target: the sector volume PLUS a screen-relative floor, so
+        // tiny sectors are still easy to hit without swallowing the view.
+        const hitSize: [number, number, number] = [
+          Math.max((s.maxX - s.minX) / 50000, hitFloor),
+          Math.max((s.maxZ - s.minZ) / 50000, hitFloor),
+          Math.max((s.maxY - s.minY) / 50000, hitFloor),
+        ];
         return (
           <group key={s.key} position={toScene(c)}>
             <VolumeBox bounds={s} color={s.color} opacity={0.09} edgeOpacity={0.7} dashed={proposed} />
@@ -271,16 +320,16 @@ function SectorVolumes({
               onPointerOver={() => (document.body.style.cursor = "pointer")}
               onPointerOut={() => (document.body.style.cursor = "auto")}
             >
-              <boxGeometry args={[(s.maxX - s.minX) / 50000, (s.maxZ - s.minZ) / 50000, (s.maxY - s.minY) / 50000]} />
+              <boxGeometry args={hitSize} />
               <meshBasicMaterial transparent opacity={0.001} depthWrite={false} />
             </mesh>
-            <Billboard>
+            <Billboard position={[0, hitSize[1] / 2 + labelScale, 0]}>
               <Text
-                fontSize={0.02}
+                fontSize={labelScale}
                 color={proposed ? ATLAS_COLORS.proposed : s.color}
                 anchorX="center"
                 anchorY="middle"
-                outlineWidth={0.001}
+                outlineWidth={labelScale * 0.12}
                 outlineColor="#000000"
               >
                 {s.name}
@@ -298,6 +347,8 @@ function StarSystem({
   highlight,
   scale,
   showLabel,
+  labelScale,
+  hitMin = 0,
   onPick,
   onHover,
 }: {
@@ -305,6 +356,9 @@ function StarSystem({
   highlight: boolean;
   scale: number;
   showLabel: boolean;
+  labelScale?: number;
+  /** Screen-relative hit floor in LOCAL units (callers pass ~0.16/frameScale). */
+  hitMin?: number;
   onPick: (key: string) => void;
   onHover: (key: string | null) => void;
 }) {
@@ -313,8 +367,19 @@ function StarSystem({
     : system.status === "proposed"
       ? ATLAS_COLORS.proposed
       : ATLAS_COLORS.canon;
+  // Hit target: at least 3× the visible dot, with an optional screen-relative
+  // floor so small dots stay clickable at deep zooms (the floor shrinks as
+  // the frame scale grows — a constant local floor would swallow the view).
+  const hit = Math.max(scale * 3, hitMin);
+  const ls = labelScale ?? scale * 12;
   return (
     <group position={toScene(system)}>
+      {/* Visible dot */}
+      <mesh>
+        <sphereGeometry args={[scale, 12, 12]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      {/* Invisible generous click/hover target */}
       <mesh
         onClick={(e) => {
           e.stopPropagation();
@@ -326,8 +391,8 @@ function StarSystem({
         }}
         onPointerOut={() => onHover(null)}
       >
-        <sphereGeometry args={[scale, 12, 12]} />
-        <meshBasicMaterial color={color} />
+        <sphereGeometry args={[hit, 8, 8]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
       {/* glow sprite */}
       <sprite scale={[scale * 9, scale * 9, 1]}>
@@ -340,13 +405,13 @@ function StarSystem({
         />
       </sprite>
       {showLabel ? (
-        <Billboard>
+        <Billboard position={[0, scale * 6 + ls * 0.6, 0]}>
           <Text
-            fontSize={scale * 12}
+            fontSize={ls}
             color={highlight ? "#ffffff" : "#cfe9ff"}
             anchorX="center"
             anchorY="bottom"
-            outlineWidth={scale * 1.2}
+            outlineWidth={ls * 0.12}
             outlineColor="#000"
           >
             {system.name}
@@ -518,8 +583,8 @@ export default function AtlasScene({
 
   const systemFrame = useMemo(() => {
     if (level !== "system" || !focusSystem) return null;
-    return computeSystemFrame(focusSystem);
-  }, [level, focusSystem]);
+    return computeSystemFrame(focusSystem, snapshot.systems);
+  }, [level, focusSystem, snapshot.systems]);
 
   const activeFrame: SceneFrame | null =
     level === "quadrant" ? quadrantFrame : level === "sector" ? sectorFrame : level === "system" ? systemFrame : null;
@@ -564,49 +629,70 @@ export default function AtlasScene({
     return snapshot.sectors.filter((s) => s.quadrantKey === quadrantKey);
   }, [snapshot.sectors, level, quadrantKey]);
 
+  // Screen-constant sizing: dots/labels/gates render inside the scaled
+  // LevelGroup, so their local sizes divide by the frame scale to stay a
+  // constant size on screen at every zoom level. The same applies to hit
+  // floors: 0.14 local units × scale ≈ a constant on-screen target.
+  const dotScale = 0.007 / (activeFrame?.scale ?? 1);
+  const labelScale = 0.02 / (activeFrame?.scale ?? 1);
+  const gateScale = 0.009 / (activeFrame?.scale ?? 1);
+  const hitFloor = 0.14 / (activeFrame?.scale ?? 1);
+
   return (
     <group>
       {level === "galaxy" ? <GalaxyDisk /> : null}
-      {level === "galaxy" ? <QuadrantVolumes snapshot={snapshot} onPick={onQuadrantPick} /> : null}
+
+      {/* Quadrant volumes ALWAYS overlay the galaxy — they split it into
+          four pieces; only their interactivity switches with the level. */}
+      <QuadrantVolumes
+        snapshot={snapshot}
+        onPick={level === "galaxy" ? onQuadrantPick : () => undefined}
+        labelScale={level === "galaxy" ? 0.045 : undefined}
+        interactive={level === "galaxy"}
+      />
 
       {level === "quadrant" ? (
         <LevelGroup frame={activeFrame}>
           {focusQuadrant ? (
-            <VolumeBox bounds={focusQuadrant} color={focusQuadrant.color} opacity={0.03} edgeOpacity={0.4} />
+            <VolumeBox bounds={focusQuadrant} color={focusQuadrant.color} opacity={0.05} edgeOpacity={0.65} />
           ) : null}
-          <SectorVolumes sectors={levelSectors} onPick={onSectorPick} />
+          <SectorVolumes sectors={levelSectors} onPick={onSectorPick} labelScale={labelScale} hitFloor={hitFloor} />
           {levelSystems.map((s) => (
             <StarSystem
               key={s.key}
               system={s}
               highlight={s.key === systemKey}
-              scale={0.006}
+              scale={dotScale}
               showLabel={levelSystems.length <= 40 || s.key === systemKey}
+              labelScale={labelScale * 1.2}
+              hitMin={hitFloor}
               onPick={(key) => onSystemPick(key)}
               onHover={(key) => onHoverSystem(key ? { key, name: systemsById.get(key)?.name ?? "" } : null)}
             />
           ))}
-          <WarpGates gates={levelGates} octaScale={0.006 / (activeFrame?.scale ?? 1)} onPick={onGatePick} />
+          <WarpGates gates={levelGates} octaScale={gateScale} onPick={onGatePick} />
         </LevelGroup>
       ) : null}
 
       {level === "sector" ? (
         <LevelGroup frame={activeFrame}>
           {focusSector ? (
-            <VolumeBox bounds={focusSector} color={focusSector.color} opacity={0.06} edgeOpacity={0.75} />
+            <VolumeBox bounds={focusSector} color={focusSector.color} opacity={0.07} edgeOpacity={0.8} />
           ) : null}
           {levelSystems.map((s) => (
             <StarSystem
               key={s.key}
               system={s}
               highlight={s.key === systemKey}
-              scale={0.006}
+              scale={dotScale}
               showLabel
+              labelScale={labelScale * 1.2}
+              hitMin={hitFloor}
               onPick={(key) => onSystemPick(key)}
               onHover={(key) => onHoverSystem(key ? { key, name: systemsById.get(key)?.name ?? "" } : null)}
             />
           ))}
-          <WarpGates gates={levelGates} octaScale={0.006 / (activeFrame?.scale ?? 1)} onPick={onGatePick} />
+          <WarpGates gates={levelGates} octaScale={gateScale} onPick={onGatePick} />
         </LevelGroup>
       ) : null}
 
@@ -616,9 +702,11 @@ export default function AtlasScene({
             <StarSystem
               key={s.key}
               system={s}
-              highlight
-              scale={0.012}
+              highlight={s.key === systemKey}
+              scale={dotScale * 1.8}
               showLabel
+              labelScale={labelScale * 1.4}
+              hitMin={hitFloor}
               onPick={() => undefined}
               onHover={() => undefined}
             />
@@ -636,15 +724,16 @@ export default function AtlasScene({
                 key={s.key}
                 system={s}
                 highlight={s.key === "sol"}
-                scale={0.006}
-                showLabel={snapshot.systems.filter((x) => x.isRealStar && !x.sectorKey).length <= 60}
+                scale={0.007}
+                showLabel
+                labelScale={0.016}
                 onPick={(key) => onSystemPick(key)}
                 onHover={(key) => onHoverSystem(key ? { key, name: systemsById.get(key)?.name ?? "" } : null)}
               />
             ))}
           <WarpGates
             gates={snapshot.gates.filter((g) => g.level === "galaxy")}
-            octaScale={0.008}
+            octaScale={0.009}
             onPick={onGatePick}
           />
         </group>
@@ -657,35 +746,6 @@ export default function AtlasScene({
         level={level}
         focusKey={systemKey}
       />
-      {/* Sector labels billboarded at the sector centers for orientation. */}
-      {level === "sector" && focusSector ? (
-        <Billboard position={toScene(boundsCenterOf(focusSector))}>
-          <Text
-            fontSize={0.028}
-            color={focusSector.status === "proposed" ? ATLAS_COLORS.proposed : focusSector.color}
-            anchorX="center"
-            anchorY="top"
-            outlineWidth={0.002}
-            outlineColor="#000"
-          >
-            {focusSector.name}
-          </Text>
-        </Billboard>
-      ) : null}
-      {level === "quadrant" && focusQuadrant ? (
-        <Billboard position={toScene(boundsCenterOf(focusQuadrant))}>
-          <Text
-            fontSize={0.05}
-            color={focusQuadrant.color}
-            anchorX="center"
-            anchorY="top"
-            outlineWidth={0.002}
-            outlineColor="#000"
-          >
-            {focusQuadrant.name}
-          </Text>
-        </Billboard>
-      ) : null}
     </group>
   );
 }

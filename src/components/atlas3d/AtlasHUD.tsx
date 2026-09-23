@@ -86,6 +86,7 @@ export default function AtlasHUD(props: {
   onSectorSelect: (key: string) => void;
   onSystemSelect: (key: string) => void;
   onGoUp: () => void;
+  onQuadrantsEmpty?: boolean;
   isAuthenticated: boolean;
   submissions: SubmissionRow[];
   onSubmitSystem: (data: {
@@ -152,6 +153,7 @@ export default function AtlasHUD(props: {
     onSystemSelect,
     onGoUp,
   } = props;
+  const quadrantsEmpty = props.onQuadrantsEmpty ?? false;
 
   const quadrantName = focusQuadrant?.name ?? quadrantKey;
   const sectorName = focusSector?.name ?? sectorKey;
@@ -223,23 +225,19 @@ export default function AtlasHUD(props: {
       <div className="absolute top-3 right-3 z-10">
         <HudPanel className="flex items-center gap-1 px-2 py-1.5">
           {LEVELS.map((lv) => {
-            const reachable =
-              lv === "galaxy" ||
-              (lv === "quadrant" && quadrantKey) ||
-              (lv === "sector" && sectorKey) ||
-              (lv === "system" && systemKey);
+            const empty = lv === "quadrant" && quadrantsEmpty;
             return (
               <button
                 key={lv}
                 type="button"
-                disabled={!reachable}
+                disabled={empty}
                 onClick={() => onLevelChange(lv)}
                 className={`px-2.5 py-1 text-xs rounded cursor-pointer transition-colors disabled:opacity-35 disabled:cursor-not-allowed ${
                   level === lv
                     ? "bg-[rgba(0,229,255,0.14)] text-uf-cyan"
                     : "text-uf-muted hover:text-uf-text"
                 }`}
-                title={`Hotkey: ${LEVEL_HOTKEY[lv]}`}
+                title={empty ? "Seed the atlas first" : `Hotkey: ${LEVEL_HOTKEY[lv]}`}
               >
                 {LEVEL_LABEL[lv]} <span className="opacity-60">{LEVEL_HOTKEY[lv]}</span>
               </button>
