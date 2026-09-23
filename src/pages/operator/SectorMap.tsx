@@ -16,6 +16,7 @@ type SectorDoc = {
   loreCount?: number;
   x: number;
   y: number;
+  r?: number;
 };
 
 type FormState = {
@@ -26,6 +27,7 @@ type FormState = {
   loreCount: string;
   x: string;
   y: string;
+  r: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -35,6 +37,7 @@ const EMPTY_FORM: FormState = {
   loreCount: "",
   x: "200",
   y: "150",
+  r: "60",
 };
 
 type GateFormState = {
@@ -93,6 +96,7 @@ export default function OperatorSectorMap() {
             loreCount: s.loreCount != null ? String(s.loreCount) : "",
             x: String(s.x),
             y: String(s.y),
+            r: s.r != null ? String(s.r) : "",
           }
         : EMPTY_FORM,
     );
@@ -113,6 +117,10 @@ export default function OperatorSectorMap() {
     if (editing.loreCount.trim() && (loreCount == null || !Number.isFinite(loreCount))) {
       return toast.error("Lore count must be a number.");
     }
+    const r = editing.r.trim() ? Math.max(20, Math.round(Number(editing.r))) : undefined;
+    if (editing.r.trim() && (r == null || !Number.isFinite(r))) {
+      return toast.error("Region radius must be a number (20+).");
+    }
     setBusy(true);
     try {
       await upsert({
@@ -123,6 +131,7 @@ export default function OperatorSectorMap() {
         loreCount,
         x,
         y,
+        r,
       });
       toast.success(editing.id ? "Sector updated." : "Sector added.");
       setEditing(null);
@@ -584,6 +593,12 @@ export default function OperatorSectorMap() {
               />
               <Field label="X coordinate" value={editing.x} onChange={(v) => setEditing((f) => f && { ...f, x: v })} placeholder="200" />
               <Field label="Y coordinate" value={editing.y} onChange={(v) => setEditing((f) => f && { ...f, y: v })} placeholder="150" />
+              <Field
+                label="Region radius"
+                value={editing.r}
+                onChange={(v) => setEditing((f) => f && { ...f, r: v })}
+                placeholder="60"
+              />
               <Field label="Lore count" value={editing.loreCount} onChange={(v) => setEditing((f) => f && { ...f, loreCount: v })} placeholder="12" />
               <Field label="Description (optional)" value={editing.description} onChange={(v) => setEditing((f) => f && { ...f, description: v })} placeholder="Short survey note" />
             </div>

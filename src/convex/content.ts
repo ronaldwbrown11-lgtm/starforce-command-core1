@@ -235,7 +235,23 @@ export const loreBySlug = query({
 
 export const sectors = query({
   args: {},
-  handler: async (ctx) => ctx.db.query("sectorMap").collect(),
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("sectorMap").collect();
+    // kind="system" rows are canon star systems INSIDE sectors — they render
+    // in sector views, not as galaxy regions. Legacy rows (kind unset) are
+    // sectors.
+    return rows.filter((r) => r.kind !== "system");
+  },
+});
+
+// Canon star systems living inside sectors (sectorMap kind="system"), for
+// the Star Atlas sector views. Linked to their parent via `sectorSlug`.
+export const sectorSystems = query({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("sectorMap").collect();
+    return rows.filter((r) => r.kind === "system");
+  },
 });
 
 // Public warp-gate roster for the galaxy map. Returns stored sector slugs

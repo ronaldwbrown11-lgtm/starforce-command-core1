@@ -42,6 +42,9 @@ export const upsertSector = mutation({
     loreCount: v.optional(v.number()),
     x: v.number(),
     y: v.number(),
+    // Galaxy-region radius (viewBox units). undefined keeps the existing
+    // value on edit; new sectors default on the widget side.
+    r: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const { me } = await requireOperatorCapability(ctx, SECTOR_CAPS);
@@ -67,6 +70,7 @@ export const upsertSector = mutation({
         loreCount,
         x: args.x,
         y: args.y,
+        ...(args.r != null ? { r: Math.max(20, Math.round(args.r)) } : {}),
       });
       id = args.id;
     } else {
@@ -84,6 +88,7 @@ export const upsertSector = mutation({
         loreCount,
         x: args.x,
         y: args.y,
+        ...(args.r != null ? { r: Math.max(20, Math.round(args.r)) } : {}),
       });
     }
 
@@ -301,6 +306,84 @@ export const deleteGate = mutation({
         label: existing.label,
         route: `${existing.fromSlug}->${existing.toSlug}`,
       }),
+      createdAt: Date.now(),
+    });
+    return { ok: true };
+  },
+});
+
+// =========================================================================
+// Canon star systems inside sectors (sectorMap rows with kind="system",
+// linked to their sector via sectorSlug). Operators add these directly —
+// no Bridge review — and they render in the sector's local chart.
+// =========================================================================
+
+export const addSystem = mutation({
+  args: {
+    name: v.string(),
+    x: v.number(),
+    y: v.number(),
+    sectorSlug: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, SECTOR_CAPS);
+    const name = args.name.trim().slice(0, 60);
+    if (!name) throw new Error("System name is required.");
+    if (!Number.isFinite(args.x) || !Number.isFinite(args.y)) {
+      throw new Error("X and Y coordinates must be finite numbers.");
+    }
+    const parent = await ctx.db
+      .query("sectorMap")
+      .withIndex("by_slug", (q) => q.eq("slug", args.sectorSlug))
+      .first();
+    if (!parent) throw new Error("Parent sector not found.");
+
+    const slug = slugify(name);
+    if (!slug) throw new Error("System slug cannot be empty.");
+    const existing = await ctx.db
+      .query("sectorMap")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .first();
+    if (existing) throw new Error(`A sector or system named "${name}" already exists.`);
+
+    const now = Date.now();
+    const id = await ctx.db.insert("sectorMap", {
+      name,
+      slug,
+      description: (args.description ?? "").trim().slice(0, 280) || undefined,
+      x: args.x,
+      y: args.y,
+      kind: "system",
+      sectorSlug: parent.slug,
+    });
+
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "sectorMap.addSystem",
+      target: `system:${id}`,
+      meta: JSON.stringify({ name, sector: parent.slug, x: args.x, y: args.y }),
+      createdAt: now,
+    });
+    return { ok: true, id };
+  },
+});
+
+export const deleteSystem = mutation({
+  args: { id: v.id("sectorMap") },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, SECTOR_CAPS);
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error("System not found.");
+    if (existing.kind !== "system") {
+      throw new Error("That row is a sector, not a system — use deleteSector.");
+    }
+    await ctx.db.delete(args.id);
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "sectorMap.deleteSystem",
+      target: `system:${args.id}`,
+      meta: JSON.stringify({ name: existing.name, sector: existing.sectorSlug }),
       createdAt: Date.now(),
     });
     return { ok: true };

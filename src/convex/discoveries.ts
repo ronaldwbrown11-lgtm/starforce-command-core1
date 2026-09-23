@@ -242,6 +242,7 @@ export const listDiscoveriesForOperator = query({
           y: d.y,
           sector: d.sector ?? null,
           faction: d.faction ?? null,
+          kind: d.kind ?? "system",
           status: d.status,
           reviewNote: d.reviewNote ?? null,
           createdAt: d.createdAt,
@@ -278,7 +279,11 @@ export const proposeDiscovery = mutation({
     description: v.optional(v.string()),
     x: v.number(),
     y: v.number(),
+    // "system" (default) charts a star system; "sector" proposes a new
+    // sector region for the galaxy map.
+    kind: v.optional(v.string()),
     sector: v.optional(v.string()),
+    sectorSlug: v.optional(v.string()),
     faction: v.optional(v.string()),
     missionId: v.optional(v.id("missions")),
   },
@@ -286,9 +291,11 @@ export const proposeDiscovery = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Sign in to chart a system.");
 
+    const kind = args.kind === "sector" ? "sector" : "system";
+
     const title = args.title.trim();
-    if (title.length < 2) throw new Error("Give the system a name (at least 2 characters).");
-    if (title.length > 60) throw new Error("System names are limited to 60 characters.");
+    if (title.length < 2) throw new Error("Give it a name (at least 2 characters).");
+    if (title.length > 60) throw new Error("Names are limited to 60 characters.");
 
     const description = (args.description ?? "").trim().slice(0, 400);
     if (description && description.length < 10) {
@@ -301,8 +308,41 @@ export const proposeDiscovery = mutation({
     const x = clamp(args.x, X_MIN, X_MAX);
     const y = clamp(args.y, Y_MIN, Y_MAX);
 
-    const sector = (args.sector ?? "").trim().slice(0, 80) || undefined;
+    let sector = (args.sector ?? "").trim().slice(0, 80) || undefined;
+    let sectorSlug = (args.sectorSlug ?? "").trim().slice(0, 80) || undefined;
     const faction = (args.faction ?? "").trim().slice(0, 60) || undefined;
+
+    // Sector proposals become galaxy regions — resolve the slug and refuse
+    // duplicates against canon sectors and other pending sector proposals.
+    if (kind === "sector") {
+      if (sector) {
+        throw new Error("A sector proposal doesn't live inside another sector.");
+      }
+      sectorSlug = undefined;
+      const slug =
+        title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "new-sector";
+      const existingCanon = await ctx.db
+        .query("sectorMap")
+        .withIndex("by_slug", (q) => q.eq("slug", slug))
+        .first();
+      if (existingCanon) {
+        throw new Error("A sector with that name is already on the chart.");
+      }
+      const pendingSectors = await ctx.db
+        .query("discoveries")
+        .withIndex("by_status", (q) => q.eq("status", "pending"))
+        .collect();
+      if (
+        pendingSectors.some(
+          (d) =>
+            d.kind === "sector" &&
+            d.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") ===
+              title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        )
+      ) {
+        throw new Error("A sector proposal with that name is already awaiting review.");
+      }
+    }
 
     let missionId: typeof args.missionId;
     if (args.missionId) {
@@ -320,7 +360,9 @@ export const proposeDiscovery = mutation({
       description,
       x,
       y,
+      kind,
       sector,
+      sectorSlug,
       faction,
       missionId,
       authorId: userId,
@@ -334,7 +376,7 @@ export const proposeDiscovery = mutation({
       targetType: "discovery",
       targetId: id,
       url: "/map",
-      summary: `Proposed a system: ${title}`,
+      summary: kind === "sector" ? `Proposed a new sector: ${title}` : `Proposed a system: ${title}`,
       createdAt: now,
     });
 
@@ -366,6 +408,36 @@ export const discoveryApprovalAction = mutation({
       reviewNote: note,
     });
 
+    // Sector proposals canonize into the galaxy map on approval: a new
+    // sectorMap row (unless an operator already created it by that slug).
+    if (args.action === "approve" && item.kind === "sector") {
+      const slug =
+        item.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") ||
+        `sector-${args.id.slice(-6)}`;
+      const existing = await ctx.db
+        .query("sectorMap")
+        .withIndex("by_slug", (q) => q.eq("slug", slug))
+        .first();
+      if (!existing) {
+        await ctx.db.insert("sectorMap", {
+          name: item.title,
+          slug,
+          description: item.description || undefined,
+          x: item.x,
+          y: item.y,
+          r: 70, // default influence radius; operators can resize in console
+          loreCount: 0,
+        });
+        await ctx.db.insert("auditLog", {
+          actorId: me,
+          action: "sector.canonize",
+          target: `sectorMap:${slug}`,
+          meta: JSON.stringify({ from: `discovery:${args.id}`, name: item.title }),
+          createdAt: Date.now(),
+        });
+      }
+    }
+
     // Notify the discoverer of the outcome (skip when an operator reviewed
     // their own proposal).
     if (item.authorId !== me) {
@@ -374,8 +446,12 @@ export const discoveryApprovalAction = mutation({
         kind: args.action === "approve" ? "discovery_approved" : "discovery_rejected",
         title:
           args.action === "approve"
-            ? "Your system was charted"
-            : "Your system proposal was not charted",
+            ? item.kind === "sector"
+              ? "Your sector joined the chart"
+              : "Your system was charted"
+            : item.kind === "sector"
+              ? "Your sector proposal was not charted"
+              : "Your system proposal was not charted",
         body: item.title.slice(0, 140),
         url: "/map",
         createdAt: Date.now(),

@@ -6,7 +6,7 @@ import { HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-import { MapPin, Minus, Plus, RotateCcw, Sparkles } from "lucide-react";
+import { Crosshair, MapPin, Minus, Plus, RotateCcw, Sparkles } from "lucide-react";
 import milkyWayUrl from "@/assets/milky-way-map.jpg";
 
 // Zoom limits — the deep 40× max exists so operators can zoom from the full
@@ -33,6 +33,7 @@ const HUES = [
 
 // Anti-clutter limits.
 const DRAW_CAP = 60; // only the most recent N charted systems are drawn
+const DEFAULT_SECTOR_R = 60; // sector region radius when the operator hasn't set one
 const SECTOR_VISIT_RADIUS = 60; // chart units — clicking within this of a sector logs an exploration visit
 const CLUSTER_R = 22; // viewBox units — systems closer than this group together
 
@@ -114,14 +115,382 @@ const LAYERS = [
 
 type LayerKey = (typeof LAYERS)[number]["key"];
 
+// A canon sector row as the widget sees it (post kind-split queries).
+type SectorRow = {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  loreCount?: number;
+  x: number;
+  y: number;
+  r?: number;
+};
+
+type SectorSystem = {
+  key: string;
+  id: string;
+  title: string;
+  kind: "canon" | "member";
+  href?: string;
+  x: number;
+  y: number;
+  description?: string;
+};
+
+// ---------------------------------------------------------------------------
+// SectorChart — focused overlay chart for a single sector. The sector's
+// region becomes a compact fixed frame with its own zoom/pan; click empty
+// space to propose a system pre-tagged to the sector. Operators add canon
+// systems inline and can delete them.
+// ---------------------------------------------------------------------------
+function SectorChart({
+  sector,
+  systems,
+  height,
+  onBack,
+  onPropose,
+}: {
+  sector: SectorRow;
+  systems: SectorSystem[];
+  height: number;
+  onBack: () => void;
+  onPropose: (x: number, y: number) => void;
+}) {
+  const { isAuthenticated, user } = useAuth();
+  const addSystem = useMutation(api.sectorMap.addSystem);
+  const removeSystem = useMutation(api.sectorMap.deleteSystem);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const dragRef = useRef<{ x: number; y: number } | null>(null);
+  const dragMoved = useRef(false);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hoverKey, setHoverKey] = useState<string | null>(null);
+  const isOperator = !!user?.opRole || user?.role === "admin";
+
+  // Sector-region frame — padded so the region + labels fit comfortably.
+  const frame = useMemo(() => {
+    const r = Math.max(90, sector.r ?? DEFAULT_SECTOR_R) * 1.45;
+    return { vbX: sector.x - r, vbY: sector.y - r, vbW: r * 2, vbH: r * 2 };
+  }, [sector]);
+
+  const localToBase = (e: { clientX: number; clientY: number }) => {
+    const svg = svgRef.current;
+    if (!svg) return null;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const p = pt.matrixTransform(ctm.inverse());
+    return {
+      x: (p.x - frame.vbX - pan.x) / zoom + frame.vbX,
+      y: (p.y - frame.vbY - pan.y) / zoom + frame.vbY,
+    };
+  };
+
+  const zoomTo = (next: number) => {
+    const clamped = Math.min(MAP_MAX_ZOOM, Math.max(MAP_MIN_ZOOM, next));
+    if (clamped === zoom) return;
+    const cx = frame.vbX + frame.vbW / 2;
+    const cy = frame.vbY + frame.vbH / 2;
+    setPan({
+      x: cx - frame.vbX - (cx - frame.vbX) * clamped,
+      y: cy - frame.vbY - (cy - frame.vbY) * clamped,
+    });
+    setZoom(clamped);
+  };
+
+  const onDragStart = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (e.button !== 0) return;
+    dragRef.current = { x: e.clientX, y: e.clientY };
+    dragMoved.current = false;
+    setDragging(true);
+  };
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!dragging || !dragRef.current) return;
+    const svg = svgRef.current;
+    if (!svg) return;
+    const dx = e.clientX - dragRef.current.x;
+    const dy = e.clientY - dragRef.current.y;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved.current = true;
+    const rect = svg.getBoundingClientRect();
+    const vbScale = frame.vbW / rect.width / zoom;
+    setPan((p) => ({ x: p.x + dx * vbScale, y: p.y + dy * vbScale }));
+    dragRef.current = { x: e.clientX, y: e.clientY };
+  };
+  const onDragEnd = () => {
+    dragRef.current = null;
+    setDragging(false);
+  };
+
+  const localStars = useMemo(
+    () =>
+      Array.from({ length: 40 }, (_, i) => ({
+        x: frame.vbX + seeded(i) * frame.vbW,
+        y: frame.vbY + seeded(i * 2 + 1) * frame.vbH,
+        r: 0.5 + seeded(i * 3 + 2) * 1.1,
+        o: 0.12 + seeded(i * 5 + 3) * 0.4,
+      })),
+    [frame],
+  );
+
+  const localUI = Math.max(1, Math.min(3, (frame.vbW / 200) * zoom));
+
+  return (
+    <div
+      className="relative overflow-hidden rounded-md"
+      style={{
+        background:
+          "radial-gradient(closest-side at 50% 50%, rgba(0,229,255,0.1), transparent 70%), var(--uf-navy)",
+        border: "1px solid rgba(0,229,255,0.35)",
+        height,
+      }}
+    >
+      <svg
+        ref={svgRef}
+        viewBox={`${frame.vbX + pan.x} ${frame.vbY + pan.y} ${frame.vbW / zoom} ${frame.vbH / zoom}`}
+        preserveAspectRatio="xMidYMid meet"
+        className={`w-full h-full ${dragging ? "cursor-grabbing" : "cursor-crosshair"}`}
+        role="img"
+        aria-label={`Sector chart for ${sector.name}. Click empty space to propose a system in this sector.`}
+        style={{ touchAction: "pan-y" }}
+        onPointerDown={onDragStart}
+        onPointerMove={onPointerMove}
+        onPointerUp={onDragEnd}
+        onPointerLeave={onDragEnd}
+        onDoubleClick={() => {
+          setZoom(1);
+          setPan({ x: 0, y: 0 });
+        }}
+        onClick={(e) => {
+          if (dragMoved.current) {
+            dragMoved.current = false;
+            return;
+          }
+          const p = localToBase(e);
+          if (p) onPropose(p.x, p.y);
+        }}
+      >
+        <title>{`${sector.name} — sector chart`}</title>
+        {localStars.map((s, i) => (
+          <circle key={i} cx={s.x} cy={s.y} r={s.r} fill="#bfe9ff" opacity={s.o} />
+        ))}
+
+        {/* Sector boundary + wash */}
+        <circle
+          cx={sector.x}
+          cy={sector.y}
+          r={sector.r ?? DEFAULT_SECTOR_R}
+          fill="rgba(0,229,255,0.05)"
+          stroke="rgba(0,229,255,0.5)"
+          strokeWidth={1.2 * localUI}
+          strokeDasharray={`${4 * localUI} ${5 * localUI}`}
+        />
+        <text
+          x={sector.x}
+          y={sector.y - (sector.r ?? DEFAULT_SECTOR_R) - 8 * localUI}
+          fontSize={12 * localUI}
+          fill="var(--uf-cyan)"
+          textAnchor="middle"
+          fontWeight={600}
+          letterSpacing={2 * localUI}
+        >
+          {sector.name.toUpperCase()}
+        </text>
+
+        {/* Canon + member systems */}
+        {systems.map((sys) => {
+          const hovered = hoverKey === sys.key;
+          const color = sys.kind === "canon" ? "var(--uf-cyan)" : "var(--uf-green)";
+          return (
+            <g
+              key={sys.key}
+              onMouseEnter={() => setHoverKey(sys.key)}
+              onMouseLeave={() => setHoverKey(null)}
+              className={sys.href ? "cursor-pointer" : "cursor-default"}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <title>{sys.description ? `${sys.title} — ${sys.description}` : sys.title}</title>
+              {sys.href ? (
+                <a href={sys.href} aria-label={`Open ${sys.title}`} onClick={(e) => e.stopPropagation()}>
+                  <circle cx={sys.x} cy={sys.y} r={(hovered ? 8 : 6) * localUI} fill={color} fillOpacity={0.25} stroke={color} strokeWidth={1.4 * localUI} />
+                  <circle cx={sys.x} cy={sys.y} r={2.2 * localUI} fill={color} />
+                </a>
+              ) : (
+                <>
+                  <circle cx={sys.x} cy={sys.y} r={(hovered ? 8 : 6) * localUI} fill={color} fillOpacity={0.25} stroke={color} strokeWidth={1.4 * localUI} />
+                  <circle cx={sys.x} cy={sys.y} r={2.2 * localUI} fill={color} />
+                </>
+              )}
+              <text
+                x={sys.x}
+                y={sys.y + 17 * localUI}
+                fontSize={9.5 * localUI}
+                fill="var(--uf-text)"
+                textAnchor="middle"
+                stroke="#050816"
+                strokeWidth={2.5 * localUI}
+                paintOrder="stroke"
+                strokeLinejoin="round"
+                fontWeight={hovered ? 700 : 500}
+              >
+                {sys.title}
+              </text>
+              <text
+                x={sys.x}
+                y={sys.y + 27 * localUI}
+                fontSize={7 * localUI}
+                fill={color}
+                textAnchor="middle"
+                letterSpacing={1.2 * localUI}
+                stroke="#050816"
+                strokeWidth={2 * localUI}
+                paintOrder="stroke"
+                strokeLinejoin="round"
+              >
+                {sys.kind === "canon" ? "CANON SYSTEM" : "MEMBER CHART"}
+              </text>
+              {isOperator && sys.kind === "canon" && (
+                <g
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Delete canon system ${sys.title}`}
+                  className="cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirm(`Delete canon system "${sys.title}"? This cannot be undone.`)) {
+                      void removeSystem({ id: sys.id as never }).catch((err) =>
+                        toast.error(err instanceof Error ? err.message : "Delete failed."),
+                      );
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") e.preventDefault();
+                  }}
+                >
+                  <circle cx={sys.x + 12 * localUI} cy={sys.y - 12 * localUI} r={5 * localUI} fill="rgba(255,77,109,0.15)" stroke="var(--uf-red)" strokeWidth={0.8 * localUI} />
+                  <text x={sys.x + 12 * localUI} y={sys.y - 9.5 * localUI} fontSize={7 * localUI} fill="var(--uf-red)" textAnchor="middle">×</text>
+                </g>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Operator add-system pad */}
+        {isOperator && (
+          <g
+            role="button"
+            tabIndex={0}
+            aria-label="Add a canon system at the center of this sector"
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              void (async () => {
+                try {
+                  await addSystem({
+                    name: `${sector.name} System`,
+                    x: sector.x,
+                    y: sector.y,
+                    sectorSlug: sector.slug,
+                  });
+                  toast.success("Canon system added — rename it in the console if needed.");
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Couldn't add the system.");
+                }
+              })();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") e.preventDefault();
+            }}
+          >
+            <title>Add a canon system at this sector's center</title>
+            <circle
+              cx={sector.x}
+              cy={sector.y}
+              r={13 * localUI}
+              fill="rgba(0,229,255,0.1)"
+              stroke="rgba(0,229,255,0.55)"
+              strokeWidth={0.9 * localUI}
+              strokeDasharray={`${2.5 * localUI} ${3 * localUI}`}
+            />
+            <text x={sector.x} y={sector.y + 3.5 * localUI} fontSize={11 * localUI} fill="var(--uf-cyan)" textAnchor="middle" fontWeight={700}>
+              +
+            </text>
+          </g>
+        )}
+      </svg>
+
+      {/* Controls */}
+      <div className="absolute top-3 left-3 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-full border border-[rgba(0,229,255,0.45)] bg-[rgba(5,8,22,0.9)] px-3 py-1.5 text-xs text-uf-cyan hover:bg-[rgba(0,229,255,0.12)] transition-colors cursor-pointer"
+        >
+          ← Galaxy
+        </button>
+        <span className="text-[10px] uppercase tracking-[0.16em] text-uf-muted bg-[rgba(5,8,22,0.7)] border border-[color:var(--uf-border)] rounded-full px-2.5 py-1">
+          {isAuthenticated ? "Click empty space to chart a system here" : "Sign in to chart"}
+        </span>
+      </div>
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => zoomTo(zoom * 1.5)}
+          aria-label="Zoom in"
+          className="h-11 w-11 grid place-items-center rounded-full border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.9)] text-uf-text hover:border-[rgba(0,229,255,0.6)] hover:text-uf-cyan active:scale-95 disabled:opacity-40 transition-all"
+        >
+          <Plus className="h-5 w-5" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => zoomTo(zoom / 1.5)}
+          aria-label="Zoom out"
+          className="h-11 w-11 grid place-items-center rounded-full border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.9)] text-uf-text hover:border-[rgba(0,229,255,0.6)] hover:text-uf-cyan active:scale-95 disabled:opacity-40 transition-all"
+        >
+          <Minus className="h-5 w-5" aria-hidden />
+        </button>
+        {zoom !== 1 && (
+          <button
+            type="button"
+            onClick={() => {
+              setZoom(1);
+              setPan({ x: 0, y: 0 });
+            }}
+            aria-label="Reset sector chart zoom"
+            className="h-11 w-11 grid place-items-center rounded-full border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.9)] text-uf-muted hover:text-uf-text hover:border-[rgba(0,229,255,0.6)] active:scale-95 transition-all"
+          >
+            <RotateCcw className="h-4 w-4" aria-hidden />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function DiscoveryMap({ height = 520 }: { height?: number }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const sectors = useQuery(api.content.sectors);
   const discoveries = useQuery(api.discoveries.listDiscoveries);
   const missions = useQuery(api.content.listMissions, {});
   const factions = useQuery(api.factions.listAll);
   const propose = useMutation(api.discoveries.proposeDiscovery);
   const vote = useMutation(api.discoveries.voteDiscovery);
+  // ------------------------------------------------------------------
+  // Two-level methodology: the galaxy chart shows sectors as large
+  // clickable regions. Clicking one opens the focused SectorChart overlay
+  // — a local chart where canon + member systems live and can be added.
+  // One coordinate space, no data migration; the overlay owns its own
+  // camera so the verified galaxy zoom/pan stays untouched.
+  // ------------------------------------------------------------------
+  const [overlaySectorName, setOverlaySectorName] = useState<string | null>(null);
+  const enterSector = (name: string) => {
+    setOverlaySectorName(name);
+    handleSectorVisited(name);
+  };
+  const exitToGalaxy = () => setOverlaySectorName(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
   // Zoom/pan state — the base viewBox from sector data, plus a user transform
@@ -142,6 +511,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   const [detail, setDetail] = useState<Discovery | null>(null);
   const [clusterOpen, setClusterOpen] = useState<Cluster | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
+  const [hoverSectorId, setHoverSectorId] = useState<string | null>(null);
   const [layers, setLayers] = useState<Record<LayerKey, boolean>>({
     galaxy: true,
     stars: true,
@@ -155,6 +525,8 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   const [sector, setSector] = useState("");
   const [faction, setFaction] = useState("");
   const [missionId, setMissionId] = useState("");
+  // Dialog mode: charting a system vs proposing a whole new sector.
+  const [proposingSector, setProposingSector] = useState(false);
   const [busy, setBusy] = useState(false);
   const [voting, setVoting] = useState(false);
 
@@ -234,6 +606,55 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   // nodes, gates, and tooltips scale with the field of view so they stay
   // readable at any zoom. Clamped to sane bounds.
   const UI = Math.max(1, Math.min(2.6, viewBox.vbW / 800));
+
+  // ------------------------------------------------------------------
+  // Scene datasets
+  // ------------------------------------------------------------------
+  // The sector whose local chart is active, resolved by name.
+  // The sector whose focused chart is open (null = galaxy view).
+  const activeSector = useMemo(
+    () => (overlaySectorName ? (sectors ?? []).find((s) => s.name === overlaySectorName) ?? null : null),
+    [overlaySectorName, sectors],
+  );
+
+  // Canon star systems (sectorMap kind="system" rows) for sector views.
+  const systemRows = useQuery(api.content.sectorSystems);
+
+  // Systems drawn in the sector scene: canon systems linked to the sector
+  // plus member-charted systems tagged to it.
+  const sectorSystems = useMemo(() => {
+    const sec = activeSector;
+    if (!sec) return [];
+    const canon = (systemRows ?? [])
+      .filter((s) => s.sectorSlug === sec.slug)
+      .map((s) => ({
+        key: `canon:${s.slug}`,
+        id: s._id as string,
+        title: s.name,
+        kind: "canon" as const,
+        href: undefined,
+        x: s.x,
+        y: s.y,
+        description: s.description ?? undefined,
+      }));
+    const member = (discoveries ?? [])
+      .filter((d) => d.sector === sec.name)
+      .map((d) => ({
+        key: `member:${d._id}`,
+        id: d._id as string,
+        title: d.title,
+        kind: "member" as const,
+        href: undefined,
+        x: d.x,
+        y: d.y,
+        description: d.description || undefined,
+      }));
+    return [...canon, ...member];
+  }, [activeSector, systemRows, discoveries]);
+
+
+
+
 
   // Wheel zoom — attached as a native non-passive listener in the effect
   // below. React's onWheel prop registers passively at the document root,
@@ -433,7 +854,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
     return lanes;
   }, [discoveries, sectors]);
 
-  // Decorative starfield dots (stable across renders).
+  // Decorative starfield dots (stable across renders) — drawn per scene.
   const stars = useMemo(() => {
     const { vbX, vbY, vbW, vbH } = viewBox;
     return Array.from({ length: 70 }, (_, i) => ({
@@ -491,9 +912,28 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
     setProposePos({ x: Math.round(x), y: Math.round(y) });
     setTitle("");
     setDescription("");
+    // Pre-tag the sector when proposing from inside a sector chart.
+    setSector(activeSector?.name ?? "");
+    setFaction("");
+    setMissionId("");
+    setProposingSector(false);
+    setProposeOpen(true);
+  };
+
+  // Propose a brand-new sector — placement happens on the galaxy chart
+  // after the form closes (click empty space, or skip to use the center).
+  const openProposeSector = () => {
+    if (!isAuthenticated) {
+      setAuthOpen(true);
+      return;
+    }
+    setProposePos(null);
+    setTitle("");
+    setDescription("");
     setSector("");
     setFaction("");
     setMissionId("");
+    setProposingSector(true);
     setProposeOpen(true);
   };
 
@@ -507,11 +947,21 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
     }
     const p = pointerToBase(e);
     if (!p) return;
-    // Log exploration when the click lands inside a canon sector's reach.
-    const hit = (sectors ?? []).find(
-      (s) => Math.hypot(s.x - p.x, s.y - p.y) <= SECTOR_VISIT_RADIUS,
-    );
-    if (hit) handleSectorVisited(hit.name);
+    // Galaxy chart: a click inside a sector's region opens that sector's
+    // focused chart (the overlay handles system-level mapping).
+    const hits = (sectors ?? [])
+      .map((s) => ({ s, d: Math.hypot(s.x - p.x, s.y - p.y) }))
+      .filter((h) => h.d <= (h.s.r ?? DEFAULT_SECTOR_R))
+      .sort((a, b) => a.d - b.d);
+    if (hits.length > 0) {
+      enterSector(hits[0].s.name);
+      return;
+    }
+    // Otherwise: exploration logging near a sector + free-space proposal.
+    const nearest = (sectors ?? [])
+      .map((s) => ({ s, d: Math.hypot(s.x - p.x, s.y - p.y) }))
+      .sort((a, b) => a.d - b.d)[0];
+    if (nearest && nearest.d <= SECTOR_VISIT_RADIUS) handleSectorVisited(nearest.s.name);
     openProposeAt(p.x, p.y);
   };
 
@@ -519,21 +969,33 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
     e.preventDefault();
     if (!proposePos) return;
     if (!title.trim()) {
-      toast.info("Name the system you discovered.");
+      toast.info(proposingSector ? "Name the sector you charted." : "Name the system you discovered.");
       return;
     }
+    // Sector proposals without a picked spot land at the galaxy-frame center;
+    // placement can be refined later in the console.
+    const pos = proposePos ?? {
+      x: Math.round(viewBox.vbX + viewBox.vbW / 2),
+      y: Math.round(viewBox.vbY + viewBox.vbH / 2),
+    };
     setBusy(true);
     try {
       await propose({
         title: title.trim(),
         description: description.trim() || undefined,
-        x: proposePos.x,
-        y: proposePos.y,
-        sector: sector || undefined,
+        x: pos.x,
+        y: pos.y,
+        kind: proposingSector ? "sector" : "system",
+        sector: proposingSector ? undefined : activeSector ? activeSector.name : sector || undefined,
+        sectorSlug: proposingSector ? undefined : activeSector?.slug,
         faction: faction || undefined,
         missionId: (missionId as any) || undefined,
       });
-      toast.success("System proposed — the Bridge will review it.");
+      toast.success(
+        proposingSector
+          ? "Sector proposed — the Bridge will review it."
+          : "System proposed — the Bridge will review it.",
+      );
       setProposeOpen(false);
       setProposePos(null);
     } catch (err) {
@@ -566,14 +1028,33 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
             </span>
             <h2 className="text-xl mt-1">The Orion Triangle — Live Survey Chart</h2>
             <p className="text-uf-muted text-xs mt-1 max-w-[56ch]">
-              Canon sectors are fixed; emerald nodes are systems charted by
-              members. Starnet transit lanes pulse toward warp gates. Clusters group nearby systems — click a node to read its
-              survey, or click empty space to propose a discovery.
+              {activeSector
+                ? `Sector chart — ${activeSector.name}. Click empty space to chart a system pre-tagged to this sector; nodes show canon and member systems.`
+                : "Galaxy view — every glowing region is a sector. Click one to open its sector chart and map systems. Click empty space to propose a whole new sector."}
             </p>
           </div>
-          <StatusPill variant="success">
-            {total} member-charted
-          </StatusPill>
+          <div className="flex items-center gap-2">
+            <StatusPill variant="success">
+              {total} member-charted
+            </StatusPill>
+            {activeSector ? (
+              <button
+                type="button"
+                onClick={exitToGalaxy}
+                className="rounded-full border border-[rgba(0,229,255,0.45)] bg-[rgba(0,229,255,0.08)] px-3 py-1.5 text-xs text-uf-cyan hover:bg-[rgba(0,229,255,0.16)] transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                ← Back to galaxy
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={openProposeSector}
+                className="rounded-full border border-[rgba(139,92,246,0.5)] bg-[rgba(139,92,246,0.1)] px-3 py-1.5 text-xs text-[var(--uf-violet)] hover:bg-[rgba(139,92,246,0.2)] transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Crosshair className="h-3.5 w-3.5" aria-hidden /> Propose new sector
+              </button>
+            )}
+          </div>
         </header>
 
         <div
@@ -609,7 +1090,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
 
             {/* Real-galaxy backdrop — NASA/JPL-Caltech/R. Hurt Milky Way map,
                 cover-fitted into chart coordinates (decorative, aria-hidden) */}
-            {layers.galaxy && (
+            {layers.galaxy && !activeSector && (
               <g aria-hidden="true">
                 <image
                   href={milkyWayUrl}
@@ -644,7 +1125,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
             )}
 
             {/* Canon Starnet — operator-curated lanes, full-strength styling */}
-            {layers.connections && gateLanes.length > 0 && (
+            {layers.connections && !activeSector && gateLanes.length > 0 && (
               <g strokeLinecap="round">
                 {gateLanes.map((l) => (
                   <line
@@ -661,8 +1142,9 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
               </g>
             )}
 
-            {/* Civilian routes — always-on member lanes, visually subordinate */}
-            {layers.connections && (
+            {/* Civilian routes — galaxy scene only; member systems knit to
+                their sectors inside the sector views instead */}
+            {layers.connections && !activeSector && (
               <g strokeLinecap="round">
                 {memberLanes.map((l) => (
                   <line
@@ -681,7 +1163,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
             )}
 
             {/* Warp gates — canon gates on curated lanes... */}
-            {layers.connections && gateLanes.length > 0 && (
+            {layers.connections && !activeSector && gateLanes.length > 0 && (
               <g aria-hidden="true">
                 {gateLanes.map((l) => (
                   <g key={l.id} transform={`translate(${l.gx} ${l.gy})`}>
@@ -703,8 +1185,8 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
               </g>
             )}
 
-            {/* Civilian gates — smaller, dimmer markers on member lanes */}
-            {layers.connections && (
+            {/* Civilian gates — galaxy scene only (see lanes above) */}
+            {layers.connections && !activeSector && (
               <g aria-hidden="true">
                 {memberLanes.map((l) => (
                   <g key={l.id} transform={`translate(${l.gx} ${l.gy})`}>
@@ -728,7 +1210,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
 
             {/* Sol — humanity's home star on the Orion Spur, linking into the
                 Sol-sector lore archive */}
-            {layers.sectors && (
+            {layers.sectors && !activeSector && (
               <a
                 href="/lore?sector=Sol"
                 role="link"
@@ -754,7 +1236,9 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
               </a>
             )}
 
-            {/* 47 Ursae Majoris — Alliance Capital: gold star insignia */}
+            {/* 47 Ursae Majoris — Alliance Capital: gold star insignia
+                (galaxy scene) */}
+            {!activeSector && (
             <g aria-hidden="true">
               <title>47 Ursae Majoris — Alliance Capital</title>
               <circle cx={uma47.x} cy={uma47.y} r={8 * UI} fill="var(--uf-gold)" fillOpacity={0.1} />
@@ -793,10 +1277,11 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                 ALLIANCE CAPITAL
               </text>
             </g>
+            )}
 
             {/* Operator-curated named boundaries — e.g. the Orion Triangle.
                 Pure operator data: nothing renders until one is defined. */}
-            {layers.sectors && boundaries.length > 0 && (
+            {layers.sectors && !activeSector && boundaries.length > 0 && (
               <g aria-hidden="true">
                 {boundaries.map((b) => {
                   const labelAt = b.pts.reduce(
@@ -839,8 +1324,9 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
               </g>
             )}
 
-            {/* Solar neighborhood — closest real systems to Earth */}
-            {layers.sectors && (
+            {/* Solar neighborhood — closest real systems to Earth (galaxy
+                scene) */}
+            {layers.sectors && !activeSector && (
               <g aria-hidden="true">
                 {localSystems.map((s) => (
                   <g key={s.name}>
@@ -865,28 +1351,54 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
               </g>
             )}
 
-            {/* Canon sector nodes */}
-            {layers.sectors && (
+            {/* Sector regions — the galaxy scene's interactive layer. Each
+                sector renders as a large clickable influence disc; clicking
+                dives the camera into that sector's local chart. */}
+            {layers.sectors && !activeSector && (
               <g>
                 {(sectors ?? []).map((s, i) => {
                   const hue = HUES[i % HUES.length];
-                  const r = Math.min(20 * UI, (6 + Math.sqrt(s.loreCount ?? 0) * 2) * UI);
-                  const link = `/lore?sector=${encodeURIComponent(s.name)}`;
+                  const rr = s.r ?? DEFAULT_SECTOR_R;
+                  const hovered = hoverSectorId === s._id;
+                  const systemCount = (discoveries ?? []).filter((d) => d.sector === s.name).length;
                   return (
-                    <a
+                    <g
                       key={s._id}
-                      href={link}
-                      role="link"
-                      aria-label={`Open ${s.name} lore (${s.loreCount ?? 0} entries)`}
-                      onClick={(e) => e.stopPropagation()}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Enter ${s.name} sector (${s.loreCount ?? 0} lore, ${systemCount} charted systems)`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        enterSector(s.name);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          enterSector(s.name);
+                        }
+                      }}
+                      onMouseEnter={() => setHoverSectorId(s._id)}
+                      onMouseLeave={() => setHoverSectorId(null)}
+                      className="cursor-pointer"
                     >
-                      <circle cx={s.x} cy={s.y} r={r + 5 * UI} fill={hue.glow} fillOpacity={0.2} />
-                      <circle cx={s.x} cy={s.y} r={r} fill={hue.glow} fillOpacity={0.42} stroke={hue.glow} strokeWidth={1.8 * UI} />
-                      <circle cx={s.x} cy={s.y} r={3 * UI} fill="var(--uf-text)" fillOpacity={0.95} />
+                      <title>{`${s.name} — click to open sector chart`}</title>
+                      <circle
+                        cx={s.x}
+                        cy={s.y}
+                        r={rr}
+                        fill={hue.glow}
+                        fillOpacity={hovered ? 0.16 : 0.07}
+                        stroke={hue.glow}
+                        strokeOpacity={hovered ? 0.9 : 0.4}
+                        strokeWidth={hovered ? 1.6 * UI : 1 * UI}
+                        strokeDasharray={`${3 * UI} ${4 * UI}`}
+                        className="transition-opacity"
+                      />
+                      <circle cx={s.x} cy={s.y} r={4 * UI} fill={hue.glow} />
                       <text
                         x={s.x}
-                        y={s.y + r + 12 * UI}
-                        fontSize={11 * UI}
+                        y={s.y + rr + 14 * UI}
+                        fontSize={11.5 * UI}
                         fill="var(--uf-text)"
                         textAnchor="middle"
                         stroke="#050816"
@@ -899,8 +1411,8 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                       </text>
                       <text
                         x={s.x}
-                        y={s.y + r + 24 * UI}
-                        fontSize={9 * UI}
+                        y={s.y + rr + 26 * UI}
+                        fontSize={8.5 * UI}
                         fill="var(--uf-muted)"
                         textAnchor="middle"
                         stroke="#050816"
@@ -908,16 +1420,18 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
                         paintOrder="stroke"
                         strokeLinejoin="round"
                       >
-                        {s.loreCount ?? 0} lore
+                        {s.loreCount ?? 0} lore · {systemCount} systems
                       </text>
-                    </a>
+                    </g>
                   );
                 })}
               </g>
             )}
 
-            {/* Member-charted discovery clusters */}
-            {layers.discoveries && (
+            {/* Member-charted discovery clusters — galaxy scene density
+                dots under the sector regions; sector scenes have their own
+                focused overlay chart below */}
+            {layers.discoveries && !activeSector && (
               <g>
                 {clusters.map((c) => {
                   const single = c.members.length === 1;
@@ -997,6 +1511,20 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
               </g>
             )}
           </svg>
+
+          {/* Focused sector chart - replaces the galaxy view while a sector
+              is open. Owns its own camera and system-level interactions. */}
+          {activeSector && (
+            <div className="absolute inset-0 z-20 bg-[rgba(5,8,22,0.97)]">
+              <SectorChart
+                sector={activeSector}
+                systems={sectorSystems}
+                height={height}
+                onBack={exitToGalaxy}
+                onPropose={(x, y) => openProposeAt(x, y)}
+              />
+            </div>
+          )}
 
           {/* Zoom controls — bottom of the chart where the densest systems
               and most editing happen. Big 44px+ targets (WCAG 2.2 AA), and

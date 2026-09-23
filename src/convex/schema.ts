@@ -767,6 +767,15 @@ const schema = defineSchema(
       loreCount: v.optional(v.number()),
       x: v.number(), // SVG map position
       y: v.number(),
+      // Row kind: "sector" (default for legacy rows) renders as a galaxy
+      // region; "system" rows are canon star systems living INSIDE a sector
+      // (linked via sectorSlug) and only render in the sector view.
+      kind: v.optional(v.string()), // "sector" | "system"
+      sectorSlug: v.optional(v.string()), // owning sector for kind="system"
+      // Influence radius on the galaxy scene (viewBox units). Regions render
+      // as clickable discs of this size; clicking dives into the sector.
+      // Optional for legacy rows; widget falls back to a default.
+      r: v.optional(v.number()),
     }).index("by_slug", ["slug"]),
 
     // Operator-curated Starnet warp gates: named transit corridors linking two
@@ -799,7 +808,14 @@ const schema = defineSchema(
       description: v.string(),
       x: v.number(), // SVG map position (clicked region)
       y: v.number(),
-      sector: v.optional(v.string()), // nearest/named sector display name
+      // Proposal kind: "system" (default) charts a star system inside a
+      // sector; "sector" proposes a whole new sector region for the galaxy
+      // map. Legacy rows (pre-kind) read as "system".
+      kind: v.optional(v.string()), // "system" | "sector"
+      // Display name of the sector this system belongs to (auto-tagged from
+      // the active sector scene, or set by the proposer/operator).
+      sector: v.optional(v.string()),
+      sectorSlug: v.optional(v.string()), // slug of the owning sector
       faction: v.optional(v.string()),
       missionId: v.optional(v.id("missions")), // optional mapping operation
       authorId: v.id("users"),

@@ -22,6 +22,7 @@ type Row = {
   sector: string | null;
   faction: string | null;
   status: string;
+  kind?: string; // "system" | "sector" — sector proposals canonize a galaxy region
   reviewNote: string | null;
   createdAt: number;
   author: { displayName: string; email: string | null } | null;
@@ -49,7 +50,11 @@ export default function OperatorDiscoveries() {
   const run = async (id: Id<"discoveries">, action: "approve" | "reject") => {
     try {
       await decide({ id, action, note: note[id]?.trim() || undefined });
-      toast.success(action === "approve" ? "System charted — discoverer got +25 XP." : "Proposal rejected.");
+      toast.success(
+        action === "approve"
+          ? "Approved — charted on the map, discoverer rewarded."
+          : "Proposal rejected.",
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Action failed.");
     }
@@ -128,6 +133,9 @@ export default function OperatorDiscoveries() {
                       <StatusPill variant={STATUS_VARIANT[r.status] ?? "default"}>
                         {r.status}
                       </StatusPill>
+                      {r.kind === "sector" && (
+                        <StatusPill variant="warning">NEW SECTOR</StatusPill>
+                      )}
                       <StatusPill variant="info">
                         <MapPin className="h-3 w-3 mr-1" aria-hidden />
                         {r.x}, {r.y}
