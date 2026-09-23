@@ -187,6 +187,7 @@ export const getSubmissionText = internalQuery({
     text: string;
     meta: string[];
     attachment?: SubmissionAttachment;
+    authorId?: Id<"users">;
   } | null> => {
     if (target.kind === "story") {
       const doc = await ctx.db.get(target.id as Id<"stories">);
@@ -211,6 +212,7 @@ export const getSubmissionText = internalQuery({
                 mimeType: doc.attachmentMeta.mimeType,
               }
             : undefined,
+        authorId: doc.authorId,
       };
     }
     const doc = await ctx.db.get(target.id as Id<"loreLibrary">);
@@ -234,6 +236,7 @@ export const getSubmissionText = internalQuery({
               mimeType: doc.fileMeta.mimeType,
             }
           : undefined,
+    authorId: doc.authorId,
     };
   },
 });

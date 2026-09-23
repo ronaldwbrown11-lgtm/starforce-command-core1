@@ -14,6 +14,7 @@ import {
   type CanonScan,
   type SubmissionAttachment,
 } from "./canonScannerHelpers";
+import { readProviderUsage, estimateCostUsd } from "./aiCost";
 
 // Manuscripts we can read directly as text in the Node runtime. Binary
 // formats (PDF / DOC / DOCX) are left for the operator to open manually —
@@ -118,6 +119,7 @@ export const scanSubmission = action({
     });
 
     let scan: CanonScan;
+    let usage = { inputTokens: 0, outputTokens: 0 };
     try {
       const res = await fetch(`${BASE_URL}/chat/completions`, {
         method: "POST",
@@ -146,6 +148,7 @@ export const scanSubmission = action({
       const data = (await res.json()) as {
         choices?: Array<{ message?: { content?: string } }>;
       };
+      usage = readProviderUsage(data);
       const content = data.choices?.[0]?.message?.content ?? "";
       const parsed = extractJson(content);
       if (!parsed) {
@@ -168,6 +171,19 @@ export const scanSubmission = action({
       target,
       canonScan: scan,
     });
+
+    // Cost ledger — attributed to the submission's author when known.
+    const costUsd = estimateCostUsd(MODEL, usage.inputTokens, usage.outputTokens);
+    await ctx.runMutation(internal.aiCost.logAiCall, {
+      userId: submission.authorId,
+      surface: "canon_scanner",
+      model: MODEL,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      costUsd,
+      createdAt: Date.now(),
+    });
+
     return { ok: true };
   },
 });

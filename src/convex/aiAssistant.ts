@@ -9,6 +9,7 @@ import {
   MODEL,
   extractJson,
 } from "./canonScannerHelpers";
+import { readProviderUsage, estimateCostUsd } from "./aiCost";
 import { DAILY_LIMITS } from "./aiAssistantHelpers";
 
 // =========================================================================
@@ -43,6 +44,8 @@ export type AssistantResult = {
   usesLeft?: number;
   /** Runs remaining in the monthly pool; -1 = operator/unlimited. */
   monthLeft?: number;
+  /** Estimated USD cost of this call (from real provider usage). */
+  costUsd?: number;
 };
 
 const SYSTEM_PROMPT = `You are the Lore Assistant aboard Star Force Base 1198, an AI editor who enforces the fleet's canon. You validate timelines, flag character and relationship inconsistencies, check faction lore, and help members polish their submissions — without inventing new canon facts.
@@ -178,6 +181,19 @@ export const loreAssistant = action({
       const content = data.choices?.[0]?.message?.content ?? "";
       const parsed = extractJson(content) as Record<string, unknown>;
 
+      // Cost ledger — real token usage from the provider response.
+      const usage = readProviderUsage(data);
+      const costUsd = estimateCostUsd(MODEL, usage.inputTokens, usage.outputTokens);
+      await ctx.runMutation(internal.aiCost.logAiCall, {
+        userId,
+        surface: "lore_assistant",
+        model: MODEL,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        costUsd,
+        createdAt: Date.now(),
+      });
+
       await ctx.runMutation(internal.aiAssistantHelpers.recordAssistantUse, { userId });
       await ctx.runMutation(internal.aiAssistantHelpers.consumeMonthlyAi, {
         userId,
@@ -207,6 +223,7 @@ export const loreAssistant = action({
             : "",
         usesLeft: usesLeft - 1,
         monthLeft: monthLeft < 0 ? -1 : Math.max(0, monthLeft - 1),
+        costUsd,
       };
     } catch (e) {
       return {

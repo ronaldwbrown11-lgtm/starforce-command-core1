@@ -12,6 +12,8 @@ import type * as achievements from "../achievements.js";
 import type * as admin from "../admin.js";
 import type * as aiAssistant from "../aiAssistant.js";
 import type * as aiAssistantHelpers from "../aiAssistantHelpers.js";
+import type * as aiCost from "../aiCost.js";
+import type * as aiSpend from "../aiSpend.js";
 import type * as arg from "../arg.js";
 import type * as assets from "../assets.js";
 import type * as auth from "../auth.js";
@@ -86,6 +88,8 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   aiAssistant: typeof aiAssistant;
   aiAssistantHelpers: typeof aiAssistantHelpers;
+  aiCost: typeof aiCost;
+  aiSpend: typeof aiSpend;
   arg: typeof arg;
   assets: typeof assets;
   auth: typeof auth;

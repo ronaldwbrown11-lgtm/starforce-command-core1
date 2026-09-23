@@ -847,6 +847,22 @@ const schema = defineSchema(
       createdAt: v.number(),
     }).index("by_user_day", ["userId", "createdAt"]),
 
+    // Per-call AI cost ledger (AI Spend console). One row per successful
+    // provider call — Lore Assistant and Canon Scanner — with real token
+    // usage from the provider response and an estimated USD cost.
+    aiCostLogs: defineTable({
+      userId: v.optional(v.id("users")), // null = system-initiated
+      surface: v.string(), // "lore_assistant" | "canon_scanner"
+      model: v.string(),
+      inputTokens: v.number(),
+      outputTokens: v.number(),
+      costUsd: v.number(), // dollars, rounded to 6 decimals
+      createdAt: v.number(),
+    })
+      .index("by_created", ["createdAt"])
+      .index("by_user", ["userId"])
+      .index("by_surface", ["surface"]),
+
     // Site appearance — operator-controlled background imagery.
     // Single row keyed by `key === "main"` (singleton).
     siteAppearance: defineTable({
