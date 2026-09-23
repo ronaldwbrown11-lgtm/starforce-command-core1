@@ -9,6 +9,8 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
 import { Compass, Crosshair, Flag, Route, Users } from "lucide-react";
+import Atlas3D from "@/components/atlas3d/Atlas3D";
+import AtlasSubmissions from "@/components/atlas3d/AtlasSubmissions";
 
 export default function StarAtlas() {
   const { isAuthenticated } = useAuth();
@@ -18,6 +20,7 @@ export default function StarAtlas() {
   const factions = useQuery(api.factions.listAll);
   const myMemberships = useQuery(api.groups.myGroupMemberships);
   const allGroups = useQuery(api.groups.listGroups, {});
+  const [viewMode, setViewMode] = useState<"flat" | "3d">("3d");
   const [claimSectorName, setClaimSectorName] = useState("");
   const [claimFaction, setClaimFaction] = useState<string>("");
   const [claimGroupId, setClaimGroupId] = useState("");
@@ -79,9 +82,40 @@ export default function StarAtlas() {
 
       {/* Wide-format section — the atlas gets more horizontal room than the
           standard content column so charted space and the surrounding galaxy
-          are both visible at once. */}
+          are both visible at once. The 3D atlas replaces the flat SVG map
+          (toggle available for the classic view). */}
       <section className="uf-section max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10">
-        <DiscoveryMap height={680} />
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="inline-flex rounded-md border border-[color:var(--uf-border)] overflow-hidden">
+            {(["3d", "flat"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setViewMode(m)}
+                className={`px-3 py-1.5 text-xs uppercase tracking-[0.14em] cursor-pointer transition-colors ${
+                  viewMode === m
+                    ? "bg-[rgba(0,229,255,0.14)] text-uf-cyan"
+                    : "text-uf-muted hover:text-uf-text"
+                }`}
+              >
+                {m === "3d" ? "3D Milky Way" : "Classic chart"}
+              </button>
+            ))}
+          </div>
+          <span className="text-uf-muted text-xs hidden sm:inline">
+            {viewMode === "3d"
+              ? "Click a quadrant → sector → system · G/Q/S/Y hotkeys · Esc drills up"
+              : "The fleet's two-dimensional survey chart"}
+          </span>
+        </div>
+        {viewMode === "3d" ? (
+          <>
+            <Atlas3D />
+            <AtlasSubmissions />
+          </>
+        ) : (
+          <DiscoveryMap height={680} />
+        )}
 
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           <HoloCard>

@@ -1472,6 +1472,102 @@ const schema = defineSchema(
       .index("by_user", ["userId"])
       .index("by_user_item", ["userId", "itemId"])
       .index("by_item", ["itemId"]),
+
+    // =======================================================================
+    // 3D Star Atlas — hierarchical Milky Way atlas (galaxy → quadrant →
+    // sector → system). Canonical coordinates: disk radius 50000, z thickness
+    // [-2000, 2000]. All spatial objects are stored data, never hard-coded.
+    // Keys are stable string ids (e.g. "Quadrant-Alpha", "Terran-Reach") so
+    // the 3D scene can link parents/children without Convex ids.
+    // =======================================================================
+
+    atlasQuadrants: defineTable({
+      key: v.string(), // stable id, e.g. "Quadrant-Alpha"
+      name: v.string(),
+      minX: v.number(),
+      maxX: v.number(),
+      minY: v.number(),
+      maxY: v.number(),
+      minZ: v.number(),
+      maxZ: v.number(),
+      color: v.string(),
+      order: v.optional(v.number()),
+    }).index("by_key", ["key"]),
+
+    atlasSectors: defineTable({
+      key: v.string(), // stable id, e.g. "Terran-Reach"
+      name: v.string(),
+      quadrantKey: v.string(),
+      minX: v.number(),
+      maxX: v.number(),
+      minY: v.number(),
+      maxY: v.number(),
+      minZ: v.number(),
+      maxZ: v.number(),
+      color: v.string(),
+      status: v.optional(v.string()), // canon | proposed
+      description: v.optional(v.string()),
+    })
+      .index("by_key", ["key"])
+      .index("by_quadrant", ["quadrantKey"]),
+
+    // Star systems, charted canon systems, AND galaxy-level real-star
+    // anchors (isRealStar: true, sectorKey: "" = galaxy-wide anchor).
+    atlasSystems: defineTable({
+      key: v.string(), // stable id, e.g. "sirius-gate", "sol"
+      name: v.string(),
+      sectorKey: v.string(), // owning sector, "" for galaxy anchors
+      x: v.number(),
+      y: v.number(),
+      z: v.number(),
+      isRealStar: v.optional(v.boolean()),
+      status: v.optional(v.string()), // canon | proposed
+      faction: v.optional(v.string()),
+      tags: v.optional(v.array(v.string())),
+      notes: v.optional(v.string()),
+    })
+      .index("by_key", ["key"])
+      .index("by_sector", ["sectorKey"]),
+
+    // Starnet warp-gate nodes at any hierarchy level.
+    atlasGates: defineTable({
+      key: v.string(),
+      label: v.optional(v.string()),
+      level: v.string(), // galaxy | quadrant | sector | system
+      quadrantKey: v.optional(v.string()),
+      sectorKey: v.optional(v.string()),
+      systemKey: v.optional(v.string()),
+      x: v.number(),
+      y: v.number(),
+      z: v.number(),
+      status: v.optional(v.string()), // active | dormant | proposed
+    }).index("by_key", ["key"]),
+
+    // Transit lanes linking two charted systems (3D atlas local routes).
+    atlasLanes: defineTable({
+      key: v.string(),
+      fromKey: v.string(), // atlasSystems.key
+      toKey: v.string(), // atlasSystems.key
+      type: v.string(), // warp | jump | trade | hazard
+      risk: v.string(), // Low | Medium | High | Forbidden
+      factionControl: v.optional(v.string()),
+    }).index("by_key", ["key"]),
+
+    // Member-submitted systems via missions, contests, or freehand charting.
+    // Approving converts the payload into a canon atlasSystems row.
+    atlasSubmissions: defineTable({
+      authorId: v.id("users"),
+      source: v.string(), // mission | contest | freehand
+      status: v.string(), // proposed | approved | rejected
+      payload: v.string(), // JSON: { name, sectorKey, x, y, z, faction, tags, notes }
+      operatorNotes: v.optional(v.string()),
+      reviewedAt: v.optional(v.number()),
+      reviewerId: v.optional(v.id("users")),
+      reviewNote: v.optional(v.string()),
+      createdAt: v.number(),
+    })
+      .index("by_status", ["status"])
+      .index("by_author", ["authorId"]),
   },
   {
     schemaValidation: false,
