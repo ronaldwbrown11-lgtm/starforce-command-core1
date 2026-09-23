@@ -24,6 +24,12 @@ isolate
 public/*.tar.gz
 public/*.zip
 
+# The ship scripts: ship-to-site.bat (the live one) and the retired
+# "ship to site.bat" (space in the name). The running script must never be
+# packed — extracting it over itself derails cmd.exe mid-run.
+ship-to-site.bat
+ship to site.bat
+
 # Owner backups and private snapshots (never ship)
 backups
 public/backup-hostinger-dist.zip

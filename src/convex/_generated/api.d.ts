@@ -16,6 +16,7 @@ import type * as aiCost from "../aiCost.js";
 import type * as aiSpend from "../aiSpend.js";
 import type * as arg from "../arg.js";
 import type * as assets from "../assets.js";
+import type * as atlasSeed from "../atlasSeed.js";
 import type * as auth from "../auth.js";
 import type * as auth_emailOtp from "../auth/emailOtp.js";
 import type * as auth_otpRateLimit from "../auth/otpRateLimit.js";
@@ -92,6 +93,7 @@ declare const fullApi: ApiFromModules<{
   aiSpend: typeof aiSpend;
   arg: typeof arg;
   assets: typeof assets;
+  atlasSeed: typeof atlasSeed;
   auth: typeof auth;
   "auth/emailOtp": typeof auth_emailOtp;
   "auth/otpRateLimit": typeof auth_otpRateLimit;

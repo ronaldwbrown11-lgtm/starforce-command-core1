@@ -57,6 +57,8 @@ const HARD_EXCLUDE_PARTS = new Set([
   ".DS_Store",
   "Thumbs.db",
   "BUILD-INFO.txt", // regenerated, never packed
+  "ship to site.bat", // retired: a running script must never overwrite itself
+  "ship-to-site.bat", // live ship script: served from public/, never packed
 ]);
 
 /** Basenames that must never leak (secrets). */

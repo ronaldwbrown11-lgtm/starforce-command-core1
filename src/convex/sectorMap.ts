@@ -1,6 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireOperatorCapability } from "./admin";
+import { internalMutation } from "./_generated/server";
+import { LOCAL_GROUP } from "./atlasSeed";
 
 // =========================================================================
 // Sector Map — the SVG galaxy map on the Lore page. Each row is a named
@@ -29,7 +31,11 @@ export const listSectorsForOperator = query({
   args: {},
   handler: async (ctx) => {
     await requireOperatorCapability(ctx, SECTOR_CAPS);
-    return await ctx.db.query("sectorMap").collect();
+    const rows = await ctx.db.query("sectorMap").collect();
+    // Canon systems (kind="system") are charted inside their sector's local
+    // view, not from this console list — hide them here so they can never be
+    // edited (or repositioned/deleted) as if they were sectors.
+    return rows.filter((r) => r.kind !== "system");
   },
 });
 
@@ -318,6 +324,44 @@ export const deleteGate = mutation({
 // no Bridge review — and they render in the sector's local chart.
 // =========================================================================
 
+// Operator: move a sector (and every canon system inside it, so the local
+// chart's arrangement stays intact) to a new galaxy position. Used by
+// drag-to-reposition on the atlas.
+export const moveSector = mutation({
+  args: { id: v.id("sectorMap"), x: v.number(), y: v.number() },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, SECTOR_CAPS);
+    if (!Number.isFinite(args.x) || !Number.isFinite(args.y)) {
+      throw new Error("Coordinates must be finite numbers.");
+    }
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error("Sector not found.");
+    if (existing.kind === "system") {
+      throw new Error("That row is a system, not a sector — systems move with their sector.");
+    }
+    const dx = args.x - existing.x;
+    const dy = args.y - existing.y;
+    await ctx.db.patch(args.id, { x: args.x, y: args.y });
+    const children = await ctx.db
+      .query("sectorMap")
+      .withIndex("by_slug")
+      .collect();
+    for (const c of children) {
+      if (c.kind === "system" && c.sectorSlug === existing.slug) {
+        await ctx.db.patch(c._id, { x: c.x + dx, y: c.y + dy });
+      }
+    }
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "sectorMap.move",
+      target: `sector:${args.id}`,
+      meta: JSON.stringify({ name: existing.name, x: args.x, y: args.y }),
+      createdAt: Date.now(),
+    });
+    return { ok: true };
+  },
+});
+
 export const addSystem = mutation({
   args: {
     name: v.string(),
@@ -325,6 +369,8 @@ export const addSystem = mutation({
     y: v.number(),
     sectorSlug: v.string(),
     description: v.optional(v.string()),
+    // Real-catalog star: light-years from Sol, shown in its label.
+    distLy: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const { me } = await requireOperatorCapability(ctx, SECTOR_CAPS);
@@ -356,6 +402,9 @@ export const addSystem = mutation({
       y: args.y,
       kind: "system",
       sectorSlug: parent.slug,
+      // Real-star seeding: optional catalog star, rendered as its own system
+      // node with the catalog distance in its tooltip.
+      distLy: args.distLy != null ? Math.max(0, args.distLy) : undefined,
     });
 
     await ctx.db.insert("auditLog", {
@@ -368,6 +417,67 @@ export const addSystem = mutation({
     return { ok: true, id };
   },
 });
+
+/**
+ * Internal, idempotent Sol-sector seeding — the real local group. Runs once
+ * at first use so Sol's chart always carries the actual stellar neighbourhood
+ * (Sol, Centauri, Sirius, Tau Ceti, 47 Ursae Majoris, …) without any manual
+ * operator step. Safe to call repeatedly; skips names that already exist.
+ */
+export const ensureSolSeed = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let sector = await ctx.db
+      .query("sectorMap")
+      .withIndex("by_slug", (q) => q.eq("slug", "sol-sector"))
+      .unique();
+    if (!sector) {
+      await ctx.db.insert("sectorMap", {
+        name: "Sol Sector",
+        slug: "sol-sector",
+        x: 500,
+        y: 420,
+        r: 96,
+        description:
+          "Birth sector of humanity and cradle of Star Force — the real stellar neighbourhood within 50 light-years of Earth.",
+      });
+      sector = await ctx.db
+        .query("sectorMap")
+        .withIndex("by_slug", (q) => q.eq("slug", "sol-sector"))
+        .unique();
+    }
+    if (!sector) return { seeded: 0 };
+    const existing = await ctx.db
+      .query("sectorMap")
+      .withIndex("by_sector", (q) => q.eq("sectorSlug", sector!.slug))
+      .collect();
+    const taken = new Set(existing.map((e) => e.name));
+    let added = 0;
+    for (const star of LOCAL_GROUP) {
+      if (taken.has(star.name)) continue;
+      await ctx.db.insert("sectorMap", {
+        name: star.name.slice(0, 60),
+        slug: `sol-sector:${slugifyName(star.name)}`.slice(0, 80),
+        x: sector.x + star.x,
+        y: sector.y + star.y,
+        kind: "system",
+        sectorSlug: sector.slug,
+        description: `Catalog star, ${star.distLy.toFixed(2)} ly from Sol.`,
+        distLy: star.distLy,
+      });
+      added++;
+    }
+    return { seeded: added };
+  },
+});
+
+function slugifyName(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
 
 export const deleteSystem = mutation({
   args: { id: v.id("sectorMap") },

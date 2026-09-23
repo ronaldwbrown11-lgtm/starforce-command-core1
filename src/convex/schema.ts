@@ -776,7 +776,12 @@ const schema = defineSchema(
       // as clickable discs of this size; clicking dives into the sector.
       // Optional for legacy rows; widget falls back to a default.
       r: v.optional(v.number()),
-    }).index("by_slug", ["slug"]),
+      // For kind="system" rows: real-catalog stars carry their distance from
+      // Sol in light-years, shown in the sector chart's labels.
+      distLy: v.optional(v.number()),
+    })
+      .index("by_slug", ["slug"])
+      .index("by_sector", ["sectorSlug"]),
 
     // Operator-curated Starnet warp gates: named transit corridors linking two
     // canon sectors on the galaxy map. Lanes/gates render only between the

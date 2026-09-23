@@ -6,7 +6,7 @@ import { OperatorShell } from "@/components/operator/OperatorShell";
 import { GalaxyMapMini } from "@/components/widgets/GalaxyMapMini";
 import { HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { toast } from "sonner";
-import { Loader2, Map as MapIcon, Pencil, Plus, Route, Trash2, X } from "lucide-react";
+import { Loader2, Map as MapIcon, Pencil, Plus, Route, Rocket, Trash2, X } from "lucide-react";
 
 type SectorDoc = {
   _id: Id<"sectorMap">;
@@ -78,6 +78,11 @@ export default function OperatorSectorMap() {
   const boundaries = useQuery(api.sectorMap.listBoundariesForOperator);
   const upsertBoundary = useMutation(api.sectorMap.upsertBoundary);
   const deleteBoundary = useMutation(api.sectorMap.deleteBoundary);
+  // Real-catalog seeding — drops the actual local-group stars (Sol, Centauri,
+  // Sirius, 47 Ursae Majoris, …) into a sector's local chart. Idempotent per
+  // sector: already-charted names are skipped, never duplicated.
+  const seedLocalGroup = useMutation(api.atlasSeed.seedLocalGroup);
+  const [seedBusySlug, setSeedBusySlug] = useState<string | null>(null);
   const [editing, setEditing] = useState<FormState | null>(null);
   const [busy, setBusy] = useState(false);
   const [gateEditing, setGateEditing] = useState<GateFormState | null>(null);
@@ -149,6 +154,25 @@ export default function OperatorSectorMap() {
       toast.success("Sector removed.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Delete failed.");
+    }
+  }
+
+  async function onSeed(s: SectorDoc) {
+    if (seedBusySlug) return;
+    setSeedBusySlug(s.slug);
+    try {
+      const res = await seedLocalGroup({ sectorSlug: s.slug, includeSol: true, includeUma: true });
+      if (res.added > 0) {
+        toast.success(
+          `${s.name} seeded — ${res.added} catalog stars placed${res.skipped ? `, ${res.skipped} already charted` : ""}.`,
+        );
+      } else {
+        toast.info(`${s.name} already carries the full local-group chart.`);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Seeding failed.");
+    } finally {
+      setSeedBusySlug(null);
     }
   }
 
@@ -644,6 +668,19 @@ export default function OperatorSectorMap() {
                     ) : null}
                   </div>
                   <div className="flex gap-1 shrink-0">
+                    <NeonButton
+                      variant="ghost"
+                      onClick={() => onSeed(s)}
+                      disabled={seedBusySlug !== null}
+                      aria-label={`Seed the real local-group stars into ${s.name}`}
+                    >
+                      {seedBusySlug === s.slug ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      ) : (
+                        <Rocket className="h-4 w-4" aria-hidden />
+                      )}
+                      Seed stars
+                    </NeonButton>
                     <NeonButton variant="ghost" onClick={() => startEdit(s)}>
                       <Pencil className="h-4 w-4" aria-hidden />
                       Edit
