@@ -84,9 +84,15 @@ export type AtlasLevel = "galaxy" | "quadrant" | "sector" | "system";
 
 export const GALAXY_RADIUS = 50000;
 
-/** Canonical → scene coordinates (disk in the x/z plane, y up). */
+/**
+ * Canonical → scene coordinates.
+ * Canonical y is HEIGHT (galactic disk thickness, seeded ±2000 ly) and maps
+ * to three.js up (+Y). Canonical x/z are the galactic plane and map to
+ * scene x/z. The disk therefore lies flat in the x/z plane, matching the
+ * GalaxyBackdrop plate and the CameraRig orbit around +Y.
+ */
 export function toScene(p: Vec3): [number, number, number] {
-  return [p.x / GALAXY_RADIUS, p.z / GALAXY_RADIUS, p.y / GALAXY_RADIUS];
+  return [p.x / GALAXY_RADIUS, p.y / GALAXY_RADIUS, p.z / GALAXY_RADIUS];
 }
 
 export function boundsCenter(b: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }): Vec3 {
@@ -97,9 +103,9 @@ export function boundsCenter(b: { minX: number; maxX: number; minY: number; maxY
   };
 }
 
-/** Largest planar span of a canonical bounds box. */
-export function boundsSpan(b: { minX: number; maxX: number; minY: number; maxY: number }): number {
-  return Math.max(b.maxX - b.minX, b.maxY - b.minY);
+/** Largest planar (in-disk) span of a canonical bounds box: x/z extents. */
+export function boundsSpan(b: { minX: number; maxX: number; minZ: number; maxZ: number }): number {
+  return Math.max(b.maxX - b.minX, b.maxZ - b.minZ);
 }
 
 export function pointInBounds(p: Vec3, b: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }): boolean {
@@ -126,6 +132,15 @@ export type AtlasFrame = {
 export const FRAME_DISTANCE = 2.2;
 
 const MAX_SCALE = 8192;
+
+/** Scene-space box size for canonical bounds: (width x, height y, depth z). */
+export function sceneSize(b: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }): [number, number, number] {
+  return [
+    (b.maxX - b.minX) / GALAXY_RADIUS,
+    (b.maxY - b.minY) / GALAXY_RADIUS,
+    (b.maxZ - b.minZ) / GALAXY_RADIUS,
+  ];
+}
 
 /** Round a zoom factor to the nearest power of two (min 1). */
 function snapScale(s: number): number {

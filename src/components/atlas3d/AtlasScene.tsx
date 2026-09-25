@@ -10,6 +10,8 @@ import {
   computeQuadrantFrame,
   computeSectorFrame,
   computeSystemFrame,
+  GALAXY_RADIUS,
+  sceneSize,
 } from "./types";
 import type { AtlasSnapshot, AtlasLevel, AtlasSector, AtlasQuadrant, AtlasSystem, AtlasLane } from "./types";
 
@@ -179,11 +181,7 @@ function VolumeBox({
   dashed?: boolean;
 }) {
   const c = boundsCenterOf(bounds);
-  const size: [number, number, number] = [
-    (bounds.maxX - bounds.minX) / 50000,
-    (bounds.maxZ - bounds.minZ) / 50000,
-    (bounds.maxY - bounds.minY) / 50000,
-  ];
+  const size = sceneSize(bounds);
   const edges = useMemo(() => {
     const box = new THREE.BoxGeometry(...size);
     return new THREE.EdgesGeometry(box);
@@ -226,11 +224,7 @@ function QuadrantVolumes({
     <group>
       {snapshot.quadrants.map((q) => {
         const c = boundsCenterOf(q);
-        const size: [number, number, number] = [
-          (q.maxX - q.minX) / 50000,
-          (q.maxZ - q.minZ) / 50000,
-          (q.maxY - q.minY) / 50000,
-        ];
+        const size = sceneSize(q);
         return (
           <group key={q.key} position={toScene(c)}>
             <mesh>
@@ -305,9 +299,9 @@ function SectorVolumes({
         // Click target: the sector volume PLUS a screen-relative floor, so
         // tiny sectors are still easy to hit without swallowing the view.
         const hitSize: [number, number, number] = [
-          Math.max((s.maxX - s.minX) / 50000, hitFloor),
-          Math.max((s.maxZ - s.minZ) / 50000, hitFloor),
-          Math.max((s.maxY - s.minY) / 50000, hitFloor),
+          Math.max((s.maxX - s.minX) / GALAXY_RADIUS, hitFloor),
+          Math.max((s.maxY - s.minY) / GALAXY_RADIUS, hitFloor),
+          Math.max((s.maxZ - s.minZ) / GALAXY_RADIUS, hitFloor),
         ];
         return (
           <group key={s.key} position={toScene(c)}>

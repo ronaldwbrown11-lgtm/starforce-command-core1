@@ -15,6 +15,18 @@ const ACCENT_PRESETS = [
   "#EF4444", "#0FE2C0", "#34D399", "#A3E635",
 ];
 
+/** First charter section (before the first blank line) — card preview text. */
+function previewSection(description: string): string {
+  return ((description ?? "").split(/\n\n+/)[0] ?? "").trim();
+}
+
+function sectionCount(description: string): number {
+  return Math.max(
+    1,
+    (description ?? "").split(/\n\n+/).filter((s) => s.trim().length > 0).length,
+  );
+}
+
 const EMPTY_FORM = {
   name: "",
   category: "internal",
@@ -28,6 +40,14 @@ const EMPTY_FORM = {
 export default function OperatorFactions() {
   const data = useQuery(api.factions.listAll);
   const upsert = useMutation(api.factions.upsert);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpanded = (slug: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
   const remove = useMutation(api.factions.remove);
   const setActive = useMutation(api.factions.setActive);
   const seed = useMutation(api.factions.seed);
@@ -311,7 +331,33 @@ export default function OperatorFactions() {
                             <StatusPill variant="warning">hidden</StatusPill>
                           )}
                         </div>
-                        <p className="mt-1 text-sm text-uf-muted leading-relaxed whitespace-pre-line">{item.description}</p>
+                        <div className="min-w-0 mt-1">
+                          {expanded.has(item.slug) ? (
+                            <div>
+                              <p className="text-sm text-uf-muted leading-relaxed whitespace-pre-line">{item.description}</p>
+                              <button
+                                type="button"
+                                onClick={() => toggleExpanded(item.slug)}
+                                className="mt-1.5 text-[11px] uppercase tracking-[0.12em] text-uf-cyan hover:underline cursor-pointer"
+                              >
+                                Collapse charter
+                              </button>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="text-sm text-uf-muted leading-relaxed line-clamp-2">{previewSection(item.description)}</p>
+                              {item.description.length > 220 && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleExpanded(item.slug)}
+                                  className="mt-1.5 text-[11px] uppercase tracking-[0.12em] text-uf-cyan hover:underline cursor-pointer"
+                                >
+                                  Expand charter{sectionCount(item.description) > 1 ? ` · ${sectionCount(item.description)} sections` : ""}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                         <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-uf-muted/70">
                           {CATEGORY_MAP[item.category as keyof typeof CATEGORY_MAP]?.label ?? item.category} · {item.slug}
                         </p>
