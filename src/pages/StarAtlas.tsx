@@ -6,6 +6,7 @@ import { Link } from "react-router";
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useFactionCanonSync } from "@/hooks/use-faction-canon-sync";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
 import { Compass, Crosshair, Flag, Route, Users } from "lucide-react";
@@ -18,6 +19,9 @@ export default function StarAtlas() {
   const claims = useQuery(api.discoveries.listSectorClaims);
   const claimSector = useMutation(api.discoveries.claimSector);
   const factions = useQuery(api.factions.listAll);
+  // One-shot public bootstrap: heals pre-canon faction rows on first visit.
+  // syncEpoch remounts the registry markup below so queries re-run healed.
+  const { syncEpoch } = useFactionCanonSync();
   const myMemberships = useQuery(api.groups.myGroupMemberships);
   const allGroups = useQuery(api.groups.listGroups, {});
   const [viewMode, setViewMode] = useState<"flat" | "3d">("3d");
@@ -68,6 +72,7 @@ export default function StarAtlas() {
 
   return (
     <SiteShell>
+      <div key={syncEpoch}>
       <PageHero
         eyebrow="Star Atlas"
         title="Chart the Orion Triangle."
@@ -257,6 +262,7 @@ export default function StarAtlas() {
           </HoloCard>
         </div>
       </section>
+      </div>
     </SiteShell>
   );
 }

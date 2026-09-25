@@ -60,14 +60,15 @@ function HudPanel({ children, className = "" }: { children: React.ReactNode; cla
   );
 }
 
-const LEVELS: AtlasLevel[] = ["galaxy", "quadrant", "sector", "system"];
 const LEVEL_LABEL: Record<AtlasLevel, string> = {
   galaxy: "Galaxy",
   quadrant: "Quadrant",
   sector: "Sector",
   system: "System",
 };
-const LEVEL_HOTKEY: Record<AtlasLevel, string> = { galaxy: "G", quadrant: "Q", sector: "S", system: "Y" };
+
+/** Hotkeys for the four quadrant jump buttons (index-mapped, A→first). */
+const QUADRANT_HOTKEYS = ["A", "S", "D", "F"] as const;
 
 export default function AtlasHUD(props: {
   snapshot: AtlasSnapshot | undefined;
@@ -82,11 +83,12 @@ export default function AtlasHUD(props: {
   editing: boolean;
   onEditingChange: (v: boolean) => void;
   onLevelChange: (lv: AtlasLevel) => void;
+  /** Jump the camera into the given quadrant (A/S/D/F buttons + hotkeys). */
+  onQuadrantJump: (key: string) => void;
   onQuadrantSelect: (key: string) => void;
   onSectorSelect: (key: string) => void;
   onSystemSelect: (key: string) => void;
   onGoUp: () => void;
-  onQuadrantsEmpty?: boolean;
   isAuthenticated: boolean;
   submissions: SubmissionRow[];
   onSubmitSystem: (data: {
@@ -148,12 +150,12 @@ export default function AtlasHUD(props: {
     editing,
     onEditingChange,
     onLevelChange,
+    onQuadrantJump,
     onQuadrantSelect,
     onSectorSelect,
     onSystemSelect,
     onGoUp,
   } = props;
-  const quadrantsEmpty = props.onQuadrantsEmpty ?? false;
 
   const quadrantName = focusQuadrant?.name ?? quadrantKey;
   const sectorName = focusSector?.name ?? sectorKey;
@@ -221,28 +223,41 @@ export default function AtlasHUD(props: {
         ) : null}
       </div>
 
-      {/* ---- View buttons (top-right) ---- */}
-      <div className="absolute top-3 right-3 z-10">
+      {/* ---- View buttons (top-right): Galaxy + the four quadrants ---- */}
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-1">
         <HudPanel className="flex items-center gap-1 px-2 py-1.5">
-          {LEVELS.map((lv) => {
-            const empty = lv === "quadrant" && quadrantsEmpty;
+          <button
+            type="button"
+            onClick={() => onLevelChange("galaxy")}
+            className={`px-2.5 py-1 text-xs rounded cursor-pointer transition-colors ${
+              level === "galaxy" ? "bg-[rgba(0,229,255,0.14)] text-uf-cyan" : "text-uf-muted hover:text-uf-text"
+            }`}
+            title="Hotkey: G"
+          >
+            Galaxy <span className="opacity-60">G</span>
+          </button>
+        </HudPanel>
+        <HudPanel className="flex items-center gap-1 px-2 py-1.5">
+          {(snapshot?.quadrants ?? []).slice(0, 4).map((q, i) => {
+            const hk = QUADRANT_HOTKEYS[i] ?? "A";
+            const focused = level !== "galaxy" && quadrantKey === q.key;
             return (
               <button
-                key={lv}
+                key={q.key}
                 type="button"
-                disabled={empty}
-                onClick={() => onLevelChange(lv)}
-                className={`px-2.5 py-1 text-xs rounded cursor-pointer transition-colors disabled:opacity-35 disabled:cursor-not-allowed ${
-                  level === lv
-                    ? "bg-[rgba(0,229,255,0.14)] text-uf-cyan"
-                    : "text-uf-muted hover:text-uf-text"
+                onClick={() => onQuadrantJump(q.key)}
+                className={`px-2.5 py-1 text-xs rounded cursor-pointer transition-colors ${
+                  focused ? "bg-[rgba(0,229,255,0.14)] text-uf-cyan" : "text-uf-muted hover:text-uf-text"
                 }`}
-                title={empty ? "Seed the atlas first" : `Hotkey: ${LEVEL_HOTKEY[lv]}`}
+                title={`${q.name} — hotkey: ${hk}`}
               >
-                {LEVEL_LABEL[lv]} <span className="opacity-60">{LEVEL_HOTKEY[lv]}</span>
+                {q.name.replace(/^Quadrant\s+/i, "")} <span className="opacity-60">{hk}</span>
               </button>
             );
           })}
+          {(snapshot?.quadrants.length ?? 0) === 0 ? (
+            <span className="px-2 py-1 text-xs text-uf-muted">No quadrants charted</span>
+          ) : null}
         </HudPanel>
       </div>
 
@@ -445,7 +460,7 @@ function EditorCard(props: {
         >
           <Pencil className="h-3.5 w-3.5" aria-hidden /> Chart / edit the atlas
         </button>
-        <p className="text-[10px] text-uf-muted mt-1">G·Q·S·Y switch views · Esc drills up · scroll zooms</p>
+        <p className="text-[10px] text-uf-muted mt-1">G galaxy · A/S/D/F quadrants · Esc drills up · scroll zooms</p>
       </HudPanel>
     );
   }

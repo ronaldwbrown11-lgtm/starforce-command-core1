@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import { HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { useFactionCanonSync } from "@/hooks/use-faction-canon-sync";
 import { toast } from "sonner";
 import { Crosshair, MapPin, Minus, Plus, RotateCcw, Sparkles, Star, Move, Rocket } from "lucide-react";
 import milkyWayUrl from "@/assets/milky-way-map.jpg";
@@ -624,6 +625,9 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   const discoveries = useQuery(api.discoveries.listDiscoveries);
   const missions = useQuery(api.content.listMissions, {});
   const factions = useQuery(api.factions.listAll);
+  // One-shot public bootstrap: heals pre-canon faction rows on first visit.
+  // syncEpoch remounts the map below so the faction list re-renders healed.
+  const { syncEpoch } = useFactionCanonSync();
   const propose = useMutation(api.discoveries.proposeDiscovery);
   const vote = useMutation(api.discoveries.voteDiscovery);
   const moveSector = useMutation(api.sectorMap.moveSector);
@@ -1304,7 +1308,7 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
   }
 
   return (
-    <>
+    <div key={syncEpoch}>
       <HoloCard>
         <header className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
@@ -2302,6 +2306,6 @@ export function DiscoveryMap({ height = 520 }: { height?: number }) {
           </ul>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

@@ -99,12 +99,16 @@ export default function OperatorFactions() {
   }
 
   async function restoreDefaults() {
-    if (!window.confirm("Restore any missing canon factions? Existing factions are never overwritten.")) return;
+    if (!window.confirm("Reseed the faction registry? Missing factions are inserted, species canon text is refreshed, and species no longer in the charter are retired (not deleted).")) return;
     setSeeding(true);
     try {
       const res = await seed();
+      const parts: string[] = [];
+      if (res.inserted) parts.push(`${res.inserted} added`);
+      if (res.updated) parts.push(`${res.updated} species updated`);
+      if (res.retired) parts.push(`${res.retired} retired`);
       toast.success(
-        res.inserted > 0 ? `Seeded ${res.inserted} missing factions.` : "All canon factions already present.",
+        parts.length ? `Reseed complete: ${parts.join(", ")}.` : "Registry already matches the canon catalog.",
       );
     } catch (e: any) { toast.error(e.message); }
     finally { setSeeding(false); }
@@ -307,7 +311,7 @@ export default function OperatorFactions() {
                             <StatusPill variant="warning">hidden</StatusPill>
                           )}
                         </div>
-                        <p className="mt-1 text-sm text-uf-muted leading-relaxed">{item.description}</p>
+                        <p className="mt-1 text-sm text-uf-muted leading-relaxed whitespace-pre-line">{item.description}</p>
                         <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-uf-muted/70">
                           {CATEGORY_MAP[item.category as keyof typeof CATEGORY_MAP]?.label ?? item.category} · {item.slug}
                         </p>

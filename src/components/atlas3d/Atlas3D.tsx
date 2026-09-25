@@ -37,6 +37,8 @@ export default function Atlas3D() {
   const upsertGate = useMutation(api.atlas3d.upsertGate);
   const upsertLane = useMutation(api.atlas3d.upsertLane);
   const seedAtlasM = useMutation(api.atlas3d.seedAtlas);
+  const repairAnchorsM = useMutation(api.atlas3d.seedAtlas);
+  const canonStatus = useQuery(api.atlas3d.canonAnchorStatus);
   const listSubmissions = useQuery(api.atlas3d.listSubmissions, {});
   const approveSubmission = useMutation(api.atlas3d.approveSubmission);
   const rejectSubmission = useMutation(api.atlas3d.rejectSubmission);
@@ -153,16 +155,34 @@ export default function Atlas3D() {
     }
   }, [snapshot, quadrantKey, sectorKey, level]);
 
-  // ---- keyboard shortcuts G/Q/S/Y + Escape (drill up) ----------------------
+  // ---- Quadrant jumps (HUD A/S/D/F buttons + hotkeys) ---------------------
+  // The four quadrant buttons jump the camera straight into that quadrant's
+  // own view (regardless of the current level).
+  const jumpQuadrant = (qKey: string) => {
+    if (!snapshot?.quadrants.some((q) => q.key === qKey)) return;
+    setQuadrantKey(qKey);
+    setLevel("quadrant");
+    setSectorKey(null);
+    setSystemKey(null);
+  };
+
+  // ---- keyboard shortcuts G/A/S/D/F + Escape (drill up) --------------------
+  // A/S/D/F map to the first→fourth charted quadrants (order = seed order).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT")) return;
       const k = e.key.toLowerCase();
-      if (k === "g") jumpTo("galaxy");
-      if (k === "q") jumpTo("quadrant");
-      if (k === "s") jumpTo("sector");
-      if (k === "y") jumpTo("system");
+      if (k === "g") {
+        jumpTo("galaxy");
+        return;
+      }
+      if (k === "a" || k === "s" || k === "d" || k === "f") {
+        const idx = { a: 0, s: 1, d: 2, f: 3 }[k as "a" | "s" | "d" | "f"];
+        const q = snapshot?.quadrants[idx];
+        if (q) jumpQuadrant(q.key);
+        return;
+      }
       if (k === "escape") goUp();
     };
     window.addEventListener("keydown", onKey);
@@ -247,6 +267,43 @@ export default function Atlas3D() {
           </div>
         </div>
       ) : null}
+      {/* ---- Stale-canon notice: legacy seed pinned everything at the core. ---- */}
+      {canonStatus?.seeded && canonStatus.stale && snapshot ? (
+        <div className="absolute inset-x-0 bottom-16 z-10 flex justify-center px-4 pointer-events-none">
+          <div
+            className="rounded-md border border-[rgba(255,204,0,0.4)] px-4 py-3 text-sm text-uf-text pointer-events-auto max-w-md"
+            style={{ background: "rgba(10,10,20,0.9)" }}
+          >
+            <p className="font-semibold">Stellar cartography is out of date.</p>
+            <p className="text-uf-muted text-xs mt-1">
+              The chart was seeded before the galaxy-true recalibration — every
+              anchor still sits on the galactic core. Re-run the calibration to
+              place Sol and its neighbours 26,000 ly out on the Orion Spur.
+            </p>
+            {isAuthenticated ? (
+              <button
+                type="button"
+                className="uf-btn uf-btn--primary mt-2 text-sm cursor-pointer"
+                onClick={() =>
+                  guard(async () => {
+                    await repairAnchorsM({});
+                    return undefined;
+                  }, "Canon coordinates recalibrated.")
+                }
+              >
+                Recalibrate canon coordinates
+              </button>
+            ) : (
+              <Link
+                to="/auth?returnTo=/map"
+                className="uf-btn uf-btn--primary mt-2 text-sm inline-block"
+              >
+                Sign in to recalibrate
+              </Link>
+            )}
+          </div>
+        </div>
+      ) : null}
       <AtlasHUD
         snapshot={snapshot}
         level={level}
@@ -260,13 +317,13 @@ export default function Atlas3D() {
         editing={editing}
         onEditingChange={setEditing}
         onLevelChange={(lv) => jumpTo(lv)}
+        onQuadrantJump={jumpQuadrant}
         onQuadrantSelect={(key) => {
           setQuadrantKey(key);
           setLevel("quadrant");
           setSectorKey(null);
           setSystemKey(null);
         }}
-        onQuadrantsEmpty={snapshot ? snapshot.quadrants.length === 0 : true}
         onSectorSelect={(key) => pickSector(key)}
         onSystemSelect={(key) => {
           setSystemKey(key);

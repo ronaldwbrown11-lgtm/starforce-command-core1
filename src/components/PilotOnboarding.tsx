@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Rocket } from "lucide-react";
 import { ShipAssignmentFlow } from "@/components/ships/ShipAssignmentFlow";
 import { SEED_FACTIONS } from "@/lib/factions";
+import { useFactionCanonSync } from "@/hooks/use-faction-canon-sync";
 
 // Canonical rank ladder (mirrors the server validator in convex/users.ts and
 // the thresholds used by social:rankProgress).
@@ -32,6 +33,9 @@ export default function PilotOnboarding() {
   const complete = useMutation(api.users.completeOnboarding);
   const missions = useQuery(api.content.listMissions, {});
   const factionsData = useQuery(api.factions.listAll);
+  // One-shot public bootstrap: heals pre-canon faction rows on first visit.
+  // syncEpoch remounts the picker below so it re-renders with healed text.
+  const { syncEpoch } = useFactionCanonSync();
   // Operator-managed factions table drives the affiliation picker; falls back
   // to the canon seed names so the picker is never empty on first paint.
   const factionChoices = useMemo(
@@ -177,7 +181,7 @@ export default function PilotOnboarding() {
             {/* Fleet */}
             <fieldset className="md:col-span-2">
               <legend className="uf-eyebrow">Fleet affiliation</legend>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-2" key={syncEpoch}>
                 {factionChoices.map((f) => {
                   const active = fleet === f;
                   return (

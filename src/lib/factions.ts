@@ -6,7 +6,14 @@
 // Factions are grouped into four canon categories; every faction carries
 // a name, slug, accent color (Ultra Force palette), lucide icon name,
 // and immersive canon description.
+//
+// The species category holds the full "Delegate Species of the Orion
+// Triangle" charter (src/lib/species-canon-1.ts + species-canon-2.ts),
+// transcribed verbatim from the canon document.
 // =========================================================================
+
+import { SPECIES_FACTIONS_1 } from "./species-canon-1";
+import { SPECIES_FACTIONS_2 } from "./species-canon-2";
 
 export type FactionCategoryKey = "internal" | "orion" | "fleet" | "species";
 
@@ -26,6 +33,8 @@ export interface FactionSeed {
   accent: string;
   icon?: string;
   order: number;
+  /** Registry annotation for charter duplicates (not persisted). */
+  nameNote?: string;
 }
 
 export const FACTION_CATEGORIES: FactionCategory[] = [
@@ -52,10 +61,10 @@ export const FACTION_CATEGORIES: FactionCategory[] = [
   },
   {
     key: "species",
-    label: "Species Groups",
+    label: "Delegate Species of the Orion Triangle",
     short: "Species",
     accent: "#7A2BD9",
-    blurb: "The peoples and cultures of the galaxy — each with its own biology, history, and place in the canon.",
+    blurb: "The delegate species of the Orion Triangle — each with its own homeworld, evolutionary environment, and place in Star Force's ranks. Each world keeps its own self-designation; the names below are the registry's own.",
   },
 ];
 
@@ -236,167 +245,12 @@ export const SEED_FACTIONS: FactionSeed[] = [
     order: 7,
   },
 
-  // ---- Species Groups -------------------------------------------------------
-  {
-    name: "Velkarian",
-    slug: "velkarian",
-    category: "species",
-    description:
-      "A warrior people whose honor codes shape every treaty they sign. Velkarian crews are prized across the fleet for their discipline and their terrifying focus in battle.",
-    accent: "#C084FC",
-    icon: "swords",
-    order: 1,
-  },
-  {
-    name: "Helioxian",
-    slug: "helioxian",
-    category: "species",
-    description:
-      "Starborn and solar-blessed, the Helioxians are navigators and cartographers without equal. Their elders claim to read the gravity wells the way others read text.",
-    accent: "#FFD166",
-    icon: "sun",
-    order: 2,
-  },
-  {
-    name: "Kethari",
-    slug: "kethari",
-    category: "species",
-    description:
-      "A nocturnal species of patient hunters and archivists. Kethari memory-keepers serve as the canon's most exacting librarians — they forget nothing, and forgive slowly.",
-    accent: "#94A3B8",
-    icon: "moon",
-    order: 3,
-  },
-  {
-    name: "Auroran",
-    slug: "auroran",
-    category: "species",
-    description:
-      "Artists, diplomats, and light-weavers from the polar worlds. Auroran ships are famous for their beauty and their sudden, gorgeous violence when pushed to war.",
-    accent: "#0FE2C0",
-    icon: "sparkles",
-    order: 4,
-  },
-  {
-    name: "Chronari",
-    slug: "chronari",
-    category: "species",
-    description:
-      "Keepers of the long now. The Chronari measure engagements in centuries and alliances in eons — a people whose patience makes empires look impatient.",
-    accent: "#22D3EE",
-    icon: "clock",
-    order: 5,
-  },
-  {
-    name: "Gravethari",
-    slug: "gravethari",
-    category: "species",
-    description:
-      "Massive, slow-speaking beings born under crushing gravity. Gravethari engineers build the fleet's heaviest structures — they think in foundations, not fixtures.",
-    accent: "#F77F2A",
-    icon: "weight",
-    order: 6,
-  },
-  {
-    name: "Silthari",
-    slug: "silthari",
-    category: "species",
-    description:
-      "A lithe, melodic species of the high canyons. Silthari vox-weavers serve as the fleet's finest signal corps — their language is half song, and their code is unbreakable.",
-    accent: "#E879F9",
-    icon: "feather",
-    order: 7,
-  },
-  {
-    name: "Myr-Kael",
-    slug: "myr-kael",
-    category: "species",
-    description:
-      "Forge-born and fire-tempered, the Myr-Kael are the fleet's preeminent shipwrights. A Myr-Kael hull is a promise written in alloy: it will bring you home.",
-    accent: "#EF4444",
-    icon: "flame",
-    order: 8,
-  },
-  {
-    name: "Veyrathi",
-    slug: "veyrathi",
-    category: "species",
-    description:
-      "Winged riders of the storm belts, the Veyrathi are scouts and couriers without peer. Their reflexes blur the line between pilot and ship.",
-    accent: "#7DD3FC",
-    icon: "wind",
-    order: 9,
-  },
-  {
-    name: "Auralith",
-    slug: "auralith",
-    category: "species",
-    description:
-      "Crystal-born philosophers of the deep mines. Auralith resonators attune the fleet's jump drives — their hum is the sound of a species remembering its song.",
-    accent: "#34D399",
-    icon: "gem",
-    order: 10,
-  },
-  {
-    name: "Umbraxi",
-    slug: "umbraxi",
-    category: "species",
-    description:
-      "Shadow-dwellers who hunt in the dark between stars. Umbraxi operatives are the quiet answer to questions no one wants asked.",
-    accent: "#8B5CF6",
-    icon: "eclipse",
-    order: 11,
-  },
-  {
-    name: "Nythori",
-    slug: "nythori",
-    category: "species",
-    description:
-      "A contemplative people of the ice moons, given to prophecy and long silences. Nythori observers ride on every major campaign, watching the shape of what comes.",
-    accent: "#818CF8",
-    icon: "moon-star",
-    order: 12,
-  },
-  {
-    name: "Orvaxian",
-    slug: "orvaxian",
-    category: "species",
-    description:
-      "Highland herdsmen turned shock troops. Orvaxian infantry are famed for their stamina — they can outmarch logistics and still win the ridge.",
-    accent: "#FBBF24",
-    icon: "mountain",
-    order: 13,
-  },
-  {
-    name: "Vedan",
-    slug: "vedan",
-    category: "species",
-    description:
-      "Amphibious engineers of the tidal worlds. Vedan salvage crews are the fleet's miracle workers — they can raise a ship from a reef and have it flying by morning.",
-    accent: "#60A5FA",
-    icon: "droplets",
-    order: 14,
-  },
-  {
-    name: "Lithovex",
-    slug: "lithovex",
-    category: "species",
-    description:
-      "A young, adaptable species from the mineral belts, quick to learn and quicker to volunteer. Lithovex cadets are among the most enthusiastic recruits in the academy.",
-    accent: "#A3E635",
-    icon: "box",
-    order: 15,
-  },
-  {
-    name: "Aru'areth",
-    slug: "arureath",
-    category: "species",
-    description:
-      "An ancient people of the deep spiral, long-lived and long-memoried. The Aru'areth remember every star that ever burned in their skies — and the fleet listens when they speak.",
-    accent: "#C084FC",
-    icon: "star",
-    order: 16,
-  },
+  // ---- Delegate Species of the Orion Triangle -------------------------------
+  // The full canon species charter, transcribed verbatim
+  // (src/lib/species-canon-1.ts + species-canon-2.ts). Entries are keyed by
+  // slug, so re-seeding updates canon text in place without duplicating rows.
+  ...SPECIES_FACTIONS_1,
+  ...SPECIES_FACTIONS_2,
 ];
 
 export const CATEGORY_MAP: Record<FactionCategoryKey, FactionCategory> =

@@ -634,7 +634,9 @@ export default function AtlasScene({
   // constant size on screen at every zoom level. The same applies to hit
   // floors: 0.14 local units × scale ≈ a constant on-screen target.
   const dotScale = 0.007 / (activeFrame?.scale ?? 1);
-  const labelScale = 0.02 / (activeFrame?.scale ?? 1);
+  // Labels: ~1.5× the dot on screen — small enough to not crowd the map,
+  // still legible at every zoom level.
+  const labelScale = 0.0105 / (activeFrame?.scale ?? 1);
   const gateScale = 0.009 / (activeFrame?.scale ?? 1);
   const hitFloor = 0.14 / (activeFrame?.scale ?? 1);
 
@@ -647,7 +649,7 @@ export default function AtlasScene({
       <QuadrantVolumes
         snapshot={snapshot}
         onPick={level === "galaxy" ? onQuadrantPick : () => undefined}
-        labelScale={level === "galaxy" ? 0.045 : undefined}
+        labelScale={level === "galaxy" ? 0.03 : undefined}
         interactive={level === "galaxy"}
       />
 
@@ -726,7 +728,7 @@ export default function AtlasScene({
                 highlight={s.key === "sol"}
                 scale={0.007}
                 showLabel
-                labelScale={0.016}
+                labelScale={0.011}
                 onPick={(key) => onSystemPick(key)}
                 onHover={(key) => onHoverSystem(key ? { key, name: systemsById.get(key)?.name ?? "" } : null)}
               />
