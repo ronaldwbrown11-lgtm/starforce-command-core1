@@ -78,6 +78,7 @@ import type * as tiers from "../tiers.js";
 import type * as usage from "../usage.js";
 import type * as users from "../users.js";
 import type * as vessels from "../vessels.js";
+import type * as wings from "../wings.js";
 
 import type {
   ApiFromModules,
@@ -156,6 +157,7 @@ declare const fullApi: ApiFromModules<{
   usage: typeof usage;
   users: typeof users;
   vessels: typeof vessels;
+  wings: typeof wings;
 }>;
 
 /**

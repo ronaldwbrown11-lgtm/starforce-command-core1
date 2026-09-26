@@ -60,6 +60,7 @@ import OpEvents from "./pages/operator/EventsManage.tsx";
 import OpContests from "./pages/operator/ContestsManage.tsx";
 import OpArcs from "./pages/operator/Arcs.tsx";
 import OpHonors from "./pages/operator/Honors.tsx";
+import OpWings from "./pages/operator/Wings.tsx";
 import OpAiSpend from "./pages/operator/AiSpend.tsx";
 import OpStore from "./pages/operator/StoreManage.tsx";
 import OpArg from "./pages/operator/ArgManage.tsx";
@@ -206,6 +207,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/operator/contests" element={<OperatorGuard><OpContests /></OperatorGuard>} />
               <Route path="/operator/arcs" element={<OperatorGuard><OpArcs /></OperatorGuard>} />
               <Route path="/operator/honors" element={<OperatorGuard><OpHonors /></OperatorGuard>} />
+              <Route path="/operator/wings" element={<OperatorGuard><OpWings /></OperatorGuard>} />
               <Route path="/operator/ai-spend" element={<OperatorGuard><OpAiSpend /></OperatorGuard>} />
               <Route path="/operator/store" element={<OperatorGuard><OpStore /></OperatorGuard>} />
               <Route path="/operator/arg" element={<OperatorGuard><OpArg /></OperatorGuard>} />

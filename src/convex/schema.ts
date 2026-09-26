@@ -1302,6 +1302,27 @@ const schema = defineSchema(
       syncedAt: v.number(),
     }).index("by_tier", ["tier"]),
 
+    // ---- Wings reward system --------------------------------------------
+    // Single-use claim tokens minted main-site-side when a member genuinely
+    // earns their wings (per the registry integration contract). The Fleet
+    // Registry (fleetregistry.starforcebase1198.com) only VERIFIES these
+    // tokens and stores the permanent member→fighter assignment; this table
+    // is the main site's own record of who earned what and whether the
+    // token has been spent. Registry tables are never written directly.
+    wingClaims: defineTable({
+      memberId: v.string(), // main-site member id (VARCHAR(64) equivalent)
+      memberName: v.string(),
+      reason: v.optional(v.string()),
+      token: v.string(), // 64-char URL-safe single-use claim token
+      issuedAt: v.number(),
+      issuedBy: v.id("users"), // operator who granted the wings
+      consumed: v.optional(v.boolean()),
+      consumedAt: v.optional(v.number()),
+    })
+      .index("by_token", ["token"])
+      .index("by_member", ["memberId"])
+      .index("by_issued", ["issuedAt"]),
+
     // ---- Requisition Depot (site store) --------------------------------
     // Digital downloads (lore bibles, atlases) and physical merchandise
     // (tees, artifacts). Digital files live ONLY in Convex storage and are
