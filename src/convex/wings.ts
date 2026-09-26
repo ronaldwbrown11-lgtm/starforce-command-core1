@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import type { MutationCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireOperatorCapability } from "./admin";
 import { enforceRateLimit } from "./rateLimit";
@@ -314,13 +314,102 @@ export const awardWingsForReport = mutation({
 });
 
 // ---------------------------------------------------------------------------
-// Earning path 3 — XP threshold self-claim. The member-facing rule: reach
-// the rank of CAPTAIN (2,500 XP) and your wings are waiting to be claimed.
-// The ceremony itself remains the single permanent choice.
+// Operator-tunable earning rules (the Wings rules console). Two self-serve
+// paths the Bridge can tune:
+//   • XP threshold — reach the set rank by XP and claim your wings
+//   • Certified-report threshold — that many approved field reports and the
+//     wings claim becomes available automatically
+// Defaults apply when the singleton row has not been saved yet.
 // ---------------------------------------------------------------------------
 
-export const WINGS_XP_THRESHOLD = 2500;
-export const WINGS_XP_RANK = "Captain";
+export const WINGS_DEFAULTS = {
+  xpThreshold: 2500,
+  xpRank: "Captain",
+  reportThreshold: 10,
+} as const;
+
+export const getWingsSettings = query({
+  args: {},
+  handler: async (ctx) => {
+    const row = await ctx.db
+      .query("wingsSettings")
+      .withIndex("by_key", (q) => q.eq("key", "main"))
+      .first();
+    return {
+      xpThreshold: row?.xpThreshold ?? WINGS_DEFAULTS.xpThreshold,
+      xpRank: row?.xpRank ?? WINGS_DEFAULTS.xpRank,
+      reportThreshold: row?.reportThreshold ?? WINGS_DEFAULTS.reportThreshold,
+      updatedAt: row?.updatedAt ?? null,
+    };
+  },
+});
+
+export const setWingsSettings = mutation({
+  args: {
+    xpThreshold: v.number(),
+    xpRank: v.string(),
+    reportThreshold: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+    ]);
+    const xpThreshold = Math.max(0, Math.min(1_000_000, Math.round(args.xpThreshold)));
+    const reportThreshold = Math.max(0, Math.min(1000, Math.round(args.reportThreshold)));
+    const xpRank = args.xpRank.trim().slice(0, 40) || WINGS_DEFAULTS.xpRank;
+    const row = await ctx.db
+      .query("wingsSettings")
+      .withIndex("by_key", (q) => q.eq("key", "main"))
+      .first();
+    if (row) {
+      await ctx.db.patch(row._id, {
+        xpThreshold,
+        xpRank,
+        reportThreshold,
+        updatedAt: Date.now(),
+        updatedBy: me,
+      });
+    } else {
+      await ctx.db.insert("wingsSettings", {
+        key: "main",
+        xpThreshold,
+        xpRank,
+        reportThreshold,
+        updatedAt: Date.now(),
+        updatedBy: me,
+      });
+    }
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "wings.settings",
+      target: "wingsSettings:main",
+      meta: JSON.stringify({ xpThreshold, xpRank, reportThreshold }),
+      createdAt: Date.now(),
+    });
+    return { ok: true };
+  },
+});
+
+async function loadRules(
+  ctx: Pick<QueryCtx, "db">,
+): Promise<{ xpThreshold: number; xpRank: string; reportThreshold: number }> {
+  const row = await ctx.db
+    .query("wingsSettings")
+    .withIndex("by_key", (q) => q.eq("key", "main"))
+    .first();
+  return {
+    xpThreshold: row?.xpThreshold ?? WINGS_DEFAULTS.xpThreshold,
+    xpRank: row?.xpRank ?? WINGS_DEFAULTS.xpRank,
+    reportThreshold: row?.reportThreshold ?? WINGS_DEFAULTS.reportThreshold,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Earning path 3 — self-claim against the operator-set thresholds: XP rank
+// OR enough certified field reports. The ceremony remains the single
+// permanent choice.
+// ---------------------------------------------------------------------------
 
 export const getMyWingsClaim = query({
   args: {},
@@ -329,7 +418,15 @@ export const getMyWingsClaim = query({
     if (!me) return null;
     const user = await ctx.db.get(me);
     if (!user) return null;
+    const rules = await loadRules(ctx);
     const xp = user.xp ?? 0;
+    const certified = await ctx.db
+      .query("fleetReports")
+      .withIndex("by_author_mission", (q) => q.eq("authorId", me))
+      .collect();
+    const certifiedCount = certified.filter(
+      (r) => r.reviewStatus === "approved",
+    ).length;
     const claims = await ctx.db
       .query("wingClaims")
       .withIndex("by_member", (q) => q.eq("memberId", me))
@@ -338,9 +435,16 @@ export const getMyWingsClaim = query({
     const outstanding = claims.find((c) => !c.consumed);
     return {
       xp,
-      threshold: WINGS_XP_THRESHOLD,
-      rank: WINGS_XP_RANK,
-      eligible: xp >= WINGS_XP_THRESHOLD,
+      certifiedCount,
+      xpThreshold: rules.xpThreshold,
+      xpRank: rules.xpRank,
+      reportThreshold: rules.reportThreshold,
+      xpEligible: xp >= rules.xpThreshold,
+      reportsEligible:
+        rules.reportThreshold > 0 && certifiedCount >= rules.reportThreshold,
+      eligible:
+        xp >= rules.xpThreshold ||
+        (rules.reportThreshold > 0 && certifiedCount >= rules.reportThreshold),
       hasOutstandingClaim: Boolean(outstanding),
       claimToken: outstanding?.token ?? null,
     };
@@ -354,16 +458,30 @@ export const selfClaimWings = mutation({
     if (!me) throw new Error("Sign in required.");
     const user = await ctx.db.get(me);
     if (!user) throw new Error("User not found.");
+    const rules = await loadRules(ctx);
     const xp = user.xp ?? 0;
-    if (xp < WINGS_XP_THRESHOLD) {
+    const certified = await ctx.db
+      .query("fleetReports")
+      .withIndex("by_author_mission", (q) => q.eq("authorId", me))
+      .collect();
+    const certifiedCount = certified.filter(
+      (r) => r.reviewStatus === "approved",
+    ).length;
+    const byXp = xp >= rules.xpThreshold;
+    const byReports =
+      rules.reportThreshold > 0 && certifiedCount >= rules.reportThreshold;
+    if (!byXp && !byReports) {
       throw new Error(
-        `Not yet eligible — wings await at ${WINGS_XP_THRESHOLD} XP (${WINGS_XP_RANK} rank). You have ${xp}.`,
+        `Not yet eligible — wings await at ${rules.xpThreshold} XP (${rules.xpRank} rank) or ${rules.reportThreshold} certified field reports. You have ${xp} XP and ${certifiedCount} certified reports.`,
       );
     }
+    const reason = byReports
+      ? `${certifiedCount} certified field reports`
+      : `Reached ${rules.xpRank} rank — ${xp} XP of verified service`;
     const res = await mintClaimFor(ctx, {
       memberId: me,
       memberName: user.displayName ?? user.name ?? "Pilot",
-      reason: `Reached ${WINGS_XP_RANK} rank — ${xp} XP of verified service`,
+      reason,
       issuedBy: me,
       auditAction: "wings.self_claim",
     });
@@ -371,7 +489,7 @@ export const selfClaimWings = mutation({
       memberId: me,
       memberName: user.displayName ?? user.name ?? "Pilot",
       token: res.token,
-      reason: `Reached ${WINGS_XP_RANK} rank`,
+      reason,
     });
     return { token: res.token, expiresAt: res.expiresAt };
   },

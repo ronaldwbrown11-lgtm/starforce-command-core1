@@ -4,8 +4,7 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { SiteShell, PageHero, HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { useAuth } from "@/hooks/use-auth";
-import {
+import { useAuth } from "@/hooks/use-auth";import {
   fetchVessels,
   verifyClaimToken,
   claimWingsToken,
@@ -23,6 +22,7 @@ import {
   Lock,
   Ship as ShipIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 
 // ---------------------------------------------------------------------------
 // /wings — the Wings ceremony. A member arrives with a single-use claim token
@@ -38,7 +38,7 @@ import {
 // The choice is irreversible: that permanence IS the reward.
 // ---------------------------------------------------------------------------
 
-type Stage = "gate" | "checking" | "choice" | "confirming" | "done";
+type Stage = "gate" | "checking" | "choice" | "confirming" | "callsign" | "done";
 
 export default function Wings() {
   usePageMeta({
@@ -67,7 +67,12 @@ export default function Wings() {
   const [finalAssignment, setFinalAssignment] = useState<{
     designation: string;
     memberName: string;
+    hullNumber?: string;
+    callsign?: string;
   } | null>(null);
+  const [callsign, setCallsign] = useState("");
+  const [hullResult, setHullResult] = useState<{ hullNumber: string; callsign: string } | null>(null);
+  const claimFighter = useMutation(api.starfighters.claimMyFighter);
 
   // Guards so React StrictMode's double-effect can't double-fire calls.
   const verifiedRef = useRef(false);
@@ -115,11 +120,25 @@ export default function Wings() {
   }, [stage, vessels, vesselsError]);
 
   // ---- Steps 2 + 3: burn the token, then make the permanent choice --------
+  // When the registry already holds the member's assignment (e.g. claims made
+  // before the fighter record existed), the local-only path skips the
+  // registry calls — the type is picked again and the fighter is recorded.
   async function makeItPermanent() {
     if (!claimToken || !selected || claimingRef.current) return;
     claimingRef.current = true;
     setStage("confirming");
     setFailure(null);
+    if (alreadyAssigned) {
+      setFinalAssignment({
+        designation: selected.designation,
+        memberName: user?.displayName ?? "Pilot",
+        hullNumber: "",
+        callsign: "",
+      });
+      setStage("callsign");
+      claimingRef.current = false;
+      return;
+    }
     try {
       let session = sessionToken;
       if (!session) {
@@ -150,8 +169,10 @@ export default function Wings() {
         setFinalAssignment({
           designation: assign.assignment.designation,
           memberName: assign.assignment.memberName,
+          hullNumber: "",
+          callsign: "",
         });
-        setStage("done");
+        setStage("callsign");
       } else if (assign.state === "session_expired") {
         setFailure(
           "Your assignment session expired. The original claim token is spent — ask the Bridge to reissue your wings.",
@@ -176,6 +197,25 @@ export default function Wings() {
     }
   }
 
+  // ---- Final step: record the personal fighter (callsign + auto hull) ----
+  async function recordFighter() {
+    if (!selected || !finalAssignment) return;
+    setStage("confirming");
+    try {
+      const res = await claimFighter({
+        vesselKey: selected.id,
+        designation: selected.designation,
+        shipClass: selected.shipClass,
+        callsign,
+      });
+      setHullResult({ hullNumber: res.hullNumber, callsign: res.callsign });
+      setStage("done");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not record your fighter.");
+      setStage("callsign");
+    }
+  }
+
   const authReturnTo = claimToken
     ? `/wings?claim=${encodeURIComponent(claimToken)}`
     : "/wings";
@@ -189,7 +229,7 @@ export default function Wings() {
         lead="When the Bridge awards your wings, you choose the fighter you will fly — once, permanently, under your own name on the honor roll."
         primary={
           isAuthenticated
-            ? { label: "The assigned pilots", href: "/wings/pilots", variant: "primary" }
+            ? { label: "The Wall of Honor", href: "/honor", variant: "primary" }
             : { label: "Sign in to begin", href: `/auth?returnTo=${encodeURIComponent(authReturnTo)}`, variant: "primary" }
         }
         secondary={{ label: "How honors are earned", href: "/awards#wings", variant: "ghost" }}
@@ -235,17 +275,44 @@ export default function Wings() {
           <GateCard
             icon={<Feather className="h-5 w-5 text-[#ffcc00]" />}
             title="Your wings are already on the roll"
-            body={`${memberName || user?.displayName || "Pilot"}, the registry shows a permanent fighter assignment for this claim. There is nothing further to choose — your name stands where it was written.`}
+            body={`${memberName || user?.displayName || "Pilot"}, the registry shows a permanent fighter assignment for this claim. Pick your fighter type to record it on the Wall of Honor with your own hull number and callsign.`}
             action={
-              <Link to="/wings/pilots" className="uf-btn uf-btn--primary inline-block">
-                View the assigned pilots
-              </Link>
+              <div className="flex flex-wrap justify-center gap-3">
+                <NeonButton
+                  variant="gold"
+                  onClick={() => {
+                    setAlreadyAssigned(true);
+                    setStage("choice");
+                  }}
+                >
+                  Record your fighter
+                </NeonButton>
+                <Link to="/honor" className="uf-btn uf-btn--ghost inline-block">
+                  View the Wall of Honor
+                </Link>
+              </div>
             }
+          />
+        ) : stage === "callsign" && finalAssignment && selected ? (
+          <CallsignStage
+            designation={finalAssignment.designation}
+            onConfirm={recordFighter}
+            callsign={callsign}
+            setCallsign={setCallsign}
+          />
+        ) : stage === "done" && hullResult ? (
+          <SuccessCard
+            designation={finalAssignment?.designation ?? ""}
+            memberName={memberName || user?.displayName || "Pilot"}
+            hullNumber={hullResult.hullNumber}
+            callsign={hullResult.callsign}
           />
         ) : stage === "done" && finalAssignment ? (
           <SuccessCard
             designation={finalAssignment.designation}
             memberName={finalAssignment.memberName}
+            hullNumber={finalAssignment.hullNumber ?? ""}
+            callsign={finalAssignment.callsign ?? ""}
           />
         ) : (
           <ChoiceStage
@@ -496,27 +563,91 @@ function ChoiceStage({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Callsign stage — the pilot names their fighter (e.g. "DARKSTAR"). The hull
+// number is auto-assigned server-side the moment they confirm.
+// ---------------------------------------------------------------------------
+
+function CallsignStage({
+  designation,
+  callsign,
+  setCallsign,
+  onConfirm,
+}: {
+  designation: string;
+  callsign: string;
+  setCallsign: (v: string) => void;
+  onConfirm: () => void;
+}) {
+  const valid = callsign.trim().length >= 2 && callsign.trim().length <= 32;
+  return (
+    <HoloCard className="max-w-xl mx-auto p-8 text-center border-[rgba(255,204,0,0.4)]" glow>
+      <Feather className="h-8 w-8 text-[#ffcc00] mx-auto" />
+      <h2 className="text-2xl font-semibold mt-4">Name your fighter.</h2>
+      <p className="text-sm text-uf-muted mt-2 leading-6">
+        Your assignment to the <strong className="text-uf-text">{designation}</strong> is
+        recorded. The hull number is auto-assigned — the callsign is yours to
+        choose. It will appear on the Wall of Honor and your dossier.
+      </p>
+      <input
+        value={callsign}
+        onChange={(e) => setCallsign(e.target.value.toUpperCase())}
+        maxLength={32}
+        placeholder="e.g. DARKSTAR"
+        aria-label="Fighter callsign"
+        className="uf-input w-full max-w-sm mx-auto mt-5 text-center font-mono tracking-[0.2em]"
+      />
+      <div className="mt-5">
+        <NeonButton
+          variant="gold"
+          disabled={!valid}
+          onClick={onConfirm}
+          iconLeft={<Lock className="h-4 w-4" />}
+        >
+          Record my fighter
+        </NeonButton>
+      </div>
+    </HoloCard>
+  );
+}
+
 function SuccessCard({
   designation,
   memberName,
+  hullNumber,
+  callsign,
 }: {
   designation: string;
   memberName: string;
+  hullNumber?: string;
+  callsign?: string;
 }) {
   return (
     <HoloCard className="max-w-xl mx-auto p-10 text-center border-[rgba(255,204,0,0.45)]" glow>
       <Feather className="h-10 w-10 text-[#ffcc00] mx-auto" />
       <h2 className="text-2xl font-semibold mt-4">Your wings are earned.</h2>
       <p className="mt-3 text-uf-text leading-7">
-        <strong>{memberName}</strong> flies the <strong>{designation}</strong>.
+        <strong>{memberName}</strong> flies the <strong>{designation}</strong>
+        {callsign ? (
+          <>
+            {" "}
+            — <span className="font-mono tracking-[0.14em] text-[#ffcc00]">{callsign}</span>
+          </>
+        ) : null}
+        .
       </p>
-      <p className="text-sm text-uf-muted mt-2 leading-6">
-        The assignment is permanent. Your name now stands on the ship's
-        ASSIGNED PILOTS honor roll — for as long as the fleet keeps records.
+      {hullNumber ? (
+        <p className="font-mono text-sm text-uf-muted mt-2 tracking-[0.14em]">
+          HULL {hullNumber}
+        </p>
+      ) : null}
+      <p className="text-sm text-uf-muted mt-3 leading-6">
+        The assignment is permanent. Your fighter is recorded on the Wall of
+        Honor and your member dossier — for as long as the fleet keeps records.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <Link to="/wings/pilots" className="uf-btn uf-btn--primary inline-block">
-          See your name on the roll
+        <Link to="/honor" className="uf-btn uf-btn--primary inline-block">
+          See the Wall of Honor
         </Link>
         <Link to="/awards" className="uf-btn uf-btn--ghost inline-block">
           Your other honors

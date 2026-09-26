@@ -1188,6 +1188,9 @@ const schema = defineSchema(
       createdBy: v.id("users"),
       rewardXp: v.optional(v.number()),
       rewardCredits: v.optional(v.number()),
+      // Wings as a contest prize: winners are automatically issued a Wings
+      // claim token when the operator marks them as winner.
+      wingsPrize: v.optional(v.boolean()),
       winnerCount: v.optional(v.number()),
       createdAt: v.number(),
     })
@@ -1202,6 +1205,8 @@ const schema = defineSchema(
       body: v.string(),
       status: v.string(), // submitted / finalist / winner
       awardedAt: v.optional(v.number()),
+      // Set when the winner's Wings claim token was auto-issued (wingsPrize).
+      wingsIssuedAt: v.optional(v.number()),
       createdAt: v.number(),
       updatedAt: v.number(),
     })
@@ -1322,6 +1327,51 @@ const schema = defineSchema(
       .index("by_token", ["token"])
       .index("by_member", ["memberId"])
       .index("by_issued", ["issuedAt"]),
+
+    // Operator-tunable earning rules for the Wings honor (singleton row,
+    // key === "main"): the XP rank/threshold for the self-claim path and the
+    // number of certified field reports that qualify a pilot automatically.
+    wingsSettings: defineTable({
+      key: v.string(), // "main"
+      xpThreshold: v.optional(v.number()),
+      xpRank: v.optional(v.string()),
+      reportThreshold: v.optional(v.number()),
+      updatedAt: v.number(),
+      updatedBy: v.id("users"),
+    }).index("by_key", ["key"]),
+
+    // A pilot's personal StarCraft fighter — the Wings honor itself. Distinct
+    // from the free onboarding crew posting: earning wings allocates the
+    // member their OWN fighter type plus an auto-sequential hull number and
+    // a callsign they choose. Displayed on the Wall of Honor and the member
+    // dossier. One fighter per member (per eligibility lifetime).
+    starfighters: defineTable({
+      memberId: v.id("users"),
+      vesselKey: v.string(), // Fleet Registry vessel id (string) — the type
+      designation: v.string(), // type snapshot, e.g. "F 5000X SAGITTARIUS"
+      shipClass: v.optional(v.string()), // class snapshot
+      callsign: v.string(), // the pilot's chosen ship name, e.g. "DARKSTAR"
+      hullNumber: v.string(), // auto-sequential, e.g. "SFB-1198-077"
+      // Dossier image: operator per-type upload overrides the registry's
+      // topDown/side-profile image, which is snapshotted at claim time.
+      imageUrl: v.optional(v.string()),
+      imageStorageId: v.optional(v.id("_storage")),
+      awardedAt: v.number(),
+      awardedBy: v.id("users"),
+    })
+      .index("by_member", ["memberId"])
+      .index("by_hull", ["hullNumber"])
+      .index("by_awarded", ["awardedAt"]),
+
+    // Operator-uploaded dossier image per fighter TYPE (registry vessel).
+    // One row per vessel key; the image shows on every pilot's dossier whose
+    // fighter is that type unless a per-fighter image is set.
+    fighterTypes: defineTable({
+      vesselKey: v.string(),
+      imageStorageId: v.optional(v.id("_storage")),
+      updatedAt: v.number(),
+      updatedBy: v.id("users"),
+    }).index("by_vessel", ["vesselKey"]),
 
     // ---- Requisition Depot (site store) --------------------------------
     // Digital downloads (lore bibles, atlases) and physical merchandise

@@ -63,6 +63,19 @@ function toId(v: unknown): string | undefined {
   return undefined;
 }
 
+/**
+ * The registry's own imagery for a vessel type (top-down preferred, side
+ * profile fallback). Used on fighter plaques when no operator image exists.
+ */
+export async function fetchVesselImage(vesselId: string): Promise<string | null> {
+  const v = await registryJson<Record<string, unknown>>(`/api/vessels/${encodeURIComponent(vesselId)}`);
+  const top = v.topDownImg;
+  const side = v.sideProfileImg;
+  if (typeof top === "string" && top.trim()) return top.trim();
+  if (typeof side === "string" && side.trim()) return side.trim();
+  return null;
+}
+
 /** The live ship-type list for the "choose your fighter" grid. */
 export async function fetchVessels(): Promise<RegistryVessel[]> {
   const rows = await registryJson<unknown[]>(`/api/vessels`);

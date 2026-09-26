@@ -177,8 +177,17 @@ function WingsEligibility() {
     );
   }
 
-  const remaining = claim ? Math.max(0, claim.threshold - claim.xp) : 0;
-  const pct = claim ? Math.min(100, Math.round((claim.xp / claim.threshold) * 100)) : 0;
+  // Two self-serve paths, both Bridge-tunable: XP rank or certified reports.
+  const xpRemaining = claim ? Math.max(0, claim.xpThreshold - claim.xp) : 0;
+  const xpPct = claim && claim.xpThreshold > 0
+    ? Math.min(100, Math.round((claim.xp / claim.xpThreshold) * 100))
+    : 0;
+  const reportsRemaining = claim
+    ? Math.max(0, claim.reportThreshold - claim.certifiedCount)
+    : 0;
+  const reportsPct = claim && claim.reportThreshold > 0
+    ? Math.min(100, Math.round((claim.certifiedCount / claim.reportThreshold) * 100))
+    : 0;
 
   return (
     <div className="mt-5 rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] p-4">
@@ -199,25 +208,69 @@ function WingsEligibility() {
       ) : (
         <>
           <p className="text-sm text-uf-muted mt-1">
-            Reach {claim?.rank ?? "Captain"} rank — {claim?.threshold ?? 2500} XP
-            {remaining > 0 ? (
-              <> · {remaining} XP to go</>
-            ) : null}
-            . Wing awards also arrive from contests, certified field reports,
-            and direct Bridge grants.
+            Qualify by either path — or earn wings outright by winning a
+            wings-prize contest, from a certified field report grant, or a
+            direct Bridge award.
           </p>
-          <div
-            className="mt-3 h-1.5 w-full max-w-xs rounded-full bg-[rgba(255,255,255,0.08)] overflow-hidden"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={pct}
-            aria-label="Progress toward wings eligibility"
-          >
-            <div
-              className="h-full rounded-full bg-[#ffcc00] transition-all"
-              style={{ width: `${pct}%` }}
-            />
+          <div className="mt-3 grid gap-4 sm:grid-cols-2 max-w-xl">
+            <div>
+              <p className="text-xs uppercase tracking-[0.14em] text-uf-muted">
+                {claim?.xpRank ?? "Captain"} rank · {claim?.xpThreshold ?? 2500} XP
+              </p>
+              <p className="text-sm mt-0.5">
+                {claim?.xpEligible ? (
+                  <span className="text-[#ffcc00]">Reached — path open</span>
+                ) : (
+                  <>
+                    <span className="text-uf-text">{claim?.xp ?? 0} XP</span>{" "}
+                    <span className="text-uf-muted">· {xpRemaining} to go</span>
+                  </>
+                )}
+              </p>
+              <div
+                className="mt-2 h-1.5 w-full rounded-full bg-[rgba(255,255,255,0.08)] overflow-hidden"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={xpPct}
+                aria-label="XP progress toward wings eligibility"
+              >
+                <div
+                  className="h-full rounded-full bg-[#ffcc00] transition-all"
+                  style={{ width: `${xpPct}%` }}
+                />
+              </div>
+            </div>
+            {claim && claim.reportThreshold > 0 ? (
+              <div>
+                <p className="text-xs uppercase tracking-[0.14em] text-uf-muted">
+                  Certified field reports · {claim.reportThreshold}
+                </p>
+                <p className="text-sm mt-0.5">
+                  {claim.reportsEligible ? (
+                    <span className="text-[#ffcc00]">Reached — path open</span>
+                  ) : (
+                    <>
+                      <span className="text-uf-text">{claim.certifiedCount} certified</span>{" "}
+                      <span className="text-uf-muted">· {reportsRemaining} to go</span>
+                    </>
+                  )}
+                </p>
+                <div
+                  className="mt-2 h-1.5 w-full rounded-full bg-[rgba(255,255,255,0.08)] overflow-hidden"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={reportsPct}
+                  aria-label="Certified report progress toward wings eligibility"
+                >
+                  <div
+                    className="h-full rounded-full bg-[#00e5ff] transition-all"
+                    style={{ width: `${reportsPct}%` }}
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
         </>
       )}

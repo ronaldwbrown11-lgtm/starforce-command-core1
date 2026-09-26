@@ -54,6 +54,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Transmissions", labelKey: "nav.videos", href: "/videos", desc: "Video & audio", descKey: "desc.videos" },
       { label: "Missions", labelKey: "nav.missions", href: "/missions", desc: "Active operations", descKey: "desc.missions" },
       { label: "Awards & Honors", labelKey: "nav.awards", href: "/awards", desc: "Ribbons, medals & the Locker", descKey: "desc.awards" },
+      { label: "Wall of Honor", labelKey: "nav.honor", href: "/honor", desc: "Pilots, fighters & hull numbers", descKey: "desc.honor" },
       { label: "Signal Vault", labelKey: "nav.vault", href: "/vault", desc: "ARG puzzles", descKey: "desc.vault" },
     ],
   },

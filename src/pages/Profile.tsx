@@ -18,6 +18,7 @@ import { ServiceDossierPanel } from "@/components/widgets/ServiceDossierPanel";
 import { FleetAffiliation } from "@/components/widgets/FleetAffiliation";
 import { Flair } from "@/components/widgets/Flair";
 import { ShipProfileCard } from "@/components/ships/ShipProfileCard";
+import { FighterPlaque } from "@/components/ships/FighterPlaque";
 import { useAuth } from "@/hooks/use-auth";
 import { tierLabel, tierPillVariant } from "@/lib/tiers";
 import { FRAME_CATALOG, TITLE_CATALOG } from "@/lib/economy";
@@ -214,6 +215,10 @@ export default function Profile() {
                 />
               </div>
             ) : null}
+            {/* Wings honor: the pilot's OWN fighter — type, callsign, hull number. */}
+            <div className="mt-4">
+              <FighterPlaque memberId={profile._id} />
+            </div>
             {profile.bio ? (
               <p className="text-uf-muted text-sm mt-4 line-clamp-4">
                 {profile.bio}

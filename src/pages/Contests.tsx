@@ -11,7 +11,7 @@ import {
 import { ScaleReveal } from "@/hooks/use-scroll-reveal";
 import { useCountdown, countdownLabel } from "@/hooks/use-countdown";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { Coins, ScrollText, Trophy, Zap } from "lucide-react";
+import { Coins, Feather, ScrollText, Trophy, Zap } from "lucide-react";
 import type { ReactNode } from "react";
 
 type ContestRow = {
@@ -25,6 +25,7 @@ type ContestRow = {
   judgingEndsAt: number | null;
   rewardXp: number | null;
   rewardCredits: number | null;
+  wingsPrize: boolean;
   winnerCount: number;
   coverUrl: string | null;
   canEnter: boolean;
@@ -184,6 +185,12 @@ function ContestStatus({ c }: { c: ContestRow }) {
             <Coins className="h-3 w-3 text-uf-cyan" aria-hidden />
           )}
           Prize pool
+        </span>
+      ) : null}
+      {c.wingsPrize ? (
+        <span className="inline-flex items-center gap-1 text-[11px] text-[#ffcc00]">
+          <Feather className="h-3 w-3" aria-hidden />
+          Wings prize
         </span>
       ) : null}
     </div>

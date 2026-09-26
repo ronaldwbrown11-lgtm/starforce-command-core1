@@ -35,6 +35,7 @@ import Collection from "@/pages/Collection";
 import Awards from "@/pages/Awards";
 import Wings from "@/pages/Wings";
 import WingsPilots from "@/pages/WingsPilots";
+import HonorWall from "@/pages/HonorWall";
 import { OperatorGuard } from "@/components/operator/OperatorGuard";
 import BlogPage from "@/pages/Blog";
 import BlogDetailPage from "@/pages/BlogDetail";
@@ -143,6 +144,7 @@ export const PUBLIC_ROUTES: PublicPageRoute[] = [
   { path: "/awards", label: "Awards & Honors", element: <Awards /> },
   { path: "/wings", label: "Wings Ceremony", element: <Wings /> },
   { path: "/wings/pilots", label: "Assigned Pilots", element: <WingsPilots /> },
+  { path: "/honor", label: "Wall of Honor", element: <HonorWall /> },
   { path: "/search", label: "Search", element: <SearchPage /> },
   { path: "/tools/assistant", label: "Tools Assistant", element: <ToolsAssistant /> },
   { path: "/account", label: "Account", element: <Account /> },

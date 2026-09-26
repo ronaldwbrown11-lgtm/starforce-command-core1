@@ -1,9 +1,48 @@
 import { mutation, query } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Id } from "./_generated/dataModel";
 import { requireOperatorCapability } from "./admin";
 import { grantCredits } from "./economy";
+import { mintClaimFor, notifyWingsIssued } from "./wings";
+
+// Wings prize on contest wins: judged winners of wings-prize contests are
+// auto-issued a claim token at judging time (per-member outstanding-claim
+// guard inside mintClaimFor; a member with a live claim is skipped here and
+// can be re-awarded manually from the judging board afterward).
+function contestWingsReason(contestTitle: string, entryTitle: string): string {
+  return `Won “${contestTitle}” with “${entryTitle}”`;
+}
+
+async function autoAwardContestWings(
+  ctx: MutationCtx,
+  entry: { authorId: Id<"users">; title: string },
+  contestTitle: string,
+  operatorId: Id<"users">,
+): Promise<boolean> {
+  const author = await ctx.db.get(entry.authorId);
+  if (!author) return false;
+  try {
+    const minted = await mintClaimFor(ctx, {
+      memberId: entry.authorId,
+      memberName: author.displayName ?? author.name ?? "Pilot",
+      reason: contestWingsReason(contestTitle, entry.title),
+      issuedBy: operatorId,
+      auditAction: "wings.issue_contest_auto",
+    });
+    await notifyWingsIssued(ctx, {
+      memberId: entry.authorId,
+      memberName: author.displayName ?? author.name ?? "Pilot",
+      token: minted.token,
+      reason: contestWingsReason(contestTitle, entry.title),
+    });
+  } catch {
+    // Outstanding claim or validation failure: leave the manual path open.
+    return false;
+  }
+  return true;
+}
 
 // =========================================================================
 // Member-created lore contests (#40)
@@ -75,6 +114,7 @@ function describeContest(
     judgingEndsAt?: number;
     rewardXp?: number;
     rewardCredits?: number;
+    wingsPrize?: boolean;
     winnerCount?: number;
     coverStorageId?: Id<"_storage">;
     createdAt: number;
@@ -101,6 +141,7 @@ function describeContest(
     judgingEndsAt: contest.judgingEndsAt ?? null,
     rewardXp: contest.rewardXp ?? null,
     rewardCredits: contest.rewardCredits ?? null,
+    wingsPrize: contest.wingsPrize ?? false,
     winnerCount: contest.winnerCount ?? 1,
     coverStorageId: contest.coverStorageId ?? null,
     canEnter: contestOpen(contest, now) && contest.status !== "closed",
@@ -288,10 +329,11 @@ export const createContest = mutation({
     rules: v.optional(v.string()),
     startsAt: v.number(),
     endsAt: v.number(),
-    judgingEndsAt: v.optional(v.number()),
-    rewardXp: v.optional(v.number()),
-    rewardCredits: v.optional(v.number()),
-    winnerCount: v.optional(v.number()),
+    judgingEndsAt: v.optional(v.number()),      rewardXp: v.optional(v.number()),
+      rewardCredits: v.optional(v.number()),
+      // Wings as a prize: winners are auto-issued a Wings claim token.
+      wingsPrize: v.optional(v.boolean()),
+      winnerCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const { me } = await requireOperatorCapability(ctx, [
@@ -338,6 +380,7 @@ export const createContest = mutation({
       rewardXp: args.rewardXp && args.rewardXp > 0 ? args.rewardXp : undefined,
       rewardCredits:
         args.rewardCredits && args.rewardCredits > 0 ? args.rewardCredits : undefined,
+      wingsPrize: args.wingsPrize === true,
       winnerCount:
         args.winnerCount && args.winnerCount > 0 ? Math.min(10, args.winnerCount) : 1,
       createdAt: now,
@@ -409,6 +452,7 @@ export const listContestEntries = query({
         createdAt: r.createdAt,
         authorId: r.authorId,
         authorName: u?.displayName ?? u?.name ?? "Unknown pilot",
+        wingsIssuedAt: r.wingsIssuedAt ?? null,
       };
     });
   },
@@ -474,6 +518,24 @@ export const judgeEntry = mutation({
         });
       }
       await ctx.db.patch(args.id, { awardedAt: Date.now() });
+    }
+
+    // Wings prize: auto-issue the claim token for winners of wings-prize
+    // contests (once per entry; the manual board button remains as fallback).
+    if (
+      args.outcome === "winner" &&
+      contest.wingsPrize &&
+      !entry.wingsIssuedAt
+    ) {
+      const issued = await autoAwardContestWings(
+        ctx,
+        { authorId: entry.authorId, title: entry.title },
+        contest.title,
+        me,
+      );
+      if (issued) {
+        await ctx.db.patch(args.id, { wingsIssuedAt: Date.now() });
+      }
     }
 
     await ctx.db.insert("auditLog", {

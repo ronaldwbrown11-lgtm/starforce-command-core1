@@ -66,6 +66,7 @@ import type * as siteAppearance from "../siteAppearance.js";
 import type * as sitemap from "../sitemap.js";
 import type * as social from "../social.js";
 import type * as socialLinks from "../socialLinks.js";
+import type * as starfighters from "../starfighters.js";
 import type * as staticCovers from "../staticCovers.js";
 import type * as storage from "../storage.js";
 import type * as storageHelper from "../storageHelper.js";
@@ -145,6 +146,7 @@ declare const fullApi: ApiFromModules<{
   sitemap: typeof sitemap;
   social: typeof social;
   socialLinks: typeof socialLinks;
+  starfighters: typeof starfighters;
   staticCovers: typeof staticCovers;
   storage: typeof storage;
   storageHelper: typeof storageHelper;

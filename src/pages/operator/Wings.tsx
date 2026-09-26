@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { OperatorShell } from "@/components/operator/OperatorShell";
 import { HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { toast } from "sonner";
-import { Check, Copy, Feather, Search, X } from "lucide-react";
+import { Check, Copy, Feather, ImagePlus, Search, X } from "lucide-react";
+import { fetchVessels, type RegistryVessel } from "@/lib/fleetRegistry";
 
 // ---------------------------------------------------------------------------
 // Operator → Wings. Issue single-use claim tokens when a member genuinely
@@ -28,6 +30,7 @@ function ceremonyLink(token: string): string {
 export default function OperatorWings() {
   const users = useQuery(api.operator.listUsersForOperator, { limit: 60 }) ?? [];
   const claims = useQuery(api.wings.listClaims, {}) ?? [];
+  const settings = useQuery(api.wings.getWingsSettings, {});
   const issueWings = useMutation(api.wings.issueWings);
 
   // ---- issue form state ----------------------------------------------------
@@ -104,6 +107,9 @@ export default function OperatorWings() {
           on the Fleet Registry — issue deliberately.
         </p>
       </header>
+
+      <WingsRules settings={settings} />
+      <FighterTypeImages />
 
       {lastIssued ? (
         <HoloCard className="p-5 mb-6 border-[rgba(255,204,0,0.4)]" glow>
@@ -290,5 +296,237 @@ export default function OperatorWings() {
         </HoloCard>
       </div>
     </OperatorShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Wings rules console — the operator-tunable earning thresholds. These drive
+// the member-facing eligibility on /awards and the self-claim mutation:
+//   • XP threshold: reach the rank by XP → claim opens
+//   • Certified-report threshold: N approved field reports → claim opens
+//   (0 disables the report path)
+// ---------------------------------------------------------------------------
+
+function WingsRules({
+  settings,
+}: {
+  settings:
+    | {
+        xpThreshold: number;
+        xpRank: string;
+        reportThreshold: number;
+        updatedAt: number | null;
+      }
+    | undefined;
+}) {
+  const save = useMutation(api.wings.setWingsSettings);
+  const [xpThreshold, setXpThreshold] = useState<string>(
+    String(settings?.xpThreshold ?? ""),
+  );
+  const [xpRank, setXpRank] = useState<string>(settings?.xpRank ?? "");
+  const [reportThreshold, setReportThreshold] = useState<string>(
+    String(settings?.reportThreshold ?? ""),
+  );
+  const [busy, setBusy] = useState(false);
+
+  // Sync the fields when the settings query resolves (or is re-saved).
+  const lastSynced = useRef<number | null>(null);
+  if (settings && lastSynced.current !== settings.updatedAt) {
+    lastSynced.current = settings.updatedAt;
+    setXpThreshold(String(settings.xpThreshold));
+    setXpRank(settings.xpRank);
+    setReportThreshold(String(settings.reportThreshold));
+  }
+
+  async function handleSave() {
+    const xp = Number(xpThreshold);
+    const reports = Number(reportThreshold);
+    if (!Number.isFinite(xp) || xp < 0 || !Number.isFinite(reports) || reports < 0) {
+      toast.error("Thresholds must be zero or positive numbers.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await save({
+        xpThreshold: xp,
+        xpRank: xpRank.trim() || "Captain",
+        reportThreshold: reports,
+      });
+      toast.success("Wings earning rules saved.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Save failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <HoloCard className="p-6 mb-6 border-[rgba(255,204,0,0.3)]">
+      <h2 className="uf-eyebrow">Earning rules</h2>
+      <p className="text-sm text-uf-muted mt-1">
+        These thresholds power the member-facing eligibility on the Awards page
+        and the self-serve claim. Contest winners of wings-prize contests and
+        manual Bridge awards are always at the operator's discretion.
+      </p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <label className="block">
+          <span className="text-xs uppercase tracking-[0.16em] text-uf-muted">
+            XP threshold
+          </span>
+          <input
+            type="number"
+            min={0}
+            value={xpThreshold}
+            onChange={(e) => setXpThreshold(e.target.value)}
+            className="uf-input w-full mt-1"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs uppercase tracking-[0.16em] text-uf-muted">
+            Rank title
+          </span>
+          <input
+            value={xpRank}
+            maxLength={40}
+            placeholder="Captain"
+            onChange={(e) => setXpRank(e.target.value)}
+            className="uf-input w-full mt-1"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs uppercase tracking-[0.16em] text-uf-muted">
+            Certified reports (0 = off)
+          </span>
+          <input
+            type="number"
+            min={0}
+            value={reportThreshold}
+            onChange={(e) => setReportThreshold(e.target.value)}
+            className="uf-input w-full mt-1"
+          />
+        </label>
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <NeonButton variant="gold" onClick={handleSave} loading={busy}>
+          Save rules
+        </NeonButton>
+        {settings?.updatedAt ? (
+          <span className="text-xs text-uf-muted">
+            Last saved {new Date(settings.updatedAt).toLocaleString()}
+          </span>
+        ) : (
+          <span className="text-xs text-uf-muted">
+            Defaults in effect: 2,500 XP · Captain · 10 certified reports
+          </span>
+        )}
+      </div>
+    </HoloCard>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Fighter type images — the dossier image for each StarCraft type. The
+// operator uploads one image per registry vessel; it renders on every
+// pilot's plaque whose fighter is that type.
+// ---------------------------------------------------------------------------
+
+function FighterTypeImages() {
+  const typeImages = useQuery(api.starfighters.getTypeImageUrls, {}) ?? {};
+  const genUpload = useMutation(api.assets.generateUploadUrl);
+  const setTypeImage = useMutation(api.starfighters.setTypeImage);
+  const [vessels, setVessels] = useState<RegistryVessel[] | null>(null);
+  const [search, setSearch] = useState("");
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+
+  if (vessels === null) {
+    fetchVessels()
+      .then(setVessels)
+      .catch(() => setVessels([]));
+  }
+
+  const q = search.trim().toLowerCase();
+  const filtered = (vessels ?? []).filter(
+    (v) =>
+      !q ||
+      v.designation.toLowerCase().includes(q) ||
+      (v.shipClass ?? "").toLowerCase().includes(q),
+  );
+
+  async function handleUpload(v: RegistryVessel, file: File) {
+    setBusyKey(v.id);
+    try {
+      const url = await genUpload({ purpose: "fighter_type_image" });
+      const up = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!up.ok) throw new Error(`Upload failed (${up.status}).`);
+      const { storageId } = (await up.json()) as { storageId: Id<"_storage"> };
+      await setTypeImage({ vesselKey: v.id, imageStorageId: storageId });
+      toast.success(`Image set for ${v.designation}.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  return (
+    <HoloCard className="p-6 mb-6">
+      <h2 className="uf-eyebrow">Fighter type dossier images</h2>
+      <p className="text-sm text-uf-muted mt-1">
+        One image per StarCraft type — it appears on every pilot's dossier
+        plaque and honor wall entry for that hull. Without an upload, the
+        Fleet Registry's own art is used.
+      </p>
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Filter types…"
+        className="uf-input w-full sm:w-64 mt-4"
+      />
+      <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 list-none p-0 m-0">
+        {filtered.slice(0, 24).map((v) => (
+          <li
+            key={v.id}
+            className="rounded-md border border-[color:var(--uf-border)] p-3 flex items-center gap-3"
+          >
+            <div className="h-12 w-16 shrink-0 rounded border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.6)] overflow-hidden flex items-center justify-center">
+              {typeImages[v.id] ? (
+                <img src={typeImages[v.id]!} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <Feather className="h-4 w-4 text-uf-muted" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">{v.designation}</p>
+              <p className="text-xs text-uf-muted truncate">{v.shipClass ?? "Class unlisted"}</p>
+            </div>
+            <label
+              className={`uf-btn uf-btn--ghost h-8 w-8 p-0 shrink-0 ${busyKey === v.id ? "opacity-50" : "cursor-pointer"}`}
+              title="Upload dossier image"
+            >
+              <ImagePlus className="h-4 w-4" />
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) void handleUpload(v, f);
+                }}
+              />
+            </label>
+          </li>
+        ))}
+      </ul>
+      {vessels !== null && vessels.length > 24 ? (
+        <p className="text-xs text-uf-muted mt-3">
+          Showing the first 24 types — refine the filter to find others.
+        </p>
+      ) : null}
+    </HoloCard>
   );
 }

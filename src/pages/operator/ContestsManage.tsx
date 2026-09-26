@@ -65,6 +65,7 @@ export default function ContestsManage() {
   const [rewardXp, setRewardXp] = useState("250");
   const [rewardCredits, setRewardCredits] = useState("50");
   const [winnerCount, setWinnerCount] = useState("1");
+  const [wingsPrize, setWingsPrize] = useState(false);
   const [creating, setCreating] = useState(false);
   // Board-card image chosen pre-launch; uploaded to storage right after
   // createContest returns the new id so the card ships with its plate.
@@ -102,6 +103,7 @@ export default function ContestsManage() {
         endsAt: endTs,
         rewardXp: Number(rewardXp) || undefined,
         rewardCredits: Number(rewardCredits) || undefined,
+        wingsPrize,
         winnerCount: Number(winnerCount) || undefined,
       });
       if (boardFile) {
@@ -311,6 +313,18 @@ export default function ContestsManage() {
                 onChange={(e) => setRewardCredits(e.target.value)}
                 className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)] text-uf-text"
               />
+            </label>
+            <label className="text-xs uppercase tracking-[0.14em] text-uf-muted flex flex-row items-center gap-2 sm:col-span-2 lg:col-span-3">
+              <input
+                type="checkbox"
+                checked={wingsPrize}
+                onChange={(e) => setWingsPrize(e.target.checked)}
+                className="h-4 w-4 accent-[#ffcc00] cursor-pointer"
+              />
+              <span>
+                Wings prize — winners are issued a Wings claim token at judging
+                and choose their fighter permanently
+              </span>
             </label>
             <label className="text-xs uppercase tracking-[0.14em] text-uf-muted flex flex-col gap-1.5">
               Winner count
@@ -544,10 +558,11 @@ export default function ContestsManage() {
                                     <button
                                       type="button"
                                       className="uf-btn uf-btn--violet text-xs"
-                                      disabled={busy === `wings-${entry._id}`}
+                                      disabled={busy === `wings-${entry._id}` || entry.status === "winner" && entry.wingsIssuedAt !== null}
                                       onClick={() => void handleAwardWings(entry._id)}
                                     >
-                                      <Feather className="h-3.5 w-3.5 mr-1" aria-hidden /> Award Wings
+                                      <Feather className="h-3.5 w-3.5 mr-1" aria-hidden />{" "}
+                                      {entry.wingsIssuedAt ? "Wings issued" : "Award Wings"}
                                     </button>
                                   ) : null}
                                   <button
