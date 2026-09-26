@@ -5,6 +5,7 @@ import { LockerManifest } from "@/components/widgets/LockerPanel";
 import { Link } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { NeonButton } from "@/components/uf";
+import { Feather } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // /awards — the decoration board. Public catalog of every service ribbon,
@@ -17,7 +18,7 @@ export default function Awards() {
   usePageMeta({
     title: "Awards & Honors — Star Force Base 1198",
     description:
-      "Service ribbons, achievement badges, medals, and the Quartermaster's Locker — the decorations and collectible assets of the Star Force fleet.",
+      "Service ribbons, achievement badges, medals, the Wings ceremony, and the Quartermaster's Locker — the decorations and collectible assets of the Star Force fleet.",
   });
   const { isAuthenticated } = useAuth();
 
@@ -48,6 +49,42 @@ export default function Awards() {
           </p>
         </header>
         <AwardsCatalog />
+      </section>
+
+      <section
+        id="wings"
+        className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 pt-6 pb-4 scroll-mt-24"
+      >
+        <HoloCard className="border-[rgba(255,204,0,0.35)]" glow>
+          <div className="flex flex-wrap items-start gap-6">
+            <div className="h-12 w-12 shrink-0 rounded-full border border-[rgba(255,204,0,0.45)] bg-[rgba(255,204,0,0.08)] flex items-center justify-center">
+              <Feather className="h-5 w-5 text-[#ffcc00]" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="uf-eyebrow">The permanent honor</span>
+              <h2 className="text-2xl font-semibold mt-1.5 tracking-tight">
+                Wings are earned — then they are forever.
+              </h2>
+              <p className="text-uf-muted text-sm mt-2 max-w-3xl leading-6">
+                Wings are the one decoration you choose yourself. When the Bridge
+                decides your contribution has earned them, you receive a personal
+                claim link that opens the Wings ceremony: pick the fighter you will
+                fly, and your name is written permanently on that hull's ASSIGNED
+                PILOTS honor roll. It can never be changed, traded, or revoked —
+                that permanence is the reward.
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <Link to="/fleet-registry">
+                  <NeonButton variant="gold">See the assigned pilots</NeonButton>
+                </Link>
+                <span className="text-xs text-uf-muted">
+                  The ceremony opens only through a personal claim link — watch
+                  for yours when the Bridge awards wings.
+                </span>
+              </div>
+            </div>
+          </div>
+        </HoloCard>
       </section>
 
       <section
