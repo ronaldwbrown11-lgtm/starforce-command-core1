@@ -1,11 +1,15 @@
+import { useState } from "react";
 import { SiteShell, PageHero, HoloCard } from "@/components/uf";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { AwardsCatalog } from "@/components/widgets/RibbonRack";
 import { LockerManifest } from "@/components/widgets/LockerPanel";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { NeonButton } from "@/components/uf";
 import { Feather } from "lucide-react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { toast } from "sonner";
 
 // ---------------------------------------------------------------------------
 // /awards — the decoration board. Public catalog of every service ribbon,
@@ -82,6 +86,7 @@ export default function Awards() {
                   for yours when the Bridge awards wings.
                 </span>
               </div>
+              <WingsEligibility />
             </div>
           </div>
         </HoloCard>
@@ -120,5 +125,102 @@ export default function Awards() {
         </HoloCard>
       </section>
     </SiteShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Wings eligibility — the member-facing earning rule. Wings are awarded by
+// the Bridge (contests, certified field reports, direct issuance), but any
+// member who reaches CAPTAIN rank (2,500 XP) of verified service may claim
+// their wings themselves. The ceremony's permanence is unchanged.
+// ---------------------------------------------------------------------------
+
+function WingsEligibility() {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const claim = useQuery(api.wings.getMyWingsClaim, isAuthenticated ? {} : "skip");
+  const selfClaim = useMutation(api.wings.selfClaimWings);
+  const [busy, setBusy] = useState(false);
+
+  if (!isAuthenticated) return null;
+  if (claim === undefined) return null;
+
+  async function claimWings() {
+    setBusy(true);
+    try {
+      const res = await selfClaim({});
+      navigate(`/wings?claim=${encodeURIComponent(res.token)}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Claim failed.");
+      setBusy(false);
+    }
+  }
+
+  if (claim?.hasOutstandingClaim && claim.claimToken) {
+    return (
+      <div className="mt-5 rounded-md border border-[rgba(255,204,0,0.45)] bg-[rgba(255,204,0,0.07)] p-4">
+        <p className="font-semibold flex items-center gap-2 text-sm">
+          <Feather className="h-4 w-4 text-[#ffcc00]" aria-hidden />
+          Your wings are waiting to be claimed.
+        </p>
+        <p className="text-sm text-uf-muted mt-1">
+          The Bridge has issued your ceremony link. Choose your fighter — the
+          choice is permanent.
+        </p>
+        <Link
+          to={`/wings?claim=${encodeURIComponent(claim.claimToken)}`}
+          className="uf-btn uf-btn--gold mt-3 inline-block text-sm"
+        >
+          Open the Wings ceremony
+        </Link>
+      </div>
+    );
+  }
+
+  const remaining = claim ? Math.max(0, claim.threshold - claim.xp) : 0;
+  const pct = claim ? Math.min(100, Math.round((claim.xp / claim.threshold) * 100)) : 0;
+
+  return (
+    <div className="mt-5 rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] p-4">
+      <p className="font-semibold flex items-center gap-2 text-sm">
+        <Feather className="h-4 w-4 text-[#ffcc00]" aria-hidden />
+        {claim?.eligible ? "You have earned your wings." : "Earning your wings."}
+      </p>
+      {claim?.eligible ? (
+        <>
+          <p className="text-sm text-uf-muted mt-1">
+            Your verified service qualifies — claim your ceremony link and make
+            the permanent choice.
+          </p>
+          <NeonButton variant="gold" className="mt-3" loading={busy} onClick={claimWings}>
+            Claim your wings
+          </NeonButton>
+        </>
+      ) : (
+        <>
+          <p className="text-sm text-uf-muted mt-1">
+            Reach {claim?.rank ?? "Captain"} rank — {claim?.threshold ?? 2500} XP
+            {remaining > 0 ? (
+              <> · {remaining} XP to go</>
+            ) : null}
+            . Wing awards also arrive from contests, certified field reports,
+            and direct Bridge grants.
+          </p>
+          <div
+            className="mt-3 h-1.5 w-full max-w-xs rounded-full bg-[rgba(255,255,255,0.08)] overflow-hidden"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={pct}
+            aria-label="Progress toward wings eligibility"
+          >
+            <div
+              className="h-full rounded-full bg-[#ffcc00] transition-all"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </>
+      )}
+    </div>
   );
 }

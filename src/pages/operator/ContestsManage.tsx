@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import {
   ChevronDown,
   Crown,
+  Feather,
   Plus,
   Rocket,
   Timer,
@@ -79,6 +80,7 @@ export default function ContestsManage() {
   );
   const setStatus = useMutation(api.contests.setContestStatus);
   const judge = useMutation(api.contests.judgeEntry);
+  const awardWings = useMutation(api.wings.awardWingsToContestWinner);
   const remove = useMutation(api.contests.removeContest);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -175,6 +177,27 @@ export default function ContestsManage() {
       toast.success(outcome === "none" ? "Entry returned to the queue." : `Entry marked ${outcome}.`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Judging action failed.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleAwardWings = async (entryId: Id<"contestSubmissions">) => {
+    if (
+      !window.confirm(
+        "Issue a Wings claim token to this winner? They will receive a ceremony link to choose their fighter — the choice is permanent.",
+      )
+    )
+      return;
+    setBusy(`wings-${entryId}`);
+    try {
+      const res = await awardWings({ entryId });
+      await navigator.clipboard
+        .writeText(`${window.location.origin}/wings?claim=${encodeURIComponent(res.token)}`)
+        .catch(() => undefined);
+      toast.success("Wings issued — ceremony link copied. The winner has been notified.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Wings issuance failed.");
     } finally {
       setBusy(null);
     }
@@ -517,6 +540,16 @@ export default function ContestsManage() {
                                   >
                                     <Trophy className="h-3.5 w-3.5 mr-1" aria-hidden /> Winner
                                   </button>
+                                  {entry.status === "winner" ? (
+                                    <button
+                                      type="button"
+                                      className="uf-btn uf-btn--violet text-xs"
+                                      disabled={busy === `wings-${entry._id}`}
+                                      onClick={() => void handleAwardWings(entry._id)}
+                                    >
+                                      <Feather className="h-3.5 w-3.5 mr-1" aria-hidden /> Award Wings
+                                    </button>
+                                  ) : null}
                                   <button
                                     type="button"
                                     className="uf-btn uf-btn--violet text-xs"

@@ -5,7 +5,7 @@ import { Link } from "react-router";
 import { OperatorShell } from "@/components/operator/OperatorShell";
 import { HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { toast } from "sonner";
-import { Flag, ShieldAlert, CheckCircle2, ClipboardCheck } from "lucide-react";
+import { Feather, Flag, ShieldAlert, CheckCircle2, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Filter = "pending" | "approved" | "rejected" | "flagged" | "";
@@ -47,6 +47,7 @@ export default function OperatorReports() {
     limit: 60,
   });
   const act = useMutation(api.operator.reportReviewAction);
+  const awardWings = useMutation(api.wings.awardWingsForReport);
   const [busy, setBusy] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
 
@@ -253,6 +254,45 @@ export default function OperatorReports() {
                       <Flag className="h-4 w-4 mr-1" aria-hidden />
                       Flag
                     </NeonButton>
+                  </div>
+                ) : r.reviewStatus === "approved" ? (
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <NeonButton
+                      variant="gold"
+                      disabled={busy === `${r._id}_wings`}
+                      loading={busy === `${r._id}_wings`}
+                      onClick={async () => {
+                        if (
+                          !window.confirm(
+                            "Issue a Wings claim token to this pilot? They will receive a ceremony link to choose their fighter — the choice is permanent.",
+                          )
+                        )
+                          return;
+                        setBusy(`${r._id}_wings`);
+                        try {
+                          const res = await awardWings({ reportId: r._id });
+                          await navigator.clipboard
+                            .writeText(
+                              `${window.location.origin}/wings?claim=${encodeURIComponent(res.token)}`,
+                            )
+                            .catch(() => undefined);
+                          toast.success(
+                            "Wings issued — ceremony link copied. The pilot has been notified.",
+                          );
+                        } catch (err) {
+                          toast.error(err instanceof Error ? err.message : "Wings issuance failed.");
+                        } finally {
+                          setBusy(null);
+                        }
+                      }}
+                    >
+                      <Feather className="h-4 w-4 mr-1" aria-hidden />
+                      Award Wings
+                    </NeonButton>
+                    <span className="text-xs text-uf-muted">
+                      Certify an exceptional report by granting its author the
+                      permanent honor.
+                    </span>
                   </div>
                 ) : null}
               </HoloCard>
