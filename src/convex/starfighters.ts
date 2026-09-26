@@ -173,11 +173,13 @@ export const honorWall = query({
     const users = await Promise.all(rows.map((r) => ctx.db.get(r.memberId)));
     const byId = new Map(users.filter(Boolean).map((u) => [u!._id, u!]));
     return rows.map((r) => {
-      const u = byId.get(r.memberId);
+      const u = r.demo ? undefined : byId.get(r.memberId);
       return {
         _id: r._id,
-        memberName: u?.displayName ?? u?.name ?? "Pilot",
-        memberRank: u?.rank ?? null,
+        memberName: r.demo
+          ? r.demoName ?? "Pilot"
+          : u?.displayName ?? u?.name ?? "Pilot",
+        memberRank: r.demo ? r.demoRank ?? null : u?.rank ?? null,
         memberId: r.memberId,
         vesselKey: r.vesselKey,
         designation: r.designation,
@@ -277,5 +279,143 @@ export const getTypeImageUrls = query({
       }),
     );
     return out;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Sample data (operator) — preview the Wall of Honor before real pilots
+// earn their wings. Demo rows are flagged `demo: true`, use inline display
+// fields (no backing user documents), and carry D-prefix hull numbers
+// (SFB-1198-D001…) so the real auto-sequential counter is untouched.
+// One click seeds 21 plaques; one click purges every demo row.
+// ---------------------------------------------------------------------------
+
+const DEMO_TYPES = [
+  { vesselKey: "1", designation: "F/A-37 TALON MK.V", shipClass: "Space Superiority Fighter" },
+  { vesselKey: "1", designation: "F/A-37 TALON MK.V", shipClass: "Space Superiority Fighter" },
+  { vesselKey: "2", designation: "F-4S CORSAIR", shipClass: "Strike Fighter" },
+  { vesselKey: "3", designation: "A-9 VANGUARD", shipClass: "Heavy Assault Fighter" },
+  { vesselKey: "4", designation: "F-5D WARHAWK", shipClass: "Interceptor" },
+  { vesselKey: "5", designation: "F-50 WARTHAWK", shipClass: "Gunship" },
+];
+
+const DEMO_PILOTS: { name: string; rank: string }[] = [
+  { name: "Elias 'Raven' Thorne", rank: "Commander" },
+  { name: "J.G. Sarah 'Phoenix' Jenkins", rank: "Lieutenant Junior Grade" },
+  { name: "Marcus 'Hammer' O'Neill", rank: "Major" },
+  { name: "Elena 'Shadow' Petrova", rank: "Lieutenant" },
+  { name: "David 'Viper' Chen", rank: "Captain" },
+  { name: "Maria 'Rook' Garcia", rank: "Lieutenant Commander" },
+  { name: "Liam 'Blast' O'Connell", rank: "Ensign" },
+  { name: "Priya 'Static' Raman", rank: "Lieutenant" },
+  { name: "Dmitri 'Halo' Volkov", rank: "Captain" },
+  { name: "Yuki 'Ghost' Tanaka", rank: "Ensign" },
+  { name: "Omar 'Talon' Haddad", rank: "Commander" },
+  { name: "Ines 'Comet' Duarte", rank: "Lieutenant" },
+  { name: "Ravi 'Ember' Chandran", rank: "Ensign" },
+  { name: "Sofia 'Vector' Marek", rank: "Major" },
+  { name: "Erik 'Frost' Lindqvist", rank: "Lieutenant" },
+  { name: "Nadia 'Pulse' Okoro", rank: "Captain" },
+  { name: "Tomas 'Slate' Reyes", rank: "Ensign" },
+  { name: "Ava 'Nimbus' Kowalski", rank: "Lieutenant Commander" },
+  { name: "Jae 'Drift' Park", rank: "Lieutenant" },
+  { name: "Mara 'Quill' Voss", rank: "Ensign" },
+  { name: "Colin 'Slipstream' Baird", rank: "Commander" },
+];
+
+const DEMO_CALLSIGNS = [
+  "DARKSTAR", "JUNIOR GRADE", "IRONCLAD", "NIGHTHAWK", "VIPER STRIKE",
+  "SKYWARRIOR", "SILVERBOLT", "STARLANCE", "GRAVEDIGGER", "MIDNIGHT",
+  "SUNCHASER", "VOIDRUNNER", "PALE HORSE", "COMETFALL", "EMBERWING",
+  "COLD FRONT", "IRONSIDE", "GOLIATH", "WRAITH", "HOMECOMING", "TEMPER",
+];
+
+function demoRankAbbr(rank: string): string {
+  const map: Record<string, string> = {
+    Commander: "CDR.",
+    "Lieutenant Junior Grade": "LT.J.G.",
+    Major: "MAJ.",
+    Lieutenant: "LT.",
+    Captain: "CPT.",
+    "Lieutenant Commander": "LT.CMDR.",
+    Ensign: "ENS.",
+    Colonel: "COL.",
+  };
+  return map[rank] ?? rank;
+}
+void demoRankAbbr;
+
+export const seedDemoWall = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+    ]);
+    const existing = await ctx.db
+      .query("starfighters")
+      .withIndex("by_awarded")
+      .order("desc")
+      .take(2000);
+    const demoCount = existing.filter((r) => r.demo).length;
+    if (demoCount > 0) {
+      return { ok: false, message: `Sample wall already populated (${demoCount} plaques).` };
+    }
+    const now = Date.now();
+    let inserted = 0;
+    for (let i = 0; i < DEMO_PILOTS.length; i++) {
+      const pilot = DEMO_PILOTS[i];
+      const type = DEMO_TYPES[i % DEMO_TYPES.length];
+      await ctx.db.insert("starfighters", {
+        // Demo rows never point at a real user; the schema requires the id
+        // column, so they reference the issuing operator instead.
+        memberId: me,
+        vesselKey: type.vesselKey,
+        designation: type.designation,
+        shipClass: type.shipClass,
+        callsign: DEMO_CALLSIGNS[i % DEMO_CALLSIGNS.length],
+        hullNumber: `SFB-1198-D${String(i + 1).padStart(3, "0")}`,
+        awardedAt: now - (DEMO_PILOTS.length - i) * 86_400_000,
+        awardedBy: me,
+        demo: true,
+        demoName: pilot.name.toUpperCase(), // rank renders separately on the plaque
+        demoRank: pilot.rank,
+      });
+      inserted++;
+    }
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "fighter.seed_demo",
+      target: "starfighters:demo",
+      meta: JSON.stringify({ inserted }),
+      createdAt: now,
+    });
+    return { ok: true, inserted };
+  },
+});
+
+export const purgeDemoWall = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+    ]);
+    const rows = await ctx.db.query("starfighters").collect();
+    let removed = 0;
+    for (const r of rows) {
+      if (r.demo) {
+        await ctx.db.delete(r._id);
+        removed++;
+      }
+    }
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "fighter.purge_demo",
+      target: "starfighters:demo",
+      meta: JSON.stringify({ removed }),
+      createdAt: Date.now(),
+    });
+    return { removed };
   },
 });

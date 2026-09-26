@@ -110,6 +110,7 @@ export default function OperatorWings() {
 
       <WingsRules settings={settings} />
       <FighterTypeImages />
+      <DemoWallCard />
 
       {lastIssued ? (
         <HoloCard className="p-5 mb-6 border-[rgba(255,204,0,0.4)]" glow>
@@ -429,6 +430,83 @@ function WingsRules({
 // operator uploads one image per registry vessel; it renders on every
 // pilot's plaque whose fighter is that type.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Sample wall — seed removable demo plaques to preview the Wall of Honor.
+// Demo rows use D-prefix hull numbers (SFB-1198-D001…) so the real
+// auto-sequential counter is untouched, and purge cleanly in one click.
+// ---------------------------------------------------------------------------
+
+function DemoWallCard() {
+  const seed = useMutation(api.starfighters.seedDemoWall);
+  const purge = useMutation(api.starfighters.purgeDemoWall);
+  const wall = useQuery(api.starfighters.honorWall, {});
+  const [busy, setBusy] = useState<"seed" | "purge" | null>(null);
+
+  const demoCount = wall?.filter((r) => r.hullNumber.includes("-D")).length ?? 0;
+
+  async function run(kind: "seed" | "purge") {
+    setBusy(kind);
+    try {
+      if (kind === "seed") {
+        const res = await seed({});
+        if (res.ok) toast.success(`Sample wall populated — ${res.inserted} plaques added.`);
+        else toast.info(res.message ?? "Sample wall already populated.");
+      } else {
+        const res = await purge({});
+        toast.success(`Sample wall removed — ${res.removed} plaques deleted.`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Action failed.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <HoloCard className="p-6 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="uf-eyebrow">Sample wall preview</h2>
+          <p className="text-sm text-uf-muted mt-1">
+            Populate the Wall of Honor with 21 removable sample plaques to see
+            the final look. Sample hull numbers use a D-prefix, so they never
+            interfere with real pilot numbering.
+          </p>
+          {demoCount > 0 ? (
+            <p className="text-xs text-[#ffcc00] mt-2">
+              {demoCount} sample plaque{demoCount === 1 ? "" : "s"} currently on the wall.
+            </p>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap gap-2 shrink-0">
+          <a href="/honor" target="_blank" rel="noreferrer" className="uf-btn uf-btn--ghost text-sm">
+            View /honor
+          </a>
+          <NeonButton
+            variant="primary"
+            loading={busy === "seed"}
+            disabled={busy !== null || demoCount > 0}
+            onClick={() => void run("seed")}
+          >
+            Add sample plaques
+          </NeonButton>
+          <NeonButton
+            variant="danger"
+            loading={busy === "purge"}
+            disabled={busy !== null || demoCount === 0}
+            onClick={() => {
+              if (window.confirm("Remove all sample plaques from the Wall of Honor?"))
+                void run("purge");
+            }}
+          >
+            Remove sample plaques
+          </NeonButton>
+        </div>
+      </div>
+    </HoloCard>
+  );
+}
 
 function FighterTypeImages() {
   const typeImages = useQuery(api.starfighters.getTypeImageUrls, {}) ?? {};

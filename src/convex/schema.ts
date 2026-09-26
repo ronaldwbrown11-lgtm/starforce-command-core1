@@ -1358,6 +1358,13 @@ const schema = defineSchema(
       imageStorageId: v.optional(v.id("_storage")),
       awardedAt: v.number(),
       awardedBy: v.id("users"),
+      // Sample/preview rows (operator-seeded, one-click removable): display
+      // fields stored inline because demo rows have no backing user document,
+      // and hull numbers use the D-prefix so they never advance the real
+      // auto-sequential counter.
+      demo: v.optional(v.boolean()),
+      demoName: v.optional(v.string()),
+      demoRank: v.optional(v.string()),
     })
       .index("by_member", ["memberId"])
       .index("by_hull", ["hullNumber"])

@@ -29,8 +29,14 @@ const RANK_ABBR: Record<string, string> = {
   Recruit: "RCT.",
   Aspirant: "ASP.",
   Pilot: "LT.",
+  Ensign: "ENS.",
+  "Lieutenant Junior Grade": "LT.J.G.",
+  Lieutenant: "LT.",
+  "Lieutenant Commander": "LT.CMDR.",
+  Major: "MAJ.",
   Commander: "CDR.",
   Captain: "CPT.",
+  Colonel: "COL.",
   Admiral: "ADM.",
 };
 
