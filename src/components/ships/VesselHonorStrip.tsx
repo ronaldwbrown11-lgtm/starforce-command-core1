@@ -13,8 +13,7 @@ import { ChevronDown, Loader2, Users } from "lucide-react";
 // VesselHonorStrip — the ASSIGNED PILOTS honor roll (compact form, on the
 // fleet registry page). Reads the live ship-type list from the Fleet
 // Registry directly from the browser and lazily loads each hull's permanent
-// pilot roll when its row is expanded. The full, celebratory version lives
-// at /wings/pilots.
+// pilot roll when its row is expanded. The pilot honor wall lives at /honor.
 // ---------------------------------------------------------------------------
 
 export function VesselHonorStrip({ className }: { className?: string }) {
@@ -85,7 +84,7 @@ export function VesselHonorStrip({ className }: { className?: string }) {
           ) : null}
           <div className="mt-5">
             <Link
-              to="/wings/pilots"
+              to="/honor"
               className="uf-btn uf-btn--gold inline-block text-sm"
             >
               Open the full honor roll

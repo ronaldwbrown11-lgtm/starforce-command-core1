@@ -3,6 +3,16 @@ import { api } from "@/convex/_generated/api";
 import { SiteShell } from "@/components/uf";
 import { usePageMeta } from "@/hooks/use-page-meta";
 
+// Optional custom insignia: drop the real emblem image at
+// src/assets/honor-insignia.(png|jpg|webp) and it replaces the drawn
+// medallion automatically — no code change needed.
+const INSIGNIA_ASSETS = import.meta.glob("@/assets/honor-insignia.*", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
+const INSIGNIA_URL = Object.values(INSIGNIA_ASSETS)[0] ?? null;
+
 // ---------------------------------------------------------------------------
 // /honor — the Wall of Honor.
 //
@@ -40,56 +50,151 @@ const RANK_ABBR: Record<string, string> = {
   Admiral: "ADM.",
 };
 
-/** Winged-star emblem, drawn inline — no image assets. */
+/** Winged-star medallion with base banner and motto — drawn inline. */
 function WingedEmblem() {
+  if (INSIGNIA_URL) {
+    return (
+      <img
+        src={INSIGNIA_URL}
+        alt="Star Force Base 1198 insignia"
+        className="h-24 w-auto mx-auto sm:h-28 drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
+      />
+    );
+  }
   return (
     <svg
-      viewBox="0 0 120 48"
-      className="h-10 w-auto mx-auto sm:h-12"
+      viewBox="0 0 240 150"
+      className="h-24 w-auto mx-auto sm:h-28"
       aria-hidden
       focusable="false"
     >
       <defs>
         <linearGradient id="hof-steel" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#f2f6fb" />
-          <stop offset="55%" stopColor="#c9d3e0" />
-          <stop offset="100%" stopColor="#94a3b8" />
+          <stop offset="0%" stopColor="#f4f8fc" />
+          <stop offset="45%" stopColor="#c6d0dd" />
+          <stop offset="100%" stopColor="#7e8ba0" />
+        </linearGradient>
+        <linearGradient id="hof-steel2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#dbe3ee" />
+          <stop offset="100%" stopColor="#66748c" />
         </linearGradient>
         <linearGradient id="hof-gold" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#ffe9a8" />
-          <stop offset="100%" stopColor="#caa02f" />
+          <stop offset="0%" stopColor="#f3e2a0" />
+          <stop offset="100%" stopColor="#b98d2c" />
+        </linearGradient>
+        <linearGradient id="hof-ring" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#94a1b6" />
+          <stop offset="50%" stopColor="#3c4658" />
+          <stop offset="100%" stopColor="#94a1b6" />
         </linearGradient>
       </defs>
-      {/* wings */}
+
+      {/* outer medallion ring */}
+      <circle cx="120" cy="70" r="46" fill="none" stroke="url(#hof-ring)" strokeWidth="7" />
+      <circle cx="120" cy="70" r="39" fill="none" stroke="#55617a" strokeWidth="1.2" />
+      {/* tick marks on the ring */}
+      {Array.from({ length: 24 }).map((_, i) => {
+        const a = (i / 24) * Math.PI * 2;
+        const r1 = 42.5;
+        const r2 = i % 2 === 0 ? 47.5 : 45.5;
+        return (
+          <line
+            key={i}
+            x1={120 + Math.cos(a) * r1}
+            y1={70 + Math.sin(a) * r1}
+            x2={120 + Math.cos(a) * r2}
+            y2={70 + Math.sin(a) * r2}
+            stroke={i % 4 === 0 ? "url(#hof-gold)" : "#6d7a92"}
+            strokeWidth={i % 4 === 0 ? 1.6 : 1}
+          />
+        );
+      })}
+      {/* inner dial */}
+      <circle cx="120" cy="70" r="33" fill="#10192b" stroke="#33405a" strokeWidth="1.4" />
+      {/* gold orbit ellipse */}
+      <ellipse
+        cx="120"
+        cy="70"
+        rx="34"
+        ry="13"
+        fill="none"
+        stroke="url(#hof-gold)"
+        strokeWidth="1.5"
+        transform="rotate(-18 120 70)"
+      />
+
+      {/* wings — upper pair */}
       <path
-        d="M58 26 C44 8 22 6 4 14 C18 16 30 22 40 30 C46 34 52 35 58 32 Z"
+        d="M112 52 C88 26 48 20 14 34 C40 38 62 48 80 62 C92 70 104 72 114 66 Z"
         fill="url(#hof-steel)"
-        stroke="#64748b"
-        strokeWidth="0.8"
+        stroke="#4c5a72"
+        strokeWidth="1.1"
       />
       <path
-        d="M62 26 C76 8 98 6 116 14 C102 16 90 22 80 30 C74 34 68 35 62 32 Z"
+        d="M128 52 C152 26 192 20 226 34 C200 38 178 48 160 62 C148 70 136 72 126 66 Z"
         fill="url(#hof-steel)"
-        stroke="#64748b"
-        strokeWidth="0.8"
+        stroke="#4c5a72"
+        strokeWidth="1.1"
       />
-      {/* star */}
+      {/* wings — lower pair */}
       <path
-        d="M60 4 L64.7 15.8 L77.4 16.6 L67.6 24.7 L70.8 37 L60 30.2 L49.2 37 L52.4 24.7 L42.6 16.6 L55.3 15.8 Z"
+        d="M112 66 C92 54 64 52 38 62 C60 66 78 74 92 84 C100 90 110 90 116 84 Z"
+        fill="url(#hof-steel2)"
+        stroke="#4c5a72"
+        strokeWidth="1"
+      />
+      <path
+        d="M128 66 C148 54 176 52 202 62 C180 66 162 74 148 84 C140 90 130 90 124 84 Z"
+        fill="url(#hof-steel2)"
+        stroke="#4c5a72"
+        strokeWidth="1"
+      />
+
+      {/* central star */}
+      <path
+        d="M120 30 L126.5 51 L148.5 51.5 L131 64.5 L137.5 85.5 L120 73 L102.5 85.5 L109 64.5 L91.5 51.5 L113.5 51 Z"
         fill="url(#hof-gold)"
-        stroke="#7c5e14"
+        stroke="#6d5313"
+        strokeWidth="1.2"
+      />
+      {/* dagger below the star */}
+      <path
+        d="M120 88 L124 100 L120 122 L116 100 Z"
+        fill="url(#hof-steel)"
+        stroke="#4c5a72"
         strokeWidth="0.9"
       />
-      {/* ring */}
-      <ellipse
-        cx="60"
-        cy="24"
-        rx="14"
-        ry="15.5"
-        fill="none"
-        stroke="url(#hof-steel)"
-        strokeWidth="1.6"
+
+      {/* banner — base name */}
+      <path
+        d="M74 112 C96 122 144 122 166 112 L166 128 C144 138 96 138 74 128 Z"
+        fill="url(#hof-steel2)"
+        stroke="#3f4b61"
+        strokeWidth="1"
       />
+      <text
+        x="120"
+        y="125"
+        textAnchor="middle"
+        fontSize="11.5"
+        fontWeight="800"
+        letterSpacing="1"
+        fill="#0c1424"
+      >
+        STARFORCE BASE 1198
+      </text>
+      {/* motto ribbon */}
+      <text
+        x="120"
+        y="143"
+        textAnchor="middle"
+        fontSize="8"
+        fontWeight="600"
+        letterSpacing="2.2"
+        fill="#9fb0c8"
+      >
+        AETERNAM FORTIS
+      </text>
     </svg>
   );
 }

@@ -393,7 +393,7 @@ function GateStates({
         title="This claim has already been used"
         body="A claim token burns the moment the choice begins. If this was your token, your wings are already written on the honor roll — the assignment is permanent and cannot be redone."
         action={
-          <Link to="/wings/pilots" className="uf-btn uf-btn--ghost inline-block">
+          <Link to="/honor" className="uf-btn uf-btn--ghost inline-block">
             View the assigned pilots
           </Link>
         }

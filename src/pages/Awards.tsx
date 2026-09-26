@@ -78,8 +78,8 @@ export default function Awards() {
                 that permanence is the reward.
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Link to="/wings/pilots">
-                  <NeonButton variant="gold">See the assigned pilots</NeonButton>
+                <Link to="/honor">
+                  <NeonButton variant="gold">See the Wall of Honor</NeonButton>
                 </Link>
                 <span className="text-xs text-uf-muted">
                   The ceremony opens only through a personal claim link — watch
