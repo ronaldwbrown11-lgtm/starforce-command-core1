@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireOperatorCapability } from "./admin";
@@ -345,6 +345,42 @@ function demoRankAbbr(rank: string): string {
 }
 void demoRankAbbr;
 
+async function insertDemoRows(
+  ctx: MutationCtx,
+  actorId: Id<"users">,
+): Promise<number> {
+  const now = Date.now();
+  let inserted = 0;
+  for (let i = 0; i < DEMO_PILOTS.length; i++) {
+    const pilot = DEMO_PILOTS[i];
+    const type = DEMO_TYPES[i % DEMO_TYPES.length];
+    await ctx.db.insert("starfighters", {
+      // Demo rows never point at a real user; the schema requires the id
+      // column, so they reference the issuing operator instead.
+      memberId: actorId,
+      vesselKey: type.vesselKey,
+      designation: type.designation,
+      shipClass: type.shipClass,
+      callsign: DEMO_CALLSIGNS[i % DEMO_CALLSIGNS.length],
+      hullNumber: `SFB-1198-D${String(i + 1).padStart(3, "0")}`,
+      awardedAt: now - (DEMO_PILOTS.length - i) * 86_400_000,
+      awardedBy: actorId,
+      demo: true,
+      demoName: pilot.name.toUpperCase(), // rank renders separately on the plaque
+      demoRank: pilot.rank,
+    });
+    inserted++;
+  }
+  return inserted;
+}
+
+async function firstAdminId(ctx: QueryCtx): Promise<Id<"users"> | null> {
+  const admins = await ctx.db.query("users").collect();
+  const admin = admins.find((u) => u.role === "admin");
+  return admin?._id ?? admins[0]?._id ?? null;
+}
+
+/** Operator button: seed the sample wall. */
 export const seedDemoWall = mutation({
   args: {},
   handler: async (ctx) => {
@@ -361,34 +397,40 @@ export const seedDemoWall = mutation({
     if (demoCount > 0) {
       return { ok: false, message: `Sample wall already populated (${demoCount} plaques).` };
     }
-    const now = Date.now();
-    let inserted = 0;
-    for (let i = 0; i < DEMO_PILOTS.length; i++) {
-      const pilot = DEMO_PILOTS[i];
-      const type = DEMO_TYPES[i % DEMO_TYPES.length];
-      await ctx.db.insert("starfighters", {
-        // Demo rows never point at a real user; the schema requires the id
-        // column, so they reference the issuing operator instead.
-        memberId: me,
-        vesselKey: type.vesselKey,
-        designation: type.designation,
-        shipClass: type.shipClass,
-        callsign: DEMO_CALLSIGNS[i % DEMO_CALLSIGNS.length],
-        hullNumber: `SFB-1198-D${String(i + 1).padStart(3, "0")}`,
-        awardedAt: now - (DEMO_PILOTS.length - i) * 86_400_000,
-        awardedBy: me,
-        demo: true,
-        demoName: pilot.name.toUpperCase(), // rank renders separately on the plaque
-        demoRank: pilot.rank,
-      });
-      inserted++;
-    }
+    const inserted = await insertDemoRows(ctx, me);
     await ctx.db.insert("auditLog", {
       actorId: me,
       action: "fighter.seed_demo",
       target: "starfighters:demo",
       meta: JSON.stringify({ inserted }),
-      createdAt: now,
+      createdAt: Date.now(),
+    });
+    return { ok: true, inserted };
+  },
+});
+
+/** CLI/internal path: seed without a user session (sandbox pushes, previews). */
+export const seedDemoWallInternal = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const existing = await ctx.db
+      .query("starfighters")
+      .withIndex("by_awarded")
+      .order("desc")
+      .take(2000);
+    const demoCount = existing.filter((r) => r.demo).length;
+    if (demoCount > 0) {
+      return { ok: false, message: `Sample wall already populated (${demoCount} plaques).` };
+    }
+    const actor = await firstAdminId(ctx);
+    if (!actor) throw new Error("No users exist yet — create the operator account first.");
+    const inserted = await insertDemoRows(ctx, actor);
+    await ctx.db.insert("auditLog", {
+      actorId: actor,
+      action: "fighter.seed_demo",
+      target: "starfighters:demo",
+      meta: JSON.stringify({ inserted, via: "internal" }),
+      createdAt: Date.now(),
     });
     return { ok: true, inserted };
   },

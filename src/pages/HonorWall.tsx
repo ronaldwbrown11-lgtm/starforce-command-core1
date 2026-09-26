@@ -275,29 +275,34 @@ function HonorPlaque({ plaque: p }: { plaque: Plaque }) {
 
   return (
     <li
-      className="rounded-md border border-[#8b98ab] bg-gradient-to-b from-[#f0f4f9] via-[#d5dde8] to-[#b7c2d2] px-2 py-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_2px_6px_rgba(2,6,17,0.55)]"
+      className="relative overflow-hidden rounded-md border border-[#96741f] bg-gradient-to-b from-[#fdf3cf] via-[#e9c563] to-[#b98a25] px-2 py-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(122,84,12,0.4),0_2px_6px_rgba(2,6,17,0.55)] transition-shadow hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(122,84,12,0.4),0_2px_10px_rgba(233,197,99,0.35)]"
     >
+      {/* diagonal polish streak */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-[12%] w-1/3 -skew-x-12 bg-gradient-to-b from-white/45 via-white/15 to-transparent"
+      />
       {/* pilot line: rank abbr + name */}
-      <p className="text-[11px] sm:text-xs font-bold leading-tight text-[#0b1220] break-words">
+      <p className="relative text-[11px] sm:text-xs font-bold leading-tight text-[#2a1c05] [text-shadow:0_1px_0_rgba(255,248,220,0.5)] break-words">
         {abbr ? `${abbr} ` : ""}
         {name}
       </p>
       {/* full rank */}
       {p.memberRank ? (
-        <p className="mt-0.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3b4a63]">
+        <p className="relative mt-0.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.08em] text-[#6b5216] [text-shadow:0_1px_0_rgba(255,248,220,0.45)]">
           {p.memberRank}
         </p>
       ) : null}
       {/* the chosen StarCraft fighter */}
-      <p className="mt-1.5 text-[10px] sm:text-[11px] font-bold uppercase leading-tight text-[#12203a] break-words">
+      <p className="relative mt-1.5 text-[10px] sm:text-[11px] font-bold uppercase leading-tight text-[#3a2a08] [text-shadow:0_1px_0_rgba(255,248,220,0.45)] break-words">
         {p.designation}
       </p>
       {/* custom ship name */}
-      <p className="mt-1 text-[10px] sm:text-[11px] font-bold text-[#0b1220] break-words">
+      <p className="relative mt-1 text-[10px] sm:text-[11px] font-bold text-[#2a1c05] [text-shadow:0_1px_0_rgba(255,248,220,0.5)] break-words">
         “{p.callsign}”
       </p>
       {/* hull number */}
-      <p className="mt-1.5 font-mono text-[9px] sm:text-[10px] tracking-[0.08em] text-[#42536f]">
+      <p className="relative mt-1.5 font-mono text-[9px] sm:text-[10px] tracking-[0.08em] text-[#6b5216]">
         {p.hullNumber}
       </p>
     </li>
