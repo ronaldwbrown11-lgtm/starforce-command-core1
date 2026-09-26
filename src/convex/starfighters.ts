@@ -419,3 +419,60 @@ export const purgeDemoWall = mutation({
     return { removed };
   },
 });
+
+// ---------------------------------------------------------------------------
+// Wall of Honor header insignia (operator-uploaded). Stored on the
+// wingsSettings singleton; the public read resolves the storage URL. Falls
+// back: uploaded insignia → bundled src/assets/honor-insignia.* → the drawn
+// medallion.
+// ---------------------------------------------------------------------------
+
+export const setWallInsignia = mutation({
+  args: { imageStorageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+    ]);
+    const row = await ctx.db
+      .query("wingsSettings")
+      .withIndex("by_key", (q) => q.eq("key", "main"))
+      .first();
+    if (row) {
+      await ctx.db.patch(row._id, {
+        insigniaStorageId: args.imageStorageId,
+        updatedAt: Date.now(),
+        updatedBy: me,
+      });
+    } else {
+      await ctx.db.insert("wingsSettings", {
+        key: "main",
+        insigniaStorageId: args.imageStorageId,
+        updatedAt: Date.now(),
+        updatedBy: me,
+      });
+    }
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "fighter.set_insignia",
+      target: "wingsSettings:main",
+      createdAt: Date.now(),
+    });
+    return { ok: true };
+  },
+});
+
+export const getWallInsignia = query({
+  args: {},
+  handler: async (ctx) => {
+    const row = await ctx.db
+      .query("wingsSettings")
+      .withIndex("by_key", (q) => q.eq("key", "main"))
+      .first();
+    return {
+      url: row?.insigniaStorageId
+        ? await ctx.storage.getUrl(row.insigniaStorageId)
+        : null,
+    };
+  },
+});

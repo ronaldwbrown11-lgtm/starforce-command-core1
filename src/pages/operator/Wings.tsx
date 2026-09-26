@@ -110,6 +110,7 @@ export default function OperatorWings() {
 
       <WingsRules settings={settings} />
       <FighterTypeImages />
+      <WallInsigniaCard />
       <DemoWallCard />
 
       {lastIssued ? (
@@ -430,6 +431,75 @@ function WingsRules({
 // operator uploads one image per registry vessel; it renders on every
 // pilot's plaque whose fighter is that type.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Wall of Honor header insignia — upload the official emblem image here; it
+// replaces the drawn medallion at the top of /honor instantly.
+// ---------------------------------------------------------------------------
+
+function WallInsigniaCard() {
+  const insignia = useQuery(api.starfighters.getWallInsignia, {});
+  const genUpload = useMutation(api.assets.generateUploadUrl);
+  const setInsignia = useMutation(api.starfighters.setWallInsignia);
+  const [busy, setBusy] = useState(false);
+
+  async function handleUpload(file: File) {
+    setBusy(true);
+    try {
+      const url = await genUpload({ purpose: "wall_insignia" });
+      const up = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!up.ok) throw new Error(`Upload failed (${up.status}).`);
+      const { storageId } = (await up.json()) as { storageId: Id<"_storage"> };
+      await setInsignia({ imageStorageId: storageId });
+      toast.success("Insignia updated — the Wall of Honor header now uses it.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <HoloCard className="p-6 mb-6">
+      <div className="flex flex-wrap items-center gap-6">
+        <div className="h-24 w-40 shrink-0 rounded-md border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.6)] flex items-center justify-center overflow-hidden">
+          {insignia?.url ? (
+            <img src={insignia.url} alt="Wall of Honor insignia" className="h-full w-full object-contain" />
+          ) : (
+            <Feather className="h-6 w-6 text-uf-muted" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="uf-eyebrow">Wall of Honor insignia</h2>
+          <p className="text-sm text-uf-muted mt-1">
+            Upload the official emblem (PNG/JPG/WebP) shown at the top of the
+            honor wall. Transparent-background PNG looks best on the dark
+            banner.
+          </p>
+          <label
+            className={`uf-btn uf-btn--gold inline-block mt-3 text-sm ${busy ? "opacity-50 pointer-events-none" : "cursor-pointer"}`}
+          >
+            {insignia?.url ? "Replace insignia" : "Upload insignia"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) void handleUpload(f);
+              }}
+            />
+          </label>
+        </div>
+      </div>
+    </HoloCard>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Sample wall — seed removable demo plaques to preview the Wall of Honor.

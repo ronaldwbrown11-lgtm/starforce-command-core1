@@ -1336,6 +1336,9 @@ const schema = defineSchema(
       xpThreshold: v.optional(v.number()),
       xpRank: v.optional(v.string()),
       reportThreshold: v.optional(v.number()),
+      // Wall of Honor header insignia (operator-uploaded; overrides the
+      // drawn medallion and any bundled src/assets/honor-insignia.* file).
+      insigniaStorageId: v.optional(v.id("_storage")),
       updatedAt: v.number(),
       updatedBy: v.id("users"),
     }).index("by_key", ["key"]),

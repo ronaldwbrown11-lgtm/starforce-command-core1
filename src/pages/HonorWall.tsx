@@ -50,12 +50,13 @@ const RANK_ABBR: Record<string, string> = {
   Admiral: "ADM.",
 };
 
-/** Winged-star medallion with base banner and motto — drawn inline. */
-function WingedEmblem() {
-  if (INSIGNIA_URL) {
+/** Winged-star medallion — operator upload, bundled asset, or drawn. */
+function WingedEmblem({ customUrl }: { customUrl: string | null }) {
+  const url = customUrl ?? INSIGNIA_URL;
+  if (url) {
     return (
       <img
-        src={INSIGNIA_URL}
+        src={url}
         alt="Star Force Base 1198 insignia"
         className="h-24 w-auto mx-auto sm:h-28 drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
       />
@@ -207,13 +208,14 @@ export default function HonorWall() {
   });
 
   const rows = useQuery(api.starfighters.honorWall) as Plaque[] | undefined;
+  const insignia = useQuery(api.starfighters.getWallInsignia, {});
 
   return (
     <SiteShell>
       <div className="min-h-[70vh] bg-[#0a1120]">
         {/* ---- Banner header ---- */}
         <header className="border-b border-[rgba(148,163,184,0.18)] bg-gradient-to-b from-[#0e1729] to-[#0a1120] px-4 py-8 sm:py-10 text-center">
-          <WingedEmblem />
+          <WingedEmblem customUrl={insignia?.url ?? null} />
           <h1 className="mt-3 text-xl sm:text-3xl lg:text-4xl font-bold tracking-[0.06em] text-white uppercase">
             Wall of Honor:{" "}
             <span className="text-[#dbe4f0]">Decorated Starfighter Commanders</span>
