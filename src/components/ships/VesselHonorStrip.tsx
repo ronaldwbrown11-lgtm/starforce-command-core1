@@ -1,41 +1,44 @@
 import { useEffect, useRef, useState } from "react";
-import { useAction } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { Link } from "react-router";
 import { HoloCard, StatusPill } from "@/components/uf";
-import type { RegistryPilot, RegistryVessel } from "@/convex/wings";
+import {
+  fetchVessels,
+  fetchVesselPilots,
+  type RegistryPilot,
+  type RegistryVessel,
+} from "@/lib/fleetRegistry";
 import { ChevronDown, Loader2, Users } from "lucide-react";
 
 // ---------------------------------------------------------------------------
-// VesselHonorStrip — the ASSIGNED PILOTS honor roll, main-site side.
-//
-// Reads the live ship-type list from the Fleet Registry (GET /api/vessels)
-// and lazily loads each hull's permanent pilot roll (GET /api/vessels/:id/pilots)
-// when its row is expanded. Assignments are written once at the Wings
-// ceremony and cannot be edited — this strip renders the registry's record,
-// oldest first.
+// VesselHonorStrip — the ASSIGNED PILOTS honor roll (compact form, on the
+// fleet registry page). Reads the live ship-type list from the Fleet
+// Registry directly from the browser and lazily loads each hull's permanent
+// pilot roll when its row is expanded. The full, celebratory version lives
+// at /wings/pilots.
 // ---------------------------------------------------------------------------
 
 export function VesselHonorStrip({ className }: { className?: string }) {
-  const listVessels = useAction(api.wings.listVessels);
   const [vessels, setVessels] = useState<RegistryVessel[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const loadedRef = useRef(false);
 
   const load = () => {
     setError(null);
-    listVessels({})
-      .then((res) => {
-        if (res.state === "ok") setVessels(res.vessels);
-        else setError(res.message);
-      })
-      .catch(() => setError("The Fleet Registry is unreachable — try again shortly."));
+    fetchVessels()
+      .then(setVessels)
+      .catch((e: unknown) =>
+        setError(
+          e instanceof Error
+            ? e.message
+            : "The Fleet Registry is unreachable — try again shortly.",
+        ),
+      );
   };
 
   useEffect(() => {
     if (loadedRef.current) return;
     loadedRef.current = true;
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -69,11 +72,26 @@ export function VesselHonorStrip({ className }: { className?: string }) {
           hulls are commissioned.
         </p>
       ) : (
-        <ul className="mt-5 divide-y divide-[color:var(--uf-border)] list-none p-0 m-0">
-          {vessels.map((v) => (
-            <VesselRow key={v.id} vessel={v} />
-          ))}
-        </ul>
+        <>
+          <ul className="mt-5 divide-y divide-[color:var(--uf-border)] list-none p-0 m-0">
+            {vessels.slice(0, 8).map((v) => (
+              <VesselRow key={v.id} vessel={v} />
+            ))}
+          </ul>
+          {vessels.length > 8 ? (
+            <p className="text-xs text-uf-muted mt-3">
+              Showing the first 8 hulls — the full roll lives on the honor page.
+            </p>
+          ) : null}
+          <div className="mt-5">
+            <Link
+              to="/wings/pilots"
+              className="uf-btn uf-btn--gold inline-block text-sm"
+            >
+              Open the full honor roll
+            </Link>
+          </div>
+        </>
       )}
     </HoloCard>
   );
@@ -81,21 +99,30 @@ export function VesselHonorStrip({ className }: { className?: string }) {
 
 function VesselRow({ vessel }: { vessel: RegistryVessel }) {
   const [open, setOpen] = useState(false);
-  const pilots = useAction(api.wings.vesselPilots);
   const [roll, setRoll] = useState<RegistryPilot[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const loadingRef = useRef(false);
+
+  function loadRoll() {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    setError(null);
+    fetchVesselPilots(vessel.id)
+      .then(setRoll)
+      .catch((e: unknown) =>
+        setError(
+          e instanceof Error ? e.message : "Could not reach the Fleet Registry.",
+        ),
+      )
+      .finally(() => {
+        loadingRef.current = false;
+      });
+  }
 
   function toggle() {
     const next = !open;
     setOpen(next);
-    if (next && roll === null && error === null) {
-      pilots({ vesselId: vessel.id })
-        .then((res) => {
-          if (res.state === "ok") setRoll(res.pilots);
-          else setError(res.message);
-        })
-        .catch(() => setError("Could not reach the Fleet Registry."));
-    }
+    if (next && roll === null && error === null) loadRoll();
   }
 
   return (
@@ -119,11 +146,6 @@ function VesselRow({ vessel }: { vessel: RegistryVessel }) {
             <span className="block text-xs text-uf-muted">{vessel.shipClass}</span>
           ) : null}
         </span>
-        {vessel.badge ? (
-          <span className="ml-auto hidden sm:inline text-[10px] uppercase tracking-[0.16em] text-uf-muted shrink-0">
-            {vessel.badge}
-          </span>
-        ) : null}
       </button>
 
       {open ? (
@@ -131,19 +153,7 @@ function VesselRow({ vessel }: { vessel: RegistryVessel }) {
           {error ? (
             <p className="text-sm text-[#ffcc00]">
               {error}{" "}
-              <button
-                type="button"
-                onClick={() => {
-                  setError(null);
-                  pilots({ vesselId: vessel.id })
-                    .then((res) => {
-                      if (res.state === "ok") setRoll(res.pilots);
-                      else setError(res.message);
-                    })
-                    .catch(() => setError("Could not reach the Fleet Registry."));
-                }}
-                className="underline cursor-pointer"
-              >
+              <button type="button" onClick={loadRoll} className="underline cursor-pointer">
                 Retry
               </button>
             </p>
@@ -160,7 +170,7 @@ function VesselRow({ vessel }: { vessel: RegistryVessel }) {
             <ul className="flex flex-wrap gap-2 list-none p-0 m-0">
               {roll.map((p) => (
                 <li
-                  key={p.id}
+                  key={p.id || `${p.memberId}-${p.memberName}`}
                   className="inline-flex items-center gap-2 rounded-full border border-[rgba(255,204,0,0.35)] bg-[rgba(255,204,0,0.06)] px-3 py-1 text-xs text-uf-text"
                   title={
                     p.assignedAt

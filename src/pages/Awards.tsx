@@ -78,7 +78,7 @@ export default function Awards() {
                 that permanence is the reward.
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Link to="/fleet-registry">
+                <Link to="/wings/pilots">
                   <NeonButton variant="gold">See the assigned pilots</NeonButton>
                 </Link>
                 <span className="text-xs text-uf-muted">

@@ -1,17 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { useAction } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { SiteShell, PageHero, HoloCard, NeonButton } from "@/components/uf";
-import { StatusPill } from "@/components/uf";
+import { SiteShell, PageHero, HoloCard, NeonButton, StatusPill } from "@/components/uf";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useAuth } from "@/hooks/use-auth";
-import type {
-  VerifyResult,
-  ClaimResult,
-  AssignResult,
-  RegistryVessel,
-} from "@/convex/wings";
+import {
+  fetchVessels,
+  verifyClaimToken,
+  claimWingsToken,
+  assignFighterChoice,
+  type RegistryVessel,
+  type VerifyOutcome,
+  type ClaimOutcome,
+  type AssignOutcome,
+} from "@/lib/fleetRegistry";
 import {
   AlertTriangle,
   Check,
@@ -29,12 +32,13 @@ import {
 //   1. verify  — token checked WITHOUT consuming it
 //   2. claim   — starts the 10-minute assignment session, BURNS the token
 //   3. assign  — the PERMANENT member→fighter choice (no undo, by design)
+// These calls run directly from the browser (the registry serves open CORS
+// and authenticates with the token the member already holds); Convex only
+// records the burn on the main site's own wingClaims table.
 // The choice is irreversible: that permanence IS the reward.
 // ---------------------------------------------------------------------------
 
 type Stage = "gate" | "checking" | "choice" | "confirming" | "done";
-
-const REGISTRY_URL = "https://fleetregistry.starforcebase1198.com";
 
 export default function Wings() {
   usePageMeta({
@@ -46,11 +50,7 @@ export default function Wings() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const [searchParams] = useSearchParams();
   const claimToken = searchParams.get("claim") ?? "";
-
-  const verifyClaim = useAction(api.wings.verifyClaim);
-  const claimWings = useAction(api.wings.claimWings);
-  const assignFighter = useAction(api.wings.assignFighter);
-  const listVessels = useAction(api.wings.listVessels);
+  const markConsumed = useMutation(api.wings.markClaimConsumed);
 
   const [stage, setStage] = useState<Stage>("gate");
   const [memberName, setMemberName] = useState("");
@@ -61,12 +61,15 @@ export default function Wings() {
   const [selected, setSelected] = useState<RegistryVessel | null>(null);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [verifyState, setVerifyState] = useState<
+    "invalid" | "expired" | "used" | null
+  >(null);
   const [finalAssignment, setFinalAssignment] = useState<{
     designation: string;
     memberName: string;
   } | null>(null);
 
-  // Guards so React StrictMode's double-effect can't double-fire actions.
+  // Guards so React StrictMode's double-effect can't double-fire calls.
   const verifiedRef = useRef(false);
   const claimingRef = useRef(false);
 
@@ -75,8 +78,8 @@ export default function Wings() {
     if (!claimToken || !isAuthenticated || verifiedRef.current) return;
     verifiedRef.current = true;
     setStage("checking");
-    verifyClaim({ token: claimToken })
-      .then((res: VerifyResult) => {
+    verifyClaimToken(claimToken)
+      .then((res: VerifyOutcome) => {
         if (res.state === "valid") {
           setMemberName(res.memberName);
           setReason(res.reason);
@@ -87,11 +90,9 @@ export default function Wings() {
           setStage("gate");
         } else {
           setFailure(null);
-          setStage("gate");
-          // invalid / expired / used — rendered directly by the gate screen
-          setAlreadyAssigned(false);
           setMemberName("");
           setVerifyState(res.state);
+          setStage("gate");
         }
       })
       .catch(() => {
@@ -101,25 +102,17 @@ export default function Wings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claimToken, isAuthenticated]);
 
-  const [verifyState, setVerifyState] = useState<
-    "invalid" | "expired" | "used" | null
-  >(null);
-
-  // ---- Vessel roster for the choice grid ----------------------------------
-  const loadVessels = () => {
-    if (vessels || vesselsError) return;
-    listVessels({})
-      .then((res) => {
-        if (res.state === "ok") setVessels(res.vessels);
-        else setVesselsError(res.message);
-      })
-      .catch(() => setVesselsError("Could not reach the Fleet Registry."));
-  };
-
+  // ---- Vessel roster for the choice grid (direct registry read) ----------
   useEffect(() => {
-    if (stage === "choice") loadVessels();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage]);
+    if (stage !== "choice" || vessels || vesselsError) return;
+    fetchVessels()
+      .then(setVessels)
+      .catch((e: unknown) =>
+        setVesselsError(
+          e instanceof Error ? e.message : "Could not reach the Fleet Registry.",
+        ),
+      );
+  }, [stage, vessels, vesselsError]);
 
   // ---- Steps 2 + 3: burn the token, then make the permanent choice --------
   async function makeItPermanent() {
@@ -130,7 +123,7 @@ export default function Wings() {
     try {
       let session = sessionToken;
       if (!session) {
-        const claim: ClaimResult = await claimWings({ token: claimToken });
+        const claim: ClaimOutcome = await claimWingsToken(claimToken);
         if (claim.state !== "claimed") {
           if (claim.state === "used") {
             setVerifyState("used");
@@ -146,11 +139,13 @@ export default function Wings() {
         }
         session = claim.sessionToken;
         setSessionToken(session);
+        // The token is burned registry-side — record the burn on our side.
+        await markConsumed({ token: claimToken }).catch(() => undefined);
       }
-      const assign: AssignResult = await assignFighter({
-        sessionToken: session,
-        vesselId: selected.id,
-      });
+      const assign: AssignOutcome = await assignFighterChoice(
+        session,
+        selected.id,
+      );
       if (assign.state === "assigned") {
         setFinalAssignment({
           designation: assign.assignment.designation,
@@ -194,10 +189,10 @@ export default function Wings() {
         lead="When the Bridge awards your wings, you choose the fighter you will fly — once, permanently, under your own name on the honor roll."
         primary={
           isAuthenticated
-            ? { label: "The fleet registry", href: "/fleet-registry", variant: "primary" }
+            ? { label: "The assigned pilots", href: "/wings/pilots", variant: "primary" }
             : { label: "Sign in to begin", href: `/auth?returnTo=${encodeURIComponent(authReturnTo)}`, variant: "primary" }
         }
-        secondary={{ label: "How honors are earned", href: "/awards", variant: "ghost" }}
+        secondary={{ label: "How honors are earned", href: "/awards#wings", variant: "ghost" }}
       />
 
       <section className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12 py-10">
@@ -242,8 +237,8 @@ export default function Wings() {
             title="Your wings are already on the roll"
             body={`${memberName || user?.displayName || "Pilot"}, the registry shows a permanent fighter assignment for this claim. There is nothing further to choose — your name stands where it was written.`}
             action={
-              <Link to="/fleet-registry" className="uf-btn uf-btn--primary inline-block">
-                View the fleet registry
+              <Link to="/wings/pilots" className="uf-btn uf-btn--primary inline-block">
+                View the assigned pilots
               </Link>
             }
           />
@@ -265,7 +260,6 @@ export default function Wings() {
             onRetryVessels={() => {
               setVesselsError(null);
               setVessels(null);
-              setTimeout(loadVessels, 0);
             }}
           />
         )}
@@ -332,8 +326,8 @@ function GateStates({
         title="This claim has already been used"
         body="A claim token burns the moment the choice begins. If this was your token, your wings are already written on the honor roll — the assignment is permanent and cannot be redone."
         action={
-          <Link to="/fleet-registry" className="uf-btn uf-btn--ghost inline-block">
-            View the fleet registry
+          <Link to="/wings/pilots" className="uf-btn uf-btn--ghost inline-block">
+            View the assigned pilots
           </Link>
         }
       />
@@ -521,7 +515,7 @@ function SuccessCard({
         ASSIGNED PILOTS honor roll — for as long as the fleet keeps records.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <Link to="/fleet-registry" className="uf-btn uf-btn--primary inline-block">
+        <Link to="/wings/pilots" className="uf-btn uf-btn--primary inline-block">
           See your name on the roll
         </Link>
         <Link to="/awards" className="uf-btn uf-btn--ghost inline-block">
