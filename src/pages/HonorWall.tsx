@@ -1,11 +1,20 @@
+import { useMemo, useState } from "react";
+import { Link } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { SiteShell } from "@/components/uf";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { X } from "lucide-react";
 import { usePageMeta } from "@/hooks/use-page-meta";
 
-// Optional custom insignia: drop the real emblem image at
-// src/assets/honor-insignia.(png|jpg|webp) and it replaces the drawn
-// medallion automatically — no code change needed.
+// Optional bundled insignia: src/assets/honor-insignia.(png|jpg|webp) — used
+// only when the operator has not uploaded the official emblem via the console.
 const INSIGNIA_ASSETS = import.meta.glob("@/assets/honor-insignia.*", {
   eager: true,
   query: "?url",
@@ -14,13 +23,14 @@ const INSIGNIA_ASSETS = import.meta.glob("@/assets/honor-insignia.*", {
 const INSIGNIA_URL = Object.values(INSIGNIA_ASSETS)[0] ?? null;
 
 // ---------------------------------------------------------------------------
-// /honor — the Wall of Honor.
+// /honor — the 1st Inter-Dimensional Fleet FIGHTER HONOR WALL.
 //
-// Matches the approved design: a winged-emblem banner, a caps subtitle
-// strip, and a dense grid of light metallic plaques with dark navy text.
-// Each plaque, centered: rank-abbr + pilot name, full rank, the chosen
-// StarCraft fighter, the custom ship name in quotes, and the auto-sequential
-// hull number. Flat and text-only — the names are the decoration.
+// Recreates the approved command-display reference: a gold-framed navy banner
+// (official insignia, fleet heading, both mottos, Star Force identity panel)
+// above a symmetrical grid of brushed-gold fighter award plates. Every plate
+// is a live database record from the contest/award pipeline — fighter image,
+// rank, pilot, member-chosen callsign, designation, auto-sequential hull
+// number — linking to the pilot's profile. Fighter awards only.
 // ---------------------------------------------------------------------------
 
 type Plaque = {
@@ -28,10 +38,12 @@ type Plaque = {
   memberName: string;
   memberRank: string | null;
   memberId: string;
+  vesselKey: string;
   designation: string;
   shipClass: string | null;
   callsign: string;
   hullNumber: string;
+  imageUrl: string | null;
   awardedAt: number;
 };
 
@@ -42,6 +54,7 @@ const RANK_ABBR: Record<string, string> = {
   Ensign: "ENS.",
   "Lieutenant Junior Grade": "LT.J.G.",
   Lieutenant: "LT.",
+  "Lieutenant Colonel": "LT.COL.",
   "Lieutenant Commander": "LT.CMDR.",
   Major: "MAJ.",
   Commander: "CDR.",
@@ -50,25 +63,26 @@ const RANK_ABBR: Record<string, string> = {
   Admiral: "ADM.",
 };
 
-/** Winged-star medallion — operator upload, bundled asset, or drawn. */
-function WingedEmblem({ customUrl }: { customUrl: string | null }) {
+function rankAbbr(rank: string | null): string | null {
+  if (!rank) return null;
+  return RANK_ABBR[rank] ?? `${rank.toUpperCase()}.`;
+}
+
+/** Official Star Force Honor insignia — operator upload, bundled file, or drawn fallback. */
+function HonorInsignia({ customUrl, className }: { customUrl: string | null; className: string }) {
   const url = customUrl ?? INSIGNIA_URL;
   if (url) {
     return (
       <img
         src={url}
-        alt="Star Force Base 1198 insignia"
-        className="h-24 w-auto mx-auto sm:h-28 drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
+        alt="Official Star Force Honor insignia"
+        className={`${className} drop-shadow-[0_8px_24px_rgba(0,0,0,0.8)]`}
       />
     );
   }
+  // Drawn fallback (used until the operator uploads the official emblem).
   return (
-    <svg
-      viewBox="0 0 240 150"
-      className="h-24 w-auto mx-auto sm:h-28"
-      aria-hidden
-      focusable="false"
-    >
+    <svg viewBox="0 0 240 150" className={className} aria-label="Star Force insignia" role="img">
       <defs>
         <linearGradient id="hof-steel" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#f4f8fc" />
@@ -89,11 +103,8 @@ function WingedEmblem({ customUrl }: { customUrl: string | null }) {
           <stop offset="100%" stopColor="#94a1b6" />
         </linearGradient>
       </defs>
-
-      {/* outer medallion ring */}
       <circle cx="120" cy="70" r="46" fill="none" stroke="url(#hof-ring)" strokeWidth="7" />
       <circle cx="120" cy="70" r="39" fill="none" stroke="#55617a" strokeWidth="1.2" />
-      {/* tick marks on the ring */}
       {Array.from({ length: 24 }).map((_, i) => {
         const a = (i / 24) * Math.PI * 2;
         const r1 = 42.5;
@@ -110,201 +121,384 @@ function WingedEmblem({ customUrl }: { customUrl: string | null }) {
           />
         );
       })}
-      {/* inner dial */}
       <circle cx="120" cy="70" r="33" fill="#10192b" stroke="#33405a" strokeWidth="1.4" />
-      {/* gold orbit ellipse */}
-      <ellipse
-        cx="120"
-        cy="70"
-        rx="34"
-        ry="13"
-        fill="none"
-        stroke="url(#hof-gold)"
-        strokeWidth="1.5"
-        transform="rotate(-18 120 70)"
-      />
-
-      {/* wings — upper pair */}
-      <path
-        d="M112 52 C88 26 48 20 14 34 C40 38 62 48 80 62 C92 70 104 72 114 66 Z"
-        fill="url(#hof-steel)"
-        stroke="#4c5a72"
-        strokeWidth="1.1"
-      />
-      <path
-        d="M128 52 C152 26 192 20 226 34 C200 38 178 48 160 62 C148 70 136 72 126 66 Z"
-        fill="url(#hof-steel)"
-        stroke="#4c5a72"
-        strokeWidth="1.1"
-      />
-      {/* wings — lower pair */}
-      <path
-        d="M112 66 C92 54 64 52 38 62 C60 66 78 74 92 84 C100 90 110 90 116 84 Z"
-        fill="url(#hof-steel2)"
-        stroke="#4c5a72"
-        strokeWidth="1"
-      />
-      <path
-        d="M128 66 C148 54 176 52 202 62 C180 66 162 74 148 84 C140 90 130 90 124 84 Z"
-        fill="url(#hof-steel2)"
-        stroke="#4c5a72"
-        strokeWidth="1"
-      />
-
-      {/* central star */}
-      <path
-        d="M120 30 L126.5 51 L148.5 51.5 L131 64.5 L137.5 85.5 L120 73 L102.5 85.5 L109 64.5 L91.5 51.5 L113.5 51 Z"
-        fill="url(#hof-gold)"
-        stroke="#6d5313"
-        strokeWidth="1.2"
-      />
-      {/* dagger below the star */}
-      <path
-        d="M120 88 L124 100 L120 122 L116 100 Z"
-        fill="url(#hof-steel)"
-        stroke="#4c5a72"
-        strokeWidth="0.9"
-      />
-
-      {/* banner — base name */}
-      <path
-        d="M74 112 C96 122 144 122 166 112 L166 128 C144 138 96 138 74 128 Z"
-        fill="url(#hof-steel2)"
-        stroke="#3f4b61"
-        strokeWidth="1"
-      />
-      <text
-        x="120"
-        y="125"
-        textAnchor="middle"
-        fontSize="11.5"
-        fontWeight="800"
-        letterSpacing="1"
-        fill="#0c1424"
-      >
+      <ellipse cx="120" cy="70" rx="34" ry="13" fill="none" stroke="url(#hof-gold)" strokeWidth="1.5" transform="rotate(-18 120 70)" />
+      <path d="M112 52 C88 26 48 20 14 34 C40 38 62 48 80 62 C92 70 104 72 114 66 Z" fill="url(#hof-steel)" stroke="#4c5a72" strokeWidth="1.1" />
+      <path d="M128 52 C152 26 192 20 226 34 C200 38 178 48 160 62 C148 70 136 72 126 66 Z" fill="url(#hof-steel)" stroke="#4c5a72" strokeWidth="1.1" />
+      <path d="M112 66 C92 54 64 52 38 62 C60 66 78 74 92 84 C100 90 110 90 116 84 Z" fill="url(#hof-steel2)" stroke="#4c5a72" strokeWidth="1" />
+      <path d="M128 66 C148 54 176 52 202 62 C180 66 162 74 148 84 C140 90 130 90 124 84 Z" fill="url(#hof-steel2)" stroke="#4c5a72" strokeWidth="1" />
+      <path d="M120 30 L126.5 51 L148.5 51.5 L131 64.5 L137.5 85.5 L120 73 L102.5 85.5 L109 64.5 L91.5 51.5 L113.5 51 Z" fill="url(#hof-gold)" stroke="#6d5313" strokeWidth="1.2" />
+      <path d="M120 88 L124 100 L120 122 L116 100 Z" fill="url(#hof-steel)" stroke="#4c5a72" strokeWidth="0.9" />
+      <path d="M74 112 C96 122 144 122 166 112 L166 128 C144 138 96 138 74 128 Z" fill="url(#hof-steel2)" stroke="#3f4b61" strokeWidth="1" />
+      <text x="120" y="125" textAnchor="middle" fontSize="11.5" fontWeight="800" letterSpacing="1" fill="#0c1424">
         STARFORCE BASE 1198
       </text>
-      {/* motto ribbon */}
-      <text
-        x="120"
-        y="143"
-        textAnchor="middle"
-        fontSize="8"
-        fontWeight="600"
-        letterSpacing="2.2"
-        fill="#9fb0c8"
-      >
+      <text x="120" y="143" textAnchor="middle" fontSize="8" fontWeight="600" letterSpacing="2.2" fill="#9fb0c8">
         AETERNAM FORTIS
       </text>
     </svg>
   );
 }
 
+/**
+ * Engraved interceptor silhouette — the default plate art. It stands in until
+ * the operator attaches a real image (per fighter or per type in the console);
+ * any attached image overrides it automatically.
+ */
+function FighterMark() {
+  return (
+    <svg viewBox="0 0 120 52" className="h-full w-full" aria-hidden focusable="false">
+      <defs>
+        <linearGradient id="hof-fmk" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#8a6a20" />
+          <stop offset="55%" stopColor="#6d5313" />
+          <stop offset="100%" stopColor="#4a3608" />
+        </linearGradient>
+      </defs>
+      {/* fuselage */}
+      <path
+        d="M8 27 L28 23 L74 21.5 L104 24.5 L110 26 L104 27.5 L74 30.5 L28 31 Z"
+        fill="url(#hof-fmk)"
+        stroke="#3a2a08"
+        strokeWidth="0.8"
+      />
+      {/* canopy */}
+      <path d="M30 24 L44 22.5 L56 23.5 L56 26.5 L32 27 Z" fill="#3a2a08" opacity="0.75" />
+      {/* main delta wings */}
+      <path d="M52 23 L86 8 L98 10 L70 24 Z" fill="url(#hof-fmk)" stroke="#3a2a08" strokeWidth="0.7" />
+      <path d="M52 29 L86 44 L98 42 L70 28 Z" fill="url(#hof-fmk)" stroke="#3a2a08" strokeWidth="0.7" />
+      {/* twin tails */}
+      <path d="M92 25 L102 15 L106 16 L99 25.5 Z" fill="url(#hof-fmk)" stroke="#3a2a08" strokeWidth="0.6" />
+      <path d="M92 27 L102 37 L106 36 L99 26.5 Z" fill="url(#hof-fmk)" stroke="#3a2a08" strokeWidth="0.6" />
+      {/* engine glow */}
+      <circle cx="9.5" cy="27" r="2.4" fill="#c9a13e" opacity="0.9" />
+    </svg>
+  );
+}
+
 export default function HonorWall() {
   usePageMeta({
-    title: "Wall of Honor: Decorated Starfighter Commanders — Star Force Base 1198",
+    title: "1st Inter-Dimensional Fleet — Fighter Honor Wall | Star Force Base 1198",
     description:
-      "Decorated commanders of the Star Force: their rank, their StarCraft fighter, their custom ship name, and their hull number. Written once, forever.",
+      "The official fighter honor wall of the 1st Inter-Dimensional Fleet. Every awarded StarCraft fighter: the pilot, their callsign, the designation, and the permanent hull number.",
   });
 
   const rows = useQuery(api.starfighters.honorWall) as Plaque[] | undefined;
+  const images = useQuery(api.starfighters.getWallImages, {}) as
+    | Record<string, string | null>
+    | undefined;
   const insignia = useQuery(api.starfighters.getWallInsignia, {});
+
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<Plaque | null>(null);
+
+  const visible = useMemo(() => {
+    if (!rows) return [];
+    const q = query.trim().toLowerCase();
+    const list = q
+      ? rows.filter((p) =>
+          [p.memberName, p.callsign, p.designation, p.hullNumber, p.memberRank ?? ""]
+            .join(" ")
+            .toLowerCase()
+            .includes(q),
+        )
+      : rows;
+    // Wall order: hull number ascending, exactly like the dedication ceremony.
+    return [...list].sort((a, b) => a.hullNumber.localeCompare(b.hullNumber));
+  }, [rows, query]);
 
   return (
     <SiteShell>
-      <div className="min-h-[70vh] bg-[#0a1120]">
-        {/* ---- Banner header ---- */}
-        <header className="border-b border-[rgba(148,163,184,0.18)] bg-gradient-to-b from-[#0e1729] to-[#0a1120] px-4 py-8 sm:py-10 text-center">
-          <WingedEmblem customUrl={insignia?.url ?? null} />
-          <h1 className="mt-3 text-xl sm:text-3xl lg:text-4xl font-bold tracking-[0.06em] text-white uppercase">
-            Wall of Honor:{" "}
-            <span className="text-[#dbe4f0]">Decorated Starfighter Commanders</span>
-          </h1>
+      <div
+        className="min-h-screen"
+        style={{
+          background:
+            "radial-gradient(1200px 480px at 50% -120px, rgba(38,64,110,0.5), transparent 70%), linear-gradient(180deg, #060b18 0%, #080f20 45%, #05080f 100%)",
+        }}
+      >
+        {/* ============================== BANNER ============================== */}
+        <header className="px-3 sm:px-6 pt-6 sm:pt-10">
+          <div className="mx-auto max-w-[1400px] rounded-lg border border-[#a8873a] bg-[linear-gradient(160deg,#0b1526_0%,#0d1a30_55%,#081020_100%)] shadow-[0_0_0_1px_rgba(0,0,0,0.6),0_18px_50px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,224,150,0.18)]">
+            {/* corner bolts */}
+            {["left-2 top-2", "right-2 top-2", "left-2 bottom-2", "right-2 bottom-2"].map((pos) => (
+              <span
+                key={pos}
+                aria-hidden
+                className={`absolute ${pos} h-1.5 w-1.5 rounded-full bg-[#d9b45a] shadow-[0_0_6px_rgba(217,180,90,0.8)]`}
+              />
+            ))}
+            <div className="grid gap-6 px-5 py-7 sm:px-10 sm:py-9 lg:grid-cols-[240px_1fr_240px] lg:gap-4 lg:py-10">
+              {/* --- Left motto panel --- */}
+              <div className="hidden lg:flex flex-col items-center justify-center border-x border-[rgba(168,135,58,0.35)] px-4 text-center">
+                <span aria-hidden className="mb-2 text-[#d9b45a]">✦</span>
+                <p className="text-[11px] font-semibold uppercase leading-5 tracking-[0.18em] text-[#e8d9a8]">
+                  The stars
+                  <br />
+                  are not the limit
+                  <br />
+                  they are
+                  <br />
+                  the beginning.
+                </p>
+                <span aria-hidden className="mt-2 text-[#d9b45a]">✦</span>
+              </div>
+
+              {/* --- Center: insignia + heading --- */}
+              <div className="flex flex-col items-center text-center">
+                <HonorInsignia customUrl={insignia?.url ?? null} className="h-24 w-auto sm:h-28 lg:h-32" />
+                <h1 className="mt-4 text-[22px] font-extrabold uppercase leading-tight tracking-[0.05em] sm:text-3xl lg:text-4xl">
+                  <span className="bg-[linear-gradient(180deg,#fdf6d8_0%,#f3dc94_45%,#c9a13e_100%)] bg-clip-text text-transparent [filter:drop-shadow(0_2px_3px_rgba(0,0,0,0.7))]">
+                    1st Inter-Dimensional Fleet
+                  </span>
+                </h1>
+                <div className="mt-2 flex w-full max-w-md items-center gap-3">
+                  <span aria-hidden className="h-px flex-1 bg-[linear-gradient(90deg,transparent,#c9a13e)]" />
+                  <h2 className="text-sm font-bold uppercase tracking-[0.42em] text-[#e8d9a8] sm:text-base sm:tracking-[0.5em]">
+                    Fighter Honor Wall
+                  </h2>
+                  <span aria-hidden className="h-px flex-1 bg-[linear-gradient(270deg,transparent,#c9a13e)]" />
+                </div>
+                {/* mobile motto */}
+                <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#cbb87e] lg:hidden">
+                  “The stars are not the limit. They are the beginning.”
+                </p>
+              </div>
+
+              {/* --- Right identity panel --- */}
+              <div className="hidden lg:flex flex-col items-center justify-center border-x border-[rgba(168,135,58,0.35)] px-4 text-center">
+                <HonorInsignia customUrl={insignia?.url ?? null} className="h-16 w-auto opacity-90" />
+                <p className="mt-2 text-sm font-extrabold uppercase tracking-[0.3em] text-[#e8d9a8]">
+                  Star Force
+                </p>
+                <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-[#c9b678]">
+                  Protect ✦ Defend ✦ Explore
+                </p>
+              </div>
+            </div>
+          </div>
         </header>
 
-        {/* ---- Subtitle strip ---- */}
-        <div className="px-4 pt-5">
-          <p className="mx-auto max-w-4xl rounded-sm border border-[rgba(148,163,184,0.25)] bg-[rgba(59,86,130,0.35)] px-4 py-2 text-center text-[10px] sm:text-xs font-semibold uppercase tracking-[0.12em] text-[#c7d5e8]">
-            Recognizing members who have earned their wings and selected their
-            custom StarCraft fighters
-          </p>
-        </div>
-
-        {/* ---- The wall ---- */}
-        <section className="px-3 sm:px-5 py-6">
-          {rows === undefined ? (
-            <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-2.5 list-none p-0 m-0">
-              {Array.from({ length: 14 }).map((_, i) => (
-                <li
-                  key={i}
-                  className="h-28 rounded-md bg-[rgba(148,163,184,0.12)] animate-pulse"
+        {/* =============================== WALL =============================== */}
+        <section className="px-3 pb-4 pt-6 sm:px-6">
+          <div className="mx-auto max-w-[1400px]">
+            {/* search + count */}
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#c9b678]">
+                {rows === undefined
+                  ? "Consulting the honor ledger…"
+                  : `${visible.length} fighter award${visible.length === 1 ? "" : "s"} on display`}
+              </p>
+              <label className="flex items-center gap-2">
+                <span className="sr-only">Search the honor wall</span>
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search pilot, callsign, hull…"
+                  className="w-56 rounded border border-[rgba(168,135,58,0.4)] bg-[rgba(10,17,32,0.8)] px-3 py-1.5 text-xs text-[#e8e2c8] placeholder:text-[#8b8464] focus:border-[#c9a13e] focus:outline-none"
                 />
-              ))}
-            </ul>
-          ) : rows.length === 0 ? (
-            <div className="mx-auto max-w-lg rounded-md border border-[rgba(148,163,184,0.25)] bg-[rgba(17,26,44,0.7)] p-10 text-center">
-              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[#dbe4f0]">
-                The wall awaits its first plaque
-              </p>
-              <p className="mt-2 text-xs text-[#8fa3bf] leading-5">
-                When the first wings are earned at the Wings ceremony, the
-                pilot's fighter, ship name, and hull number are engraved here —
-                permanently.
-              </p>
+              </label>
             </div>
-          ) : (
-            <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-2.5 list-none p-0 m-0">
-              {rows.map((p) => (
-                <HonorPlaque key={p._id} plaque={p} />
-              ))}
-            </ul>
-          )}
+
+            {rows === undefined ? (
+              <ul className="grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <li
+                    key={i}
+                    className="h-64 animate-pulse rounded-md bg-[rgba(201,161,62,0.08)]"
+                  />
+                ))}
+              </ul>
+            ) : visible.length === 0 ? (
+              <div className="mx-auto max-w-xl rounded-md border border-[rgba(168,135,58,0.4)] bg-[rgba(11,21,38,0.85)] p-10 text-center">
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#e8d9a8]">
+                  {query ? "No plaques match that search" : "The wall awaits its first engraving"}
+                </p>
+                {!query && (
+                  <p className="mt-2 text-xs leading-5 text-[#9aa7bd]">
+                    When a member earns their wings through contests and awards, their
+                    fighter — callsign, designation, and permanent hull number — is
+                    engraved here automatically.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <ul className="grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                {visible.map((p) => (
+                  <HonorPlate key={p._id} plaque={p} image={images?.[p._id] ?? null} onOpen={() => setSelected(p)} />
+                ))}
+              </ul>
+            )}
+
+            {/* ---- Fleet footer strip ---- */}
+            <footer className="mt-8 border-t border-[rgba(168,135,58,0.35)] py-5 text-center">
+              <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#e8d9a8] sm:text-xs">
+                1st Inter-Dimensional Fleet <span className="mx-2 text-[#c9a13e]">★</span> Fighter Wing
+              </p>
+              <p className="mt-1.5 text-[10px] uppercase tracking-[0.18em] text-[#77839b]">
+                Protect • Defend • Explore
+              </p>
+            </footer>
+          </div>
         </section>
       </div>
+
+      {/* -------------------------- plaque detail -------------------------- */}
+      <Dialog open={selected !== null} onOpenChange={(open) => !open && setSelected(null)}>
+        <DialogContent className="max-w-md border-[#a8873a] bg-[#0b1526] text-[#e8e2c8]">
+          {selected && (
+            <>
+              <DialogHeader>
+                <DialogDescription className="text-[10px] uppercase tracking-[0.24em] text-[#c9b678]">
+                  Fighter award record
+                </DialogDescription>
+                <DialogTitle className="text-lg font-bold uppercase tracking-[0.06em] text-[#f3dc94]">
+                  {selected.callsign}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="rounded-md border border-[rgba(168,135,58,0.4)] bg-[linear-gradient(180deg,#f7e7b0,#e2c065_55%,#b98a25)] p-4 text-center">
+                <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#3a2a08]">
+                  {rankAbbr(selected.memberRank) ?? ""} {selected.memberName.toUpperCase()}
+                </p>
+                {selected.memberRank ? (
+                  <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#6b5216]">
+                    {selected.memberRank}
+                  </p>
+                ) : null}
+                <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#5b430f]">
+                  Fighter
+                </p>
+                <p className="text-[11px] font-bold uppercase text-[#3a2a08]">{selected.designation}</p>
+                <p className="mt-1.5 font-mono text-[10px] tracking-[0.12em] text-[#6b5216]">
+                  HULL {selected.hullNumber}
+                </p>
+                <p className="mt-1.5 text-[#c9a13e]" aria-hidden>★</p>
+              </div>
+              <dl className="space-y-1.5 text-xs text-[#c4cbd8]">
+                <div className="flex justify-between gap-3">
+                  <dt className="uppercase tracking-[0.14em] text-[#8fa0bd]">Awarded</dt>
+                  <dd>{new Date(selected.awardedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</dd>
+                </div>
+                {selected.shipClass ? (
+                  <div className="flex justify-between gap-3">
+                    <dt className="uppercase tracking-[0.14em] text-[#8fa0bd]">Class</dt>
+                    <dd>{selected.shipClass}</dd>
+                  </div>
+                ) : null}
+              </dl>
+              {!selected.hullNumber.includes("-D") && (
+                <Link
+                  to={`/u/${selected.memberId}`}
+                  className="uf-btn uf-btn--ghost w-full text-sm"
+                  onClick={() => setSelected(null)}
+                >
+                  View pilot profile
+                </Link>
+              )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </SiteShell>
   );
 }
 
 // ---------------------------------------------------------------------------
-// One plaque — light metallic steel with dark navy centered text.
+// One award plate — brushed-gold metal, fighter art, engraved dark-bronze text.
 // ---------------------------------------------------------------------------
 
-function HonorPlaque({ plaque: p }: { plaque: Plaque }) {
-  const abbr = p.memberRank ? RANK_ABBR[p.memberRank] ?? null : null;
+function HonorPlate({
+  plaque: p,
+  image,
+  onOpen,
+}: {
+  plaque: Plaque;
+  image: string | null;
+  onOpen: () => void;
+}) {
+  const abbr = rankAbbr(p.memberRank);
   const name = p.memberName.toUpperCase();
 
   return (
-    <li
-      className="relative overflow-hidden rounded-md border border-[#96741f] bg-gradient-to-b from-[#fdf3cf] via-[#e9c563] to-[#b98a25] px-2 py-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(122,84,12,0.4),0_2px_6px_rgba(2,6,17,0.55)] transition-shadow hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(122,84,12,0.4),0_2px_10px_rgba(233,197,99,0.35)]"
-    >
-      {/* diagonal polish streak */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-[12%] w-1/3 -skew-x-12 bg-gradient-to-b from-white/45 via-white/15 to-transparent"
-      />
-      {/* pilot line: rank abbr + name */}
-      <p className="relative text-[11px] sm:text-xs font-bold leading-tight text-[#2a1c05] [text-shadow:0_1px_0_rgba(255,248,220,0.5)] break-words">
-        {abbr ? `${abbr} ` : ""}
-        {name}
-      </p>
-      {/* full rank */}
-      {p.memberRank ? (
-        <p className="relative mt-0.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.08em] text-[#6b5216] [text-shadow:0_1px_0_rgba(255,248,220,0.45)]">
-          {p.memberRank}
-        </p>
-      ) : null}
-      {/* the chosen StarCraft fighter */}
-      <p className="relative mt-1.5 text-[10px] sm:text-[11px] font-bold uppercase leading-tight text-[#3a2a08] [text-shadow:0_1px_0_rgba(255,248,220,0.45)] break-words">
-        {p.designation}
-      </p>
-      {/* custom ship name */}
-      <p className="relative mt-1 text-[10px] sm:text-[11px] font-bold text-[#2a1c05] [text-shadow:0_1px_0_rgba(255,248,220,0.5)] break-words">
-        “{p.callsign}”
-      </p>
-      {/* hull number */}
-      <p className="relative mt-1.5 font-mono text-[9px] sm:text-[10px] tracking-[0.08em] text-[#6b5216]">
-        {p.hullNumber}
-      </p>
+    <li className="relative">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="group relative block w-full cursor-pointer overflow-hidden rounded-md border border-[#8a6a20] bg-[linear-gradient(180deg,#f7e7b0_0%,#eed58a_38%,#e2c065_62%,#c39a33_100%)] px-3 pb-3.5 pt-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.75),inset_0_-2px_3px_rgba(122,84,12,0.35),0_3px_8px_rgba(2,6,17,0.6)] transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f3dc94]"
+      >
+        {/* brushed-metal grain + polish */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-40 mix-blend-overlay"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(90deg, rgba(255,255,255,0.28) 0px, rgba(255,255,255,0.28) 1px, rgba(120,90,20,0.10) 1px, rgba(120,90,20,0.10) 2px, rgba(255,255,255,0.12) 2px, rgba(255,255,255,0.12) 4px)",
+          }}
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 left-[16%] w-1/4 -skew-x-12 bg-gradient-to-b from-white/50 via-white/10 to-transparent"
+        />
+        {/* engraved screws */}
+        {["left-1.5 top-1.5", "right-1.5 top-1.5", "left-1.5 bottom-1.5", "right-1.5 bottom-1.5"].map(
+          (pos) => (
+            <span
+              key={pos}
+              aria-hidden
+              className={`absolute ${pos} h-1.5 w-1.5 rounded-full bg-[radial-gradient(circle_at_35%_30%,#fff7dd,#b98a25_70%,#7a540c)] shadow-[inset_0_0_2px_rgba(60,40,5,0.8)]`}
+            />
+          ),
+        )}
+
+        <span className="relative block">
+          {/* the awarded fighter */}
+          <span className="block h-20 w-full overflow-hidden rounded-sm bg-[radial-gradient(120px_48px_at_50%_45%,rgba(10,17,32,0.16),transparent_75%)]">
+            {image ? (
+              <img
+                src={image}
+                alt={`${p.designation} — awarded fighter`}
+                loading="lazy"
+                className="h-full w-full object-contain mix-blend-multiply"
+              />
+            ) : (
+              <FighterMark />
+            )}
+          </span>
+
+          {/* pilot */}
+          <span className="mt-2 block text-[12px] font-extrabold uppercase leading-tight text-[#2a1c05] [text-shadow:0_1px_0_rgba(255,248,220,0.55)]">
+            {abbr ? `${abbr} ` : ""}
+            {name}
+          </span>
+          {p.memberRank ? (
+            <span className="mt-0.5 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#6b5216] [text-shadow:0_1px_0_rgba(255,248,220,0.45)]">
+              {p.memberRank}
+            </span>
+          ) : null}
+
+          {/* member-chosen callsign — engraved in fleet gold */}
+          <span className="mt-1 block text-[11px] font-bold leading-tight text-[#7a540c] [text-shadow:0_1px_0_rgba(255,248,220,0.5)]">
+            “{p.callsign}”
+          </span>
+
+          {/* fighter designation */}
+          <span className="mt-1.5 block text-[9px] font-semibold uppercase tracking-[0.16em] text-[#5b430f]">
+            Fighter
+          </span>
+          <span className="block text-[11px] font-bold uppercase leading-tight text-[#3a2a08] [text-shadow:0_1px_0_rgba(255,248,220,0.45)]">
+            {p.designation}
+          </span>
+
+          {/* hull number */}
+          <span className="mt-1.5 block font-mono text-[10px] tracking-[0.1em] text-[#4a3608]">
+            HULL {p.hullNumber}
+          </span>
+
+          {/* star marking */}
+          <span className="mt-1 block text-[11px] leading-none text-[#8a6a20]" aria-hidden>
+            ★
+          </span>
+        </span>
+      </button>
     </li>
   );
 }

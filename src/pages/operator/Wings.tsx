@@ -109,6 +109,7 @@ export default function OperatorWings() {
       </header>
 
       <WingsRules settings={settings} />
+      <FighterAwardsCard />
       <FighterTypeImages />
       <WallInsigniaCard />
       <DemoWallCard />
@@ -574,6 +575,197 @@ function DemoWallCard() {
           </NeonButton>
         </div>
       </div>
+    </HoloCard>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Fighter award ledger — every fighter ever granted, with the tools the
+// directive requires: moderate callsigns, correct designations, attach the
+// fighter image, revoke/restore. Hull numbers are read-only here by design.
+// ---------------------------------------------------------------------------
+
+function FighterAwardsCard() {
+  const fighters = useQuery(api.starfighters.listAllFighters, { limit: 500 });
+  const setCallsign = useMutation(api.starfighters.adminSetCallsign);
+  const setDesignation = useMutation(api.starfighters.adminSetDesignation);
+  const setImage = useMutation(api.starfighters.adminSetFighterImage);
+  const revoke = useMutation(api.starfighters.adminRevokeFighter);
+  const genUpload = useMutation(api.assets.generateUploadUrl);
+  const [filter, setFilter] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const q = filter.trim().toLowerCase();
+  const rows = (fighters ?? []).filter(
+    (f) =>
+      !q ||
+      [f.memberName, f.callsign, f.designation, f.hullNumber]
+        .join(" ")
+        .toLowerCase()
+        .includes(q),
+  );
+
+  async function uploadImage(id: Id<"starfighters">, file: File) {
+    setBusyId(id);
+    try {
+      const url = await genUpload({ purpose: "fighter_type_image" });
+      const up = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!up.ok) throw new Error(`Upload failed (${up.status}).`);
+      const { storageId } = (await up.json()) as { storageId: Id<"_storage"> };
+      await setImage({ id, imageStorageId: storageId });
+      toast.success("Fighter image attached.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <HoloCard className="p-6 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="uf-eyebrow">Fighter awards — honor wall ledger</h2>
+          <p className="text-sm text-uf-muted mt-1">
+            Every fighter ever granted, in hull order. Callsigns and
+            designations can be corrected; hull numbers are permanent.
+          </p>
+        </div>
+        <input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Filter pilot / callsign / hull…"
+          className="uf-input w-full sm:w-64"
+        />
+      </div>
+
+      {fighters === undefined ? (
+        <p className="mt-4 text-sm text-uf-muted">Loading the ledger…</p>
+      ) : rows.length === 0 ? (
+        <p className="mt-4 text-sm text-uf-muted">No fighter awards yet.</p>
+      ) : (
+        <ul className="mt-4 divide-y divide-[color:var(--uf-border)] list-none p-0 m-0">
+          {rows.map((f) => (
+            <li key={f._id} className={`py-3 flex flex-wrap items-center gap-x-3 gap-y-2 ${f.revokedAt ? "opacity-60" : ""}`}>
+              <div className="min-w-0 flex-1 basis-52">
+                <p className="font-medium truncate text-sm">
+                  <span className="font-mono text-xs text-uf-muted mr-2">{f.hullNumber}</span>
+                  {f.memberName}
+                  {f.demo ? (
+                    <span className="ml-2 text-[10px] uppercase tracking-wider text-uf-muted">sample</span>
+                  ) : null}
+                  {f.revokedAt ? (
+                    <span className="ml-2 text-[10px] uppercase tracking-wider text-red-400">revoked</span>
+                  ) : null}
+                </p>
+                <p className="text-xs text-uf-muted truncate">
+                  {f.designation} · “{f.callsign}”
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  title="Edit callsign"
+                  className="uf-btn uf-btn--ghost h-8 px-2 text-xs cursor-pointer"
+                  onClick={() => {
+                    setEditing(f._id);
+                    setDraft(f.callsign);
+                  }}
+                >
+                  Callsign
+                </button>
+                <button
+                  type="button"
+                  title="Correct fighter designation"
+                  className="uf-btn uf-btn--ghost h-8 px-2 text-xs cursor-pointer"
+                  onClick={() => {
+                    const next = window.prompt("Fighter designation", f.designation);
+                    if (next && next.trim()) {
+                      void setDesignation({ id: f._id, designation: next })
+                        .then(() => toast.success("Designation corrected."))
+                        .catch((e) => toast.error(e instanceof Error ? e.message : "Failed."));
+                    }
+                  }}
+                >
+                  Designation
+                </button>
+                <label
+                  className={`uf-btn uf-btn--ghost h-8 w-8 p-0 ${busyId === f._id ? "opacity-50" : "cursor-pointer"}`}
+                  title="Attach fighter image"
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = "";
+                      if (file) void uploadImage(f._id, file);
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  title={f.revokedAt ? "Restore to the wall" : "Revoke — remove from the public wall"}
+                  className="uf-btn uf-btn--ghost h-8 w-8 p-0 cursor-pointer"
+                  onClick={() => {
+                    const verb = f.revokedAt ? "restore" : "revoke";
+                    if (window.confirm(`${verb === "revoke" ? "Revoke" : "Restore"} hull ${f.hullNumber}?`)) {
+                      void revoke({ id: f._id, revoke: !f.revokedAt })
+                        .then(() => toast.success(`Hull ${f.hullNumber} ${verb}d.`))
+                        .catch((e) => toast.error(e instanceof Error ? e.message : "Failed."));
+                    }
+                  }}
+                >
+                  {f.revokedAt ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                </button>
+              </div>
+              {editing === f._id ? (
+                <div className="flex w-full items-center gap-2">
+                  <input
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value.toUpperCase())}
+                    className="uf-input flex-1 font-mono uppercase"
+                    placeholder="CALLSIGN"
+                  />
+                  <NeonButton
+                    variant="primary"
+                    loading={busyId === f._id}
+                    onClick={async () => {
+                      setBusyId(f._id);
+                      try {
+                        await setCallsign({ id: f._id, callsign: draft });
+                        toast.success("Callsign updated.");
+                        setEditing(null);
+                      } catch (e) {
+                        toast.error(e instanceof Error ? e.message : "Failed.");
+                      } finally {
+                        setBusyId(null);
+                      }
+                    }}
+                  >
+                    Save
+                  </NeonButton>
+                  <button
+                    type="button"
+                    className="uf-btn uf-btn--ghost cursor-pointer"
+                    onClick={() => setEditing(null)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
     </HoloCard>
   );
 }

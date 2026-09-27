@@ -6,6 +6,7 @@ import { SiteShell, PageHero, HoloCard, NeonButton, StatusPill } from "@/compone
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useAuth } from "@/hooks/use-auth";import {
   fetchVessels,
+  fetchVesselImage,
   verifyClaimToken,
   claimWingsToken,
   assignFighterChoice,
@@ -202,11 +203,15 @@ export default function Wings() {
     if (!selected || !finalAssignment) return;
     setStage("confirming");
     try {
+      // Snapshot the registry's own art for this type so the fighter renders
+      // on the Wall of Honor even before an operator image is uploaded.
+      const art = await fetchVesselImage(selected.id).catch(() => null);
       const res = await claimFighter({
         vesselKey: selected.id,
         designation: selected.designation,
         shipClass: selected.shipClass,
         callsign,
+        imageUrl: art ?? undefined,
       });
       setHullResult({ hullNumber: res.hullNumber, callsign: res.callsign });
       setStage("done");

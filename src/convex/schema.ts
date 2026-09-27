@@ -1354,7 +1354,7 @@ const schema = defineSchema(
       designation: v.string(), // type snapshot, e.g. "F 5000X SAGITTARIUS"
       shipClass: v.optional(v.string()), // class snapshot
       callsign: v.string(), // the pilot's chosen ship name, e.g. "DARKSTAR"
-      hullNumber: v.string(), // auto-sequential, e.g. "SFB-1198-077"
+      hullNumber: v.string(), // auto-sequential, e.g. "SF-077" — permanent
       // Dossier image: operator per-type upload overrides the registry's
       // topDown/side-profile image, which is snapshotted at claim time.
       imageUrl: v.optional(v.string()),
@@ -1365,13 +1365,17 @@ const schema = defineSchema(
       // fields stored inline because demo rows have no backing user document,
       // and hull numbers use the D-prefix so they never advance the real
       // auto-sequential counter.
+      // Operator revocation — the plaque leaves the public wall but the
+      // record (and its hull number) is preserved for the historical ledger.
+      revokedAt: v.optional(v.number()),
       demo: v.optional(v.boolean()),
       demoName: v.optional(v.string()),
       demoRank: v.optional(v.string()),
     })
       .index("by_member", ["memberId"])
       .index("by_hull", ["hullNumber"])
-      .index("by_awarded", ["awardedAt"]),
+      .index("by_awarded", ["awardedAt"])
+      .index("by_callsign", ["callsign"]),
 
     // Operator-uploaded dossier image per fighter TYPE (registry vessel).
     // One row per vessel key; the image shows on every pilot's dossier whose

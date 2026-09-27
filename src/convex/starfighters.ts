@@ -6,7 +6,7 @@ import { requireOperatorCapability } from "./admin";
 import { enforceRateLimit } from "./rateLimit";
 import type { Id } from "./_generated/dataModel";
 
-const HULL_PREFIX = "SFB-1198-";
+const HULL_PREFIX = "SF-";
 const CALLSIGN_MAX = 32;
 
 // =========================================================================
@@ -23,13 +23,19 @@ function normalizeCallsign(raw: string): string {
   return raw.trim().toUpperCase().replace(/\s+/g, " ").slice(0, CALLSIGN_MAX);
 }
 
-/** Next auto-sequential hull number: max existing suffix + 1, zero-padded 3. */
+/** Next auto-sequential hull number (SF-001, SF-002, …): max existing REAL
+ *  suffix + 1, zero-padded 3. Demo/sample rows are excluded so preview data
+ *  can never advance the real numbering sequence. */
 async function nextHullNumber(ctx: QueryCtx | MutationCtx): Promise<string> {
   const rows = await ctx.db.query("starfighters").collect();
   let max = 0;
   for (const r of rows) {
-    const m = /^SFB-1198-(\d+)$/.exec(r.hullNumber ?? "");
+    if (r.demo) continue;
+    const m = /^SF-(\d+)$/.exec(r.hullNumber ?? "");
     if (m) max = Math.max(max, parseInt(m[1], 10));
+    // Legacy pre-canon rows (SFB-1198-###) still count toward the sequence.
+    const legacy = /^SFB-1198-(\d+)$/.exec(r.hullNumber ?? "");
+    if (legacy) max = Math.max(max, parseInt(legacy[1], 10));
   }
   return `${HULL_PREFIX}${String(max + 1).padStart(3, "0")}`;
 }
@@ -58,6 +64,7 @@ export const claimMyFighter = mutation({
     shipClass: v.optional(v.string()),
     callsign: v.string(),
     imageUrl: v.optional(v.string()),
+    imageStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
     const me = await getAuthUserId(ctx);
@@ -95,6 +102,7 @@ export const claimMyFighter = mutation({
       callsign,
       hullNumber,
       imageUrl: args.imageUrl?.trim().slice(0, 500) || undefined,
+      imageStorageId: args.imageStorageId || undefined,
       awardedAt,
       awardedBy: me,
     });
@@ -159,6 +167,55 @@ export const grantFighter = mutation({
 });
 
 // ---------------------------------------------------------------------------
+// Callsign — the member-chosen ship name. The pilot may update their own;
+// uniqueness is enforced fleet-wide (it is how the plaque is remembered).
+// ---------------------------------------------------------------------------
+
+export const updateMyCallsign = mutation({
+  args: { callsign: v.string() },
+  handler: async (ctx, args) => {
+    const me = await getAuthUserId(ctx);
+    if (!me) throw new Error("Sign in required.");
+    await enforceRateLimit(
+      ctx,
+      "fighter_callsign",
+      me,
+      5,
+      60 * 60 * 1000,
+      "Too many callsign changes — try again in an hour.",
+    );
+    const callsign = normalizeCallsign(args.callsign);
+    if (callsign.length < 2) {
+      throw new Error("Choose a callsign of at least 2 characters.");
+    }
+    const row = await ctx.db
+      .query("starfighters")
+      .withIndex("by_member", (q) => q.eq("memberId", me))
+      .first();
+    if (!row) throw new Error("You do not hold a fighter yet — earn your wings first.");
+    if (row.demo) throw new Error("Sample plaques cannot be edited.");
+    if (row.callsign !== callsign) {
+      const clash = await ctx.db
+        .query("starfighters")
+        .withIndex("by_callsign", (q) => q.eq("callsign", callsign))
+        .first();
+      if (clash && !clash.demo) {
+        throw new Error(`“${callsign}” is already carved on the wall — choose another.`);
+      }
+      await ctx.db.patch(row._id, { callsign });
+      await ctx.db.insert("auditLog", {
+        actorId: me,
+        action: "fighter.callsign",
+        target: `starfighter:${row._id}`,
+        meta: JSON.stringify({ from: row.callsign, to: callsign }),
+        createdAt: Date.now(),
+      });
+    }
+    return { callsign };
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Wall of Honor — flat, text-focused. No avatars.
 // ---------------------------------------------------------------------------
 
@@ -170,9 +227,10 @@ export const honorWall = query({
       .withIndex("by_awarded")
       .order("desc")
       .take(500);
-    const users = await Promise.all(rows.map((r) => ctx.db.get(r.memberId)));
+    const visible = rows.filter((r) => !r.revokedAt);
+    const users = await Promise.all(visible.map((r) => ctx.db.get(r.memberId)));
     const byId = new Map(users.filter(Boolean).map((u) => [u!._id, u!]));
-    return rows.map((r) => {
+    return visible.map((r) => {
       const u = r.demo ? undefined : byId.get(r.memberId);
       return {
         _id: r._id,
@@ -186,6 +244,7 @@ export const honorWall = query({
         shipClass: r.shipClass ?? null,
         callsign: r.callsign,
         hullNumber: r.hullNumber,
+        imageUrl: r.imageUrl ?? null,
         awardedAt: r.awardedAt,
       };
     });
@@ -282,6 +341,181 @@ export const getTypeImageUrls = query({
   },
 });
 
+/** Resolve a fighter's display image: per-fighter storage upload → legacy
+ *  snapshot URL → the operator per-type upload. The wall also layers in the
+ *  registry's own vessel art client-side as the final fallback. */
+export const getWallImages = query({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("starfighters").collect();
+    const typeRows = await ctx.db.query("fighterTypes").collect();
+    const typeUrls = new Map<string, string | null>();
+    await Promise.all(
+      typeRows.map(async (t) => {
+        typeUrls.set(
+          t.vesselKey,
+          t.imageStorageId ? await ctx.storage.getUrl(t.imageStorageId) : null,
+        );
+      }),
+    );
+    const out: Record<string, string | null> = {};
+    await Promise.all(
+      rows.map(async (r) => {
+        let url: string | null = null;
+        if (r.imageStorageId) url = await ctx.storage.getUrl(r.imageStorageId);
+        url = url ?? r.imageUrl ?? null;
+        if (!url) url = typeUrls.get(r.vesselKey) ?? null;
+        out[r._id] = url;
+      }),
+    );
+    return out;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Operator award management — the Bridge's ledger of every fighter ever
+// granted: edit the callsign (moderation), fix the type designation, attach
+// or replace the per-fighter image, revoke/restore, and inspect hull
+// numbering. Revoked plaques leave the public wall but keep their record.
+// ---------------------------------------------------------------------------
+
+const FIGHTER_MANAGE_CAPS = ["operator", "senior_operator", "community_moderator"];
+
+export const listAllFighters = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    await requireOperatorCapability(ctx, FIGHTER_MANAGE_CAPS);
+    const rows = await ctx.db
+      .query("starfighters")
+      .withIndex("by_hull")
+      .order("asc")
+      .take(Math.min(args.limit ?? 500, 1000));
+    const users = await Promise.all(rows.map((r) => ctx.db.get(r.memberId)));
+    const byId = new Map(users.filter(Boolean).map((u) => [u!._id, u!]));
+    return rows.map((r) => {
+      const u = r.demo ? undefined : byId.get(r.memberId);
+      return {
+        _id: r._id,
+        memberName: r.demo ? r.demoName ?? "Sample pilot" : u?.displayName ?? u?.name ?? "Pilot",
+        memberRank: r.demo ? r.demoRank ?? null : u?.rank ?? null,
+        vesselKey: r.vesselKey,
+        designation: r.designation,
+        callsign: r.callsign,
+        hullNumber: r.hullNumber,
+        awardedAt: r.awardedAt,
+        revokedAt: r.revokedAt ?? null,
+        demo: r.demo ?? false,
+      };
+    });
+  },
+});
+
+/** Operator: moderate a callsign (audit-logged old→new). */
+export const adminSetCallsign = mutation({
+  args: { id: v.id("starfighters"), callsign: v.string() },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, FIGHTER_MANAGE_CAPS);
+    const row = await ctx.db.get(args.id);
+    if (!row) throw new Error("Fighter record not found.");
+    const callsign = normalizeCallsign(args.callsign);
+    if (callsign.length < 2) throw new Error("Callsign must be at least 2 characters.");
+    if (callsign !== row.callsign) {
+      const clash = await ctx.db
+        .query("starfighters")
+        .withIndex("by_callsign", (q) => q.eq("callsign", callsign))
+        .first();
+      if (clash && clash._id !== args.id && !clash.demo) {
+        throw new Error(`Callsign already held by another pilot (hull ${clash.hullNumber}).`);
+      }
+      await ctx.db.patch(args.id, { callsign });
+      await ctx.db.insert("auditLog", {
+        actorId: me,
+        action: "fighter.admin_callsign",
+        target: `starfighter:${args.id}`,
+        meta: JSON.stringify({ from: row.callsign, to: callsign, hull: row.hullNumber }),
+        createdAt: Date.now(),
+      });
+    }
+    return { ok: true };
+  },
+});
+
+/** Operator: fix the fighter type designation (e.g. registry renamed a hull). */
+export const adminSetDesignation = mutation({
+  args: {
+    id: v.id("starfighters"),
+    designation: v.string(),
+    shipClass: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, FIGHTER_MANAGE_CAPS);
+    const row = await ctx.db.get(args.id);
+    if (!row) throw new Error("Fighter record not found.");
+    const designation = args.designation.trim().slice(0, 120);
+    if (!designation) throw new Error("Designation is required.");
+    await ctx.db.patch(args.id, {
+      designation,
+      shipClass: args.shipClass?.trim().slice(0, 120) || undefined,
+    });
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "fighter.admin_designation",
+      target: `starfighter:${args.id}`,
+      meta: JSON.stringify({ designation, hull: row.hullNumber }),
+      createdAt: Date.now(),
+    });
+    return { ok: true };
+  },
+});
+
+/** Operator: attach/replace a per-fighter image (uploaded via assets.generateUploadUrl). */
+export const adminSetFighterImage = mutation({
+  args: { id: v.id("starfighters"), imageStorageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, FIGHTER_MANAGE_CAPS);
+    const row = await ctx.db.get(args.id);
+    if (!row) throw new Error("Fighter record not found.");
+    const prior = row.imageStorageId;
+    await ctx.db.patch(args.id, { imageStorageId: args.imageStorageId });
+    if (prior && prior !== args.imageStorageId) {
+      try {
+        await ctx.storage.delete(prior);
+      } catch {
+        // non-fatal
+      }
+    }
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "fighter.admin_image",
+      target: `starfighter:${args.id}`,
+      meta: JSON.stringify({ hull: row.hullNumber }),
+      createdAt: Date.now(),
+    });
+    return { ok: true };
+  },
+});
+
+/** Operator: revoke — the plaque leaves the public wall, the record stays. */
+export const adminRevokeFighter = mutation({
+  args: { id: v.id("starfighters"), revoke: v.boolean() },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, ["operator", "senior_operator"]);
+    const row = await ctx.db.get(args.id);
+    if (!row) throw new Error("Fighter record not found.");
+    await ctx.db.patch(args.id, {
+      revokedAt: args.revoke ? Date.now() : undefined,
+    });
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: args.revoke ? "fighter.revoke" : "fighter.restore",
+      target: `starfighter:${args.id}`,
+      meta: JSON.stringify({ hull: row.hullNumber }),
+      createdAt: Date.now(),
+    });
+    return { ok: true };
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Sample data (operator) — preview the Wall of Honor before real pilots
 // earn their wings. Demo rows are flagged `demo: true`, use inline display
@@ -290,60 +524,36 @@ export const getTypeImageUrls = query({
 // One click seeds 21 plaques; one click purges every demo row.
 // ---------------------------------------------------------------------------
 
-const DEMO_TYPES = [
-  { vesselKey: "1", designation: "F/A-37 TALON MK.V", shipClass: "Space Superiority Fighter" },
-  { vesselKey: "1", designation: "F/A-37 TALON MK.V", shipClass: "Space Superiority Fighter" },
-  { vesselKey: "2", designation: "F-4S CORSAIR", shipClass: "Strike Fighter" },
-  { vesselKey: "3", designation: "A-9 VANGUARD", shipClass: "Heavy Assault Fighter" },
-  { vesselKey: "4", designation: "F-5D WARHAWK", shipClass: "Interceptor" },
-  { vesselKey: "5", designation: "F-50 WARTHAWK", shipClass: "Gunship" },
-];
+// Sample data (operator) — preview the Wall of Honor before real pilots
+// earn their wings. Demo rows are flagged `demo: true`, use inline display
+// fields (no backing user documents), and carry D-prefixed hull numbers
+// (SF-D001…) so the real auto-sequential counter is untouched.
+// One click seeds the 21-plate reference display; one click purges them.
+// ---------------------------------------------------------------------------
 
-const DEMO_PILOTS: { name: string; rank: string }[] = [
-  { name: "Elias 'Raven' Thorne", rank: "Commander" },
-  { name: "J.G. Sarah 'Phoenix' Jenkins", rank: "Lieutenant Junior Grade" },
-  { name: "Marcus 'Hammer' O'Neill", rank: "Major" },
-  { name: "Elena 'Shadow' Petrova", rank: "Lieutenant" },
-  { name: "David 'Viper' Chen", rank: "Captain" },
-  { name: "Maria 'Rook' Garcia", rank: "Lieutenant Commander" },
-  { name: "Liam 'Blast' O'Connell", rank: "Ensign" },
-  { name: "Priya 'Static' Raman", rank: "Lieutenant" },
-  { name: "Dmitri 'Halo' Volkov", rank: "Captain" },
-  { name: "Yuki 'Ghost' Tanaka", rank: "Ensign" },
-  { name: "Omar 'Talon' Haddad", rank: "Commander" },
-  { name: "Ines 'Comet' Duarte", rank: "Lieutenant" },
-  { name: "Ravi 'Ember' Chandran", rank: "Ensign" },
-  { name: "Sofia 'Vector' Marek", rank: "Major" },
-  { name: "Erik 'Frost' Lindqvist", rank: "Lieutenant" },
-  { name: "Nadia 'Pulse' Okoro", rank: "Captain" },
-  { name: "Tomas 'Slate' Reyes", rank: "Ensign" },
-  { name: "Ava 'Nimbus' Kowalski", rank: "Lieutenant Commander" },
-  { name: "Jae 'Drift' Park", rank: "Lieutenant" },
-  { name: "Mara 'Quill' Voss", rank: "Ensign" },
-  { name: "Colin 'Slipstream' Baird", rank: "Commander" },
+const DEMO_PILOTS: { name: string; rank: string; callsign: string }[] = [
+  { name: "Alexander Seven", rank: "Captain", callsign: "NIGHTHAWK" },
+  { name: "Lisa Craft", rank: "Major", callsign: "IRONJAW" },
+  { name: "Victoria Kelly", rank: "Lieutenant", callsign: "VELVET FANG" },
+  { name: "John Union", rank: "Captain", callsign: "UNION STAR" },
+  { name: "Eric Stark", rank: "Lieutenant Colonel", callsign: "TITANWAKE" },
+  { name: "Daniel Parker", rank: "Lieutenant", callsign: "LONE WOLF" },
+  { name: "Sarah Lin", rank: "Lieutenant", callsign: "LUCKY LIN" },
+  { name: "Marcus Reed", rank: "Lieutenant", callsign: "REDTAIL" },
+  { name: "Kelly Morgan", rank: "Lieutenant", callsign: "MOONRAKER" },
+  { name: "Tyler Brooks", rank: "Lieutenant", callsign: "BULLSEYE" },
+  { name: "Brian Collins", rank: "Lieutenant", callsign: "COLDFRONT" },
+  { name: "Nathan Wright", rank: "Lieutenant", callsign: "DUSTOFF" },
+  { name: "George Lerry", rank: "Lieutenant", callsign: "GOLDCREST" },
+  { name: "Aaron King", rank: "Lieutenant", callsign: "KINGFISHER" },
+  { name: "Jason Hall", rank: "Lieutenant", callsign: "JOKER" },
+  { name: "Stephanie Adams", rank: "Lieutenant", callsign: "STARDUST" },
+  { name: "Robert Evans", rank: "Lieutenant", callsign: "RAVENOUS" },
+  { name: "Christopher Bell", rank: "Lieutenant", callsign: "CHIME" },
+  { name: "Jessica Martin", rank: "Lieutenant", callsign: "HONEY BADGER" },
+  { name: "Michael Davis", rank: "Lieutenant", callsign: "DAVY JONES" },
+  { name: "Rachel Green", rank: "Lieutenant", callsign: "GREEN MAMBA" },
 ];
-
-const DEMO_CALLSIGNS = [
-  "DARKSTAR", "JUNIOR GRADE", "IRONCLAD", "NIGHTHAWK", "VIPER STRIKE",
-  "SKYWARRIOR", "SILVERBOLT", "STARLANCE", "GRAVEDIGGER", "MIDNIGHT",
-  "SUNCHASER", "VOIDRUNNER", "PALE HORSE", "COMETFALL", "EMBERWING",
-  "COLD FRONT", "IRONSIDE", "GOLIATH", "WRAITH", "HOMECOMING", "TEMPER",
-];
-
-function demoRankAbbr(rank: string): string {
-  const map: Record<string, string> = {
-    Commander: "CDR.",
-    "Lieutenant Junior Grade": "LT.J.G.",
-    Major: "MAJ.",
-    Lieutenant: "LT.",
-    Captain: "CPT.",
-    "Lieutenant Commander": "LT.CMDR.",
-    Ensign: "ENS.",
-    Colonel: "COL.",
-  };
-  return map[rank] ?? rank;
-}
-void demoRankAbbr;
 
 async function insertDemoRows(
   ctx: MutationCtx,
@@ -353,16 +563,15 @@ async function insertDemoRows(
   let inserted = 0;
   for (let i = 0; i < DEMO_PILOTS.length; i++) {
     const pilot = DEMO_PILOTS[i];
-    const type = DEMO_TYPES[i % DEMO_TYPES.length];
     await ctx.db.insert("starfighters", {
       // Demo rows never point at a real user; the schema requires the id
       // column, so they reference the issuing operator instead.
       memberId: actorId,
-      vesselKey: type.vesselKey,
-      designation: type.designation,
-      shipClass: type.shipClass,
-      callsign: DEMO_CALLSIGNS[i % DEMO_CALLSIGNS.length],
-      hullNumber: `SFB-1198-D${String(i + 1).padStart(3, "0")}`,
+      vesselKey: "demo-p19-werewolf",
+      designation: "P19 WEREWOLF",
+      shipClass: "Interceptor",
+      callsign: pilot.callsign,
+      hullNumber: `SF-D${String(i + 1).padStart(3, "0")}`,
       awardedAt: now - (DEMO_PILOTS.length - i) * 86_400_000,
       awardedBy: actorId,
       demo: true,
@@ -433,6 +642,22 @@ export const seedDemoWallInternal = internalMutation({
       createdAt: Date.now(),
     });
     return { ok: true, inserted };
+  },
+});
+
+/** CLI/internal path: purge without a user session (demo-row refreshes). */
+export const purgeDemoWallInternal = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("starfighters").collect();
+    let removed = 0;
+    for (const r of rows) {
+      if (r.demo) {
+        await ctx.db.delete(r._id);
+        removed++;
+      }
+    }
+    return { removed };
   },
 });
 
