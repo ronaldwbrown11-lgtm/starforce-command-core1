@@ -28,6 +28,7 @@ import {
 import { ScrollReveal, ScaleReveal } from "@/hooks/use-scroll-reveal";
 import { LiveCommandStrip } from "@/components/widgets/LiveCommandStrip";
 import { VOICE } from "@/lib/voice";
+import goldPlateUrl from "@/assets/gold-plate-texture.jpg";
 
 import { usePageMeta } from "@/hooks/use-page-meta";
 // ---- Theming: small palette of gradient cover plates ---------------------
@@ -43,10 +44,13 @@ function coverAt(i: number) {
 }
 
 // =========================================================================
-// Latest Wings Earner — the gold "lace" ribbon under the hero. Announces
-// the newest pilot to earn their wings (latest non-revoked starfighter
-// claim, via api.starfighters.latestWingsEarner). A slim placeholder holds
-// the layout while loading; the ribbon stays furled until someone earns it.
+// Latest Wings Earner — the gold "lace" ribbon, a slim strip in the page
+// flow below the Live Command Strip. Announces the newest pilot to earn
+// their wings (latest non-revoked starfighter claim, via
+// api.starfighters.latestWingsEarner). The card wears the same engraved
+// gold-plate texture as the Wall of Honor plaques (dark bronze text on
+// brushed brass). A slim placeholder holds the layout while loading; the
+// ribbon stays furled until someone earns it.
 // =========================================================================
 
 type WingsEarner = {
@@ -70,9 +74,9 @@ function WingsEarnerRibbon({
   // Loading — keep the layout stable with a slim skeleton band.
   if (earner === undefined) {
     return (
-      <div className="relative px-4 pb-10 sm:px-6 lg:px-12" aria-hidden>
+      <div className="relative px-4 pb-8 sm:px-6 lg:px-12" aria-hidden>
         <div className="uf-container">
-          <div className="uf-skeleton h-[76px] rounded-md" />
+          <div className="uf-skeleton h-[56px] rounded-md" />
         </div>
       </div>
     );
@@ -84,114 +88,86 @@ function WingsEarnerRibbon({
   return (
     <motion.section
       aria-labelledby="uf-wings-ribbon-title"
-      className="relative px-4 pb-10 sm:px-6 lg:px-12"
+      className="relative px-4 pb-8 sm:px-6 lg:px-12"
       initial={reducedMotion ? false : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
     >
       <div className="uf-container">
         <div
-          className="relative overflow-hidden rounded-md border border-[rgba(230,168,23,0.40)]"
+          className="relative overflow-hidden rounded-md border border-[#8a6a20] shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
           style={{
-            background:
-              "linear-gradient(120deg, rgba(230,168,23,0.16), rgba(11,18,32,0.72) 45%, rgba(255,179,0,0.10))",
+            // The gold plate IS the background — same asset as the Wall of
+            // Honor plaques, with a soft sheen gradient for metal depth.
+            backgroundImage: `linear-gradient(180deg, rgba(255,244,200,0.50) 0%, rgba(255,255,255,0) 35%, rgba(90,60,10,0.26) 100%), url(${goldPlateUrl})`,
+            backgroundSize: "100% 100%, cover",
+            backgroundPosition: "center",
           }}
         >
-          {/* Ribbon weave — faint diagonal gold thread */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                "repeating-linear-gradient(115deg, rgba(230,168,23,0.05) 0 1px, transparent 1px 9px)",
-            }}
-          />
-          {/* Lace trim — dotted gold scallops along the top & bottom edges */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-[7px]"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 7px 0, rgba(230,168,23,0.55) 2px, transparent 2.6px)",
-              backgroundSize: "14px 7px",
-              backgroundRepeat: "repeat-x",
-            }}
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-[7px]"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 7px 7px, rgba(230,168,23,0.55) 2px, transparent 2.6px)",
-              backgroundSize: "14px 7px",
-              backgroundRepeat: "repeat-x",
-            }}
-          />
-          {/* Slow gold light sweep (skipped for reduced-motion users) */}
-          {!reducedMotion && (
-            <motion.div
-              aria-hidden
-              className="pointer-events-none absolute bottom-0 top-0 w-1/3"
-              style={{
-                background:
-                  "linear-gradient(100deg, transparent, rgba(230,168,23,0.12), transparent)",
-              }}
-              initial={{ x: "-120%" }}
-              animate={{ x: "420%" }}
-              transition={{
-                duration: 6.5,
-                repeat: Infinity,
-                ease: "linear",
-                repeatDelay: 3.5,
-              }}
-            />
-          )}
-
-          <div className="relative flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4 sm:px-6">
-            {/* Wings medallion */}
+          <div className="relative flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 sm:px-5">
+            {/* Wings medallion — engraved bronze on the plate */}
             <span
               aria-hidden
-              className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-uf-gold"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
               style={{
-                border: "1px solid rgba(230,168,23,0.55)",
-                background:
-                  "radial-gradient(closest-side, rgba(230,168,23,0.20), rgba(0,0,0,0.35))",
-                boxShadow: "0 0 18px rgba(230,168,23,0.22)",
+                border: "1.5px solid #4a3608",
+                background: "rgba(90,60,10,0.14)",
+                color: "#3a2a08",
               }}
             >
-              <Feather className="h-5 w-5" />
+              <Feather className="h-4 w-4" />
             </span>
 
             <div className="min-w-0 flex-1">
               <span
                 id="uf-wings-ribbon-title"
-                className="uf-eyebrow uf-eyebrow--gold flex items-center gap-2"
+                className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em]"
+                style={{ color: "#4a3608" }}
               >
                 <span aria-hidden>◆</span>
                 Latest Wings Earner
                 <span aria-hidden>◆</span>
               </span>
-              <p className="mt-1 truncate text-lg font-semibold">
+              <p
+                className="mt-0.5 truncate text-sm font-bold"
+                style={{ color: "#2a1c05" }}
+              >
                 {earner.memberRank ? `${earner.memberRank} ` : ""}
                 {earner.memberName}
               </p>
-              <p className="uf-hud mt-0.5 truncate text-xs text-uf-muted">
+              <p
+                className="uf-hud mt-0.5 truncate text-[11px]"
+                style={{ color: "#5b430f" }}
+              >
                 “{earner.callsign}” · {earner.hullNumber} · {earner.designation}
                 {" · "}
-                <span className="text-uf-gold">
+                <span style={{ color: "#3a2a08" }}>
                   wings earned {timeAgo(earner.awardedAt)}
                 </span>
               </p>
             </div>
 
-            <div className="flex w-full items-center gap-3 sm:w-auto">
+            <div className="flex w-full items-center gap-2 sm:w-auto">
               <Link
                 to={`/u/${earner.memberId}`}
-                className="uf-btn uf-btn--gold uf-btn--sm"
+                className="uf-btn uf-btn--sm"
+                style={{
+                  background: "#2a1c05",
+                  color: "#ffedc2",
+                  borderColor: "transparent",
+                }}
               >
                 Salute the pilot
               </Link>
-              <Link to="/honor" className="uf-btn uf-btn--ghost uf-btn--sm">
+              <Link
+                to="/honor"
+                className="uf-btn uf-btn--sm"
+                style={{
+                  background: "transparent",
+                  color: "#3a2a08",
+                  borderColor: "#4a3608",
+                }}
+              >
                 <span>Wall of Honor</span>
                 <ChevronRight className="h-3.5 w-3.5" aria-hidden />
               </Link>
@@ -268,11 +244,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* =========== LATEST WINGS EARNER (gold ribbon) =================== */}
-      <WingsEarnerRibbon earner={latestWings} />
-
       {/* =========== LIVE COMMAND STRIP (telemetry + sector chatter) ====== */}
       <LiveCommandStrip />
+
+      {/* =========== LATEST WINGS EARNER (gold lace ribbon) =============== */}
+      <WingsEarnerRibbon earner={latestWings} />
 
       {/* =========== FEATURED STORIES (3-col) ============ */}
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
