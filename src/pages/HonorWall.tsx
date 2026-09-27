@@ -27,7 +27,7 @@ const INSIGNIA_URL = Object.values(INSIGNIA_ASSETS)[0] ?? null;
 //
 //   1. honor-wall-blank.jpg      ← BEST: the reference artwork with EMPTY
 //      (gold plates, no text/ships) plates. The live database records are
-//      rendered onto the 21 plate slots, so it looks exactly like the
+//      rendered onto the 24 plate slots, so it looks exactly like the
 //      reference AND updates automatically as members earn wings.
 //
 //   2. honor-wall-reference.jpg  ← EXACT COPY: the finished mockup shown
@@ -35,15 +35,31 @@ const INSIGNIA_URL = Object.values(INSIGNIA_ASSETS)[0] ?? null;
 //
 //   3. (no file)                 ← the built gold display case below.
 //
-// === CALIBRATION (blank template overlay) — tweak these if the overlay ===
-// === sits off the plates; they are percentages of the image dimensions ===
+// === CALIBRATION (blank template overlay) — plate grid measured       ===
+// === pixel-by-pixel from the artwork (1533×1022): 4 rows × 6 plates.  ===
+// === Each span is the gold plate surface as [start%, end%] of the     ===
+// === image; rows run top→bottom, cols left→right.                     ===
 // ===========================================================================
 const BLANK_SRC = "/assets/honor-wall-blank.jpg";
 const REFERENCE_SRC = "/assets/honor-wall-reference.jpg";
-const WALL_AREA = { left: 4.3, top: 34.0, right: 95.7, bottom: 85.3 }; // % of image
-const COLS = 7;
-const ROWS = 3;
-const CELL_INSET = 0.55; // % of image, padding inside each plate slot
+const PLATE_ROWS: Array<[number, number]> = [
+  [31.6, 44.0],
+  [45.3, 57.2],
+  [58.4, 70.25],
+  [71.4, 83.35],
+];
+const PLATE_COLS: Array<[number, number]> = [
+  [2.74, 15.72],
+  [17.16, 31.05],
+  [32.42, 46.12],
+  [47.55, 61.38],
+  [62.82, 76.97],
+  [78.7, 94.2],
+];
+const CELL_INSET = 0.6; // % of image, padding inside each plate slot
+const ROWS = PLATE_ROWS.length;
+const COLS = PLATE_COLS.length;
+const SLOTS = ROWS * COLS; // 24 plate slots in the artwork
 
 type Plaque = {
   _id: string;
@@ -234,25 +250,24 @@ function TemplateOverlay({
     () => [...rows].sort((a, b) => a.hullNumber.localeCompare(b.hullNumber)),
     [rows],
   );
-  // The artwork carries the first 21 awards; every award beyond that
+  // The artwork carries the first 24 awards; every award beyond that
   // continues below in matching textured plates — the wall grows forever.
-  const onImage = ordered.slice(0, COLS * ROWS);
-  const overflow = ordered.slice(COLS * ROWS);
-  // Position each slot from the calibration constants.
-  const slots = useMemo(() => {
-    const w = (WALL_AREA.right - WALL_AREA.left) / COLS;
-    const h = (WALL_AREA.bottom - WALL_AREA.top) / ROWS;
-    return Array.from({ length: COLS * ROWS }, (_, i) => {
-      const c = i % COLS;
-      const r = Math.floor(i / COLS);
-      return {
-        left: WALL_AREA.left + c * w + CELL_INSET / 2,
-        top: WALL_AREA.top + r * h + CELL_INSET / 2,
-        width: w - CELL_INSET,
-        height: h - CELL_INSET,
-      };
-    });
-  }, []);
+  const onImage = ordered.slice(0, SLOTS);
+  const overflow = ordered.slice(SLOTS);
+  // Position each slot on its measured plate rectangle (row-major: hull
+  // order fills left→right, top→bottom, matching the reference mockup).
+  const slots = useMemo(
+    () =>
+      PLATE_ROWS.flatMap(([y0, y1]) =>
+        PLATE_COLS.map(([x0, x1]) => ({
+          left: x0 + CELL_INSET / 2,
+          top: y0 + CELL_INSET / 2,
+          width: x1 - x0 - CELL_INSET,
+          height: y1 - y0 - CELL_INSET,
+        })),
+      ),
+    [],
+  );
 
   return (
     <div className="relative mx-auto w-full max-w-[1500px]" style={{ containerType: "inline-size" }}>
@@ -312,8 +327,8 @@ function TemplateOverlay({
             }}
             aria-label={`${abbr ?? ""} ${p.memberName} — ${p.designation}, hull ${p.hullNumber}`}
           >
-            {/* fighter art — upper 55% of the plate */}
-            <span className="absolute inset-x-[6%] top-[2%] h-[52%]">
+            {/* fighter art — upper portion of the plate */}
+            <span className="absolute inset-x-[6%] top-[3%] h-[38%]">
               {img ? (
                 <img
                   src={img}
@@ -328,32 +343,32 @@ function TemplateOverlay({
             {/* engraved text — lower portion, scales with the image width */}
             <span
               className="block w-full px-[4%] font-extrabold uppercase leading-[1.25] text-[#16203a]"
-              style={{ fontSize: "clamp(7px, 1.35cqw, 15px)" }}
+              style={{ fontSize: "clamp(7px, 1.15cqw, 13px)" }}
             >
               {abbr ? `${abbr} ` : ""}
               {p.memberName}
             </span>
             <span
-              className="block w-full px-[4%] font-semibold uppercase leading-[1.2] text-[#22304f]"
-              style={{ fontSize: "clamp(6px, 1.05cqw, 12px)" }}
+              className="block w-full truncate px-[4%] font-semibold uppercase leading-[1.2] text-[#22304f]"
+              style={{ fontSize: "clamp(6px, 0.95cqw, 11px)" }}
             >
-              Fighter
+              {p.callsign}
             </span>
             <span
               className="block w-full truncate px-[4%] font-bold uppercase leading-[1.25] text-[#16203a]"
-              style={{ fontSize: "clamp(6.5px, 1.2cqw, 13px)" }}
+              style={{ fontSize: "clamp(6px, 1.05cqw, 12px)" }}
             >
               {p.designation}
             </span>
             <span
               className="block w-full px-[4%] font-mono leading-[1.4] text-[#1c2740]"
-              style={{ fontSize: "clamp(6px, 1.05cqw, 12px)" }}
+              style={{ fontSize: "clamp(6px, 0.9cqw, 11px)" }}
             >
               HULL {p.hullNumber}
             </span>
             <span
               className="block leading-none text-[#1c2740]"
-              style={{ fontSize: "clamp(7px, 1.2cqw, 13px)" }}
+              style={{ fontSize: "clamp(6px, 1cqw, 12px)" }}
               aria-hidden
             >
               ★
@@ -410,7 +425,7 @@ export default function HonorWall() {
           <div className="mx-auto max-w-[1500px]">
             {templateMode === "blank" ? (
               rows === undefined ? (
-                <div className="animate-pulse rounded-sm bg-[rgba(201,161,62,0.08)]" style={{ aspectRatio: "1456 / 944" }} />
+                <div className="animate-pulse rounded-sm bg-[rgba(201,161,62,0.08)]" style={{ aspectRatio: "1533 / 1022" }} />
               ) : (
                 <TemplateOverlay
                   rows={visible}
