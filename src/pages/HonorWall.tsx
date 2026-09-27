@@ -228,7 +228,7 @@ function FighterMark() {
 }
 
 // ---------------------------------------------------------------------------
-// Mode 1 — BLANK TEMPLATE OVERLAY: live records rendered onto the 21 slots.
+// Mode 1 — BLANK TEMPLATE OVERLAY: live records rendered onto the 24 slots.
 // ---------------------------------------------------------------------------
 
 function TemplateOverlay({
@@ -256,59 +256,33 @@ function TemplateOverlay({
   const overflow = ordered.slice(SLOTS);
   // Position each slot on its measured plate rectangle (row-major: hull
   // order fills left→right, top→bottom, matching the reference mockup).
+  // Percentages resolve against the image box ONLY (the artwork is wrapped
+  // in its own relative container below), so top/height are exact in every
+  // browser regardless of what flows under the artwork.
   const slots = useMemo(
     () =>
       PLATE_ROWS.flatMap(([y0, y1]) =>
         PLATE_COLS.map(([x0, x1]) => ({
-          left: x0 + CELL_INSET / 2,
-          top: y0 + CELL_INSET / 2,
-          width: x1 - x0 - CELL_INSET,
-          height: y1 - y0 - CELL_INSET,
+          left: `${(x0 + CELL_INSET / 2).toFixed(3)}%`,
+          top: `${(y0 + CELL_INSET / 2).toFixed(3)}%`,
+          width: `${(x1 - x0 - CELL_INSET).toFixed(3)}%`,
+          height: `${(y1 - y0 - CELL_INSET).toFixed(3)}%`,
         })),
       ),
     [],
   );
 
   return (
-    <div className="relative mx-auto w-full max-w-[1500px]" style={{ containerType: "inline-size" }}>
-      <img
-        src={BLANK_SRC}
-        alt="1st Inter-Dimensional Fleet Fighter Honor Wall"
-        className="block w-full rounded-sm shadow-[0_30px_80px_rgba(0,0,0,0.8)]"
-      />
-      {/* live ledger controls — kept below the artwork so it stays untouched */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#c9b678]">
-          {total} fighter award{total === 1 ? "" : "s"} engraved · live ledger
-        </p>
-        <label className="flex items-center gap-2">
-          <span className="sr-only">Search the honor wall</span>
-          <input
-            value={query}
-            onChange={(e) => onQuery(e.target.value)}
-            placeholder="Search pilot, callsign, hull…"
-            className="w-52 rounded border border-[rgba(168,135,58,0.4)] bg-[rgba(7,12,24,0.85)] px-3 py-1.5 text-xs text-[#e8e2c8] placeholder:text-[#8b8464] focus:border-[#c9a13e] focus:outline-none sm:w-64"
-          />
-        </label>
-      </div>
-      {overflow.length > 0 && (
-        <div className="mt-5">
-          <p className="mb-3 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-[#c9b678]">
-            ✦ Continuation wing ✦
-          </p>
-          <ul className="grid list-none grid-cols-1 gap-3.5 p-0 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7">
-            {overflow.map((p) => (
-              <HonorPlate
-                key={p._id}
-                plaque={p}
-                image={images?.[p._id] ?? null}
-                onOpen={() => onOpen(p)}
-              />
-            ))}
-          </ul>
-        </div>
-      )}
-      {slots.map((s, i) => {
+    <div className="mx-auto w-full max-w-[1500px]">
+      {/* Positioned box wraps ONLY the artwork: the absolute slot percentages
+          resolve against the image itself (box height === image height). */}
+      <div className="relative" style={{ containerType: "inline-size" }}>
+        <img
+          src={BLANK_SRC}
+          alt="1st Inter-Dimensional Fleet Fighter Honor Wall"
+          className="block w-full rounded-sm shadow-[0_30px_80px_rgba(0,0,0,0.8)]"
+        />
+        {slots.map((s, i) => {
         const p = ordered[i];
         if (!p) return null;
         const img = images?.[p._id] ?? null;
@@ -320,10 +294,10 @@ function TemplateOverlay({
             onClick={() => onOpen(p)}
             className="group absolute flex cursor-pointer flex-col items-center justify-end overflow-hidden rounded-[2px] text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f3dc94]"
             style={{
-              left: `${s.left}%`,
-              top: `${s.top}%`,
-              width: `${s.width}%`,
-              height: `${s.height}%`,
+              left: s.left,
+              top: s.top,
+              width: s.width,
+              height: s.height,
             }}
             aria-label={`${abbr ?? ""} ${p.memberName} — ${p.designation}, hull ${p.hullNumber}`}
           >
@@ -376,6 +350,39 @@ function TemplateOverlay({
           </button>
         );
       })}
+      </div>
+      {/* live ledger controls — kept below the artwork so it stays untouched */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#c9b678]">
+          {total} fighter award{total === 1 ? "" : "s"} engraved · live ledger
+        </p>
+        <label className="flex items-center gap-2">
+          <span className="sr-only">Search the honor wall</span>
+          <input
+            value={query}
+            onChange={(e) => onQuery(e.target.value)}
+            placeholder="Search pilot, callsign, hull…"
+            className="w-52 rounded border border-[rgba(168,135,58,0.4)] bg-[rgba(7,12,24,0.85)] px-3 py-1.5 text-xs text-[#e8e2c8] placeholder:text-[#8b8464] focus:border-[#c9a13e] focus:outline-none sm:w-64"
+          />
+        </label>
+      </div>
+      {overflow.length > 0 && (
+        <div className="mt-5">
+          <p className="mb-3 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-[#c9b678]">
+            ✦ Continuation wing ✦
+          </p>
+          <ul className="grid list-none grid-cols-1 gap-3.5 p-0 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7">
+            {overflow.map((p) => (
+              <HonorPlate
+                key={p._id}
+                plaque={p}
+                image={images?.[p._id] ?? null}
+                onOpen={() => onOpen(p)}
+              />
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
