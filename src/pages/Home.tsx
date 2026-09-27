@@ -72,12 +72,13 @@ function WingsEarnerBox({
 }) {
   const reducedMotion = useReducedMotion();
 
-  // Loading — hold a Submit-Your-Story-sized slot so the layout doesn't jump.
+  // Loading — hold a box-sized slot (half the container width) so the
+  // layout doesn't jump.
   if (earner === undefined || enabled === undefined) {
     return (
       <div className="relative px-4 pb-8 sm:px-6 lg:px-12" aria-hidden>
         <div className="uf-container">
-          <div className="uf-skeleton h-[228px] rounded-md" />
+          <div className="uf-skeleton mx-auto h-[228px] w-full max-w-3xl rounded-md" />
         </div>
       </div>
     );
@@ -101,7 +102,7 @@ function WingsEarnerBox({
     >
       <div className="uf-container">
         <div
-          className="p-6 md:p-10 text-center rounded-md border border-[color:var(--uf-border)]"
+          className="mx-auto w-full max-w-3xl p-6 md:p-10 text-center rounded-md border border-[color:var(--uf-border)]"
           style={{
             // The gold plate IS the background — same asset as the Wall of
             // Honor plaques, with a soft sheen gradient for metal depth.
