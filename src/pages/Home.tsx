@@ -2,16 +2,19 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import {
   ArrowRight,
+  Award,
   BookOpen,
   ChevronRight,
   Compass,
   Crown,
+  Feather,
   Globe,
   Play,
   Radio,
   Sparkles,
   Users,
 } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -39,6 +42,167 @@ function coverAt(i: number) {
   return COVERS[i % COVERS.length];
 }
 
+// =========================================================================
+// Latest Wings Earner — the gold "lace" ribbon under the hero. Announces
+// the newest pilot to earn their wings (latest non-revoked starfighter
+// claim, via api.starfighters.latestWingsEarner). A slim placeholder holds
+// the layout while loading; the ribbon stays furled until someone earns it.
+// =========================================================================
+
+type WingsEarner = {
+  _id: string;
+  memberName: string;
+  memberRank: string | null;
+  memberId: string;
+  callsign: string;
+  designation: string;
+  hullNumber: string;
+  awardedAt: number;
+};
+
+function WingsEarnerRibbon({
+  earner,
+}: {
+  earner: WingsEarner | null | undefined;
+}) {
+  const reducedMotion = useReducedMotion();
+
+  // Loading — keep the layout stable with a slim skeleton band.
+  if (earner === undefined) {
+    return (
+      <div className="relative px-4 pb-10 sm:px-6 lg:px-12" aria-hidden>
+        <div className="uf-container">
+          <div className="uf-skeleton h-[76px] rounded-md" />
+        </div>
+      </div>
+    );
+  }
+
+  // No wings earned yet — the ribbon stays furled.
+  if (earner === null) return null;
+
+  return (
+    <motion.section
+      aria-labelledby="uf-wings-ribbon-title"
+      className="relative px-4 pb-10 sm:px-6 lg:px-12"
+      initial={reducedMotion ? false : { opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <div className="uf-container">
+        <div
+          className="relative overflow-hidden rounded-md border border-[rgba(230,168,23,0.40)]"
+          style={{
+            background:
+              "linear-gradient(120deg, rgba(230,168,23,0.16), rgba(11,18,32,0.72) 45%, rgba(255,179,0,0.10))",
+          }}
+        >
+          {/* Ribbon weave — faint diagonal gold thread */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "repeating-linear-gradient(115deg, rgba(230,168,23,0.05) 0 1px, transparent 1px 9px)",
+            }}
+          />
+          {/* Lace trim — dotted gold scallops along the top & bottom edges */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-[7px]"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 7px 0, rgba(230,168,23,0.55) 2px, transparent 2.6px)",
+              backgroundSize: "14px 7px",
+              backgroundRepeat: "repeat-x",
+            }}
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-[7px]"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 7px 7px, rgba(230,168,23,0.55) 2px, transparent 2.6px)",
+              backgroundSize: "14px 7px",
+              backgroundRepeat: "repeat-x",
+            }}
+          />
+          {/* Slow gold light sweep (skipped for reduced-motion users) */}
+          {!reducedMotion && (
+            <motion.div
+              aria-hidden
+              className="pointer-events-none absolute bottom-0 top-0 w-1/3"
+              style={{
+                background:
+                  "linear-gradient(100deg, transparent, rgba(230,168,23,0.12), transparent)",
+              }}
+              initial={{ x: "-120%" }}
+              animate={{ x: "420%" }}
+              transition={{
+                duration: 6.5,
+                repeat: Infinity,
+                ease: "linear",
+                repeatDelay: 3.5,
+              }}
+            />
+          )}
+
+          <div className="relative flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4 sm:px-6">
+            {/* Wings medallion */}
+            <span
+              aria-hidden
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-uf-gold"
+              style={{
+                border: "1px solid rgba(230,168,23,0.55)",
+                background:
+                  "radial-gradient(closest-side, rgba(230,168,23,0.20), rgba(0,0,0,0.35))",
+                boxShadow: "0 0 18px rgba(230,168,23,0.22)",
+              }}
+            >
+              <Feather className="h-5 w-5" />
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <span
+                id="uf-wings-ribbon-title"
+                className="uf-eyebrow uf-eyebrow--gold flex items-center gap-2"
+              >
+                <span aria-hidden>◆</span>
+                Latest Wings Earner
+                <span aria-hidden>◆</span>
+              </span>
+              <p className="mt-1 truncate text-lg font-semibold">
+                {earner.memberRank ? `${earner.memberRank} ` : ""}
+                {earner.memberName}
+              </p>
+              <p className="uf-hud mt-0.5 truncate text-xs text-uf-muted">
+                “{earner.callsign}” · {earner.hullNumber} · {earner.designation}
+                {" · "}
+                <span className="text-uf-gold">
+                  wings earned {timeAgo(earner.awardedAt)}
+                </span>
+              </p>
+            </div>
+
+            <div className="flex w-full items-center gap-3 sm:w-auto">
+              <Link
+                to={`/u/${earner.memberId}`}
+                className="uf-btn uf-btn--gold uf-btn--sm"
+              >
+                Salute the pilot
+              </Link>
+              <Link to="/honor" className="uf-btn uf-btn--ghost uf-btn--sm">
+                <span>Wall of Honor</span>
+                <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.section>
+  );
+}
+
 export default function Home() {
   const stats = useQuery(api.content.getHomeStats);
   const featuredStories = useQuery(api.content.listFeaturedStories, { limit: 2 });
@@ -48,6 +212,7 @@ export default function Home() {
   const forumThreads = useQuery(api.groups.trendingForumThreads, { limit: 3 });
   const groups = useQuery(api.groups.listGroups, {});
   const fleetReports = useQuery(api.content.listFleetReports, { limit: 1 });
+  const latestWings = useQuery(api.starfighters.latestWingsEarner, {});
 
   const primaryStory = featuredStories?.[0] ?? null;
   const secondaryStory = featuredStories?.[1] ?? null;
@@ -102,6 +267,9 @@ export default function Home() {
           />
         </div>
       </section>
+
+      {/* =========== LATEST WINGS EARNER (gold ribbon) =================== */}
+      <WingsEarnerRibbon earner={latestWings} />
 
       {/* =========== LIVE COMMAND STRIP (telemetry + sector chatter) ====== */}
       <LiveCommandStrip />

@@ -251,6 +251,31 @@ export const honorWall = query({
   },
 });
 
+export const latestWingsEarner = query({
+  args: {},
+  handler: async (ctx) => {
+    const row = await ctx.db
+      .query("starfighters")
+      .withIndex("by_awarded")
+      .order("desc")
+      .first();
+    if (!row || row.revokedAt) return null;
+    const u = row.demo ? undefined : await ctx.db.get(row.memberId);
+    return {
+      _id: row._id,
+      memberName: row.demo
+        ? row.demoName ?? "Pilot"
+        : u?.displayName ?? u?.name ?? "Pilot",
+      memberRank: row.demo ? row.demoRank ?? null : u?.rank ?? null,
+      memberId: row.memberId,
+      callsign: row.callsign,
+      designation: row.designation,
+      hullNumber: row.hullNumber,
+      awardedAt: row.awardedAt,
+    };
+  },
+});
+
 // ---------------------------------------------------------------------------
 // My fighter — dossier surface.
 // ---------------------------------------------------------------------------
