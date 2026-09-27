@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Switch } from "@/components/ui/switch";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -318,6 +319,7 @@ function WingsRules({
         xpThreshold: number;
         xpRank: string;
         reportThreshold: number;
+        homepageRibbonEnabled: boolean;
         updatedAt: number | null;
       }
     | undefined;
@@ -330,6 +332,9 @@ function WingsRules({
   const [reportThreshold, setReportThreshold] = useState<string>(
     String(settings?.reportThreshold ?? ""),
   );
+  const [ribbonOn, setRibbonOn] = useState<boolean>(
+    settings?.homepageRibbonEnabled ?? false,
+  );
   const [busy, setBusy] = useState(false);
 
   // Sync the fields when the settings query resolves (or is re-saved).
@@ -339,6 +344,7 @@ function WingsRules({
     setXpThreshold(String(settings.xpThreshold));
     setXpRank(settings.xpRank);
     setReportThreshold(String(settings.reportThreshold));
+    setRibbonOn(settings.homepageRibbonEnabled);
   }
 
   async function handleSave() {
@@ -354,6 +360,7 @@ function WingsRules({
         xpThreshold: xp,
         xpRank: xpRank.trim() || "Captain",
         reportThreshold: reports,
+        homepageRibbonEnabled: ribbonOn,
       });
       toast.success("Wings earning rules saved.");
     } catch (err) {
@@ -409,6 +416,24 @@ function WingsRules({
           />
         </label>
       </div>
+      {/* Homepage announcement box — on/off */}
+      <div className="mt-4 flex items-center justify-between gap-4 rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.45)] p-4">
+        <div>
+          <p className="text-sm font-medium">
+            Homepage “Latest Wings Earner” box
+          </p>
+          <p className="text-xs text-uf-muted mt-0.5">
+            Show the gold-plate announcement box under the live command strip
+            on the homepage.
+          </p>
+        </div>
+        <Switch
+          checked={ribbonOn}
+          onCheckedChange={setRibbonOn}
+          aria-label="Toggle the homepage Latest Wings Earner box"
+        />
+      </div>
+
       <div className="mt-4 flex items-center gap-3">
         <NeonButton variant="gold" onClick={handleSave} loading={busy}>
           Save rules

@@ -1336,6 +1336,8 @@ const schema = defineSchema(
       xpThreshold: v.optional(v.number()),
       xpRank: v.optional(v.string()),
       reportThreshold: v.optional(v.number()),
+      // Homepage “Latest Wings Earner” box on/off (operator console).
+      homepageRibbonEnabled: v.optional(v.boolean()),
       // Wall of Honor header insignia (operator-uploaded; overrides the
       // drawn medallion and any bundled src/assets/honor-insignia.* file).
       insigniaStorageId: v.optional(v.id("_storage")),

@@ -47,10 +47,9 @@ function coverAt(i: number) {
 // Latest Wings Earner — the gold "lace" ribbon, a slim strip in the page
 // flow below the Live Command Strip. Announces the newest pilot to earn
 // their wings (latest non-revoked starfighter claim, via
-// api.starfighters.latestWingsEarner). The card wears the same engraved
-// gold-plate texture as the Wall of Honor plaques (dark bronze text on
-// brushed brass). A slim placeholder holds the layout while loading; the
-// ribbon stays furled until someone earns it.
+// api.starfighters.latestWingsEarner). Sized like the “Submit Your Story”
+// box. The operator can turn it on/off via wingsSettings.homepageRibbonEnabled.
+// Hidden while off, while loading, or while nobody has earned wings.
 // =========================================================================
 
 type WingsEarner = {
@@ -64,26 +63,33 @@ type WingsEarner = {
   awardedAt: number;
 };
 
-function WingsEarnerRibbon({
+function WingsEarnerBox({
   earner,
+  enabled,
 }: {
   earner: WingsEarner | null | undefined;
+  enabled: boolean | undefined;
 }) {
   const reducedMotion = useReducedMotion();
 
-  // Loading — keep the layout stable with a slim skeleton band.
-  if (earner === undefined) {
+  // Loading — hold a Submit-Your-Story-sized slot so the layout doesn't jump.
+  if (earner === undefined || enabled === undefined) {
     return (
       <div className="relative px-4 pb-8 sm:px-6 lg:px-12" aria-hidden>
         <div className="uf-container">
-          <div className="uf-skeleton h-[56px] rounded-md" />
+          <div className="uf-skeleton h-[228px] rounded-md" />
         </div>
       </div>
     );
   }
 
-  // No wings earned yet — the ribbon stays furled.
-  if (earner === null) return null;
+  // Operator switched it off, or nobody has earned wings yet.
+  if (!enabled || earner === null) return null;
+
+  // Demo/sample plaques (from the operator's preview seed) have no real
+  // member profile behind them — their memberId points at the issuing
+  // operator. Salute links only to real pilots.
+  const isDemo = earner._id.endsWith("-demo") || earner.memberName === "Pilot";
 
   return (
     <motion.section
@@ -95,7 +101,7 @@ function WingsEarnerRibbon({
     >
       <div className="uf-container">
         <div
-          className="relative overflow-hidden rounded-md border border-[#8a6a20] shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
+          className="p-6 md:p-10 text-center rounded-md border border-[color:var(--uf-border)]"
           style={{
             // The gold plate IS the background — same asset as the Wall of
             // Honor plaques, with a soft sheen gradient for metal depth.
@@ -104,50 +110,62 @@ function WingsEarnerRibbon({
             backgroundPosition: "center",
           }}
         >
-          <div className="relative flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 sm:px-5">
-            {/* Wings medallion — engraved bronze on the plate */}
-            <span
-              aria-hidden
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-              style={{
-                border: "1.5px solid #4a3608",
-                background: "rgba(90,60,10,0.14)",
-                color: "#3a2a08",
-              }}
-            >
-              <Feather className="h-4 w-4" />
+          {/* Wings medallion — engraved bronze on the plate */}
+          <span
+            aria-hidden
+            className="mx-auto grid h-12 w-12 place-items-center rounded-full"
+            style={{
+              border: "1.5px solid #4a3608",
+              background: "rgba(90,60,10,0.14)",
+              color: "#3a2a08",
+            }}
+          >
+            <Feather className="h-5 w-5" />
+          </span>
+
+          <span
+            id="uf-wings-ribbon-title"
+            className="mt-3 flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em]"
+            style={{ color: "#4a3608" }}
+          >
+            <span aria-hidden>◆</span>
+            Latest Wings Earner
+            <span aria-hidden>◆</span>
+          </span>
+
+          <h3
+            className="mt-2 text-2xl font-semibold"
+            style={{ color: "#2a1c05" }}
+          >
+            {earner.memberRank ? `${earner.memberRank} ` : ""}
+            {earner.memberName}
+          </h3>
+          <p
+            className="uf-hud mx-auto mt-2 max-w-xl text-xs"
+            style={{ color: "#5b430f" }}
+          >
+            “{earner.callsign}” · {earner.hullNumber} · {earner.designation}
+            {" · "}
+            <span style={{ color: "#3a2a08" }}>
+              wings earned {timeAgo(earner.awardedAt)}
             </span>
+          </p>
 
-            <div className="min-w-0 flex-1">
+          <div className="mt-5 flex flex-wrap justify-center gap-3">
+            {isDemo ? (
               <span
-                id="uf-wings-ribbon-title"
-                className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em]"
-                style={{ color: "#4a3608" }}
+                className="uf-btn uf-btn--sm opacity-60"
+                style={{
+                  background: "#2a1c05",
+                  color: "#ffedc2",
+                  borderColor: "transparent",
+                  cursor: "not-allowed",
+                }}
+                title="Sample plaque — no profile to salute"
               >
-                <span aria-hidden>◆</span>
-                Latest Wings Earner
-                <span aria-hidden>◆</span>
+                Sample plaque
               </span>
-              <p
-                className="mt-0.5 truncate text-sm font-bold"
-                style={{ color: "#2a1c05" }}
-              >
-                {earner.memberRank ? `${earner.memberRank} ` : ""}
-                {earner.memberName}
-              </p>
-              <p
-                className="uf-hud mt-0.5 truncate text-[11px]"
-                style={{ color: "#5b430f" }}
-              >
-                “{earner.callsign}” · {earner.hullNumber} · {earner.designation}
-                {" · "}
-                <span style={{ color: "#3a2a08" }}>
-                  wings earned {timeAgo(earner.awardedAt)}
-                </span>
-              </p>
-            </div>
-
-            <div className="flex w-full items-center gap-2 sm:w-auto">
+            ) : (
               <Link
                 to={`/u/${earner.memberId}`}
                 className="uf-btn uf-btn--sm"
@@ -159,19 +177,19 @@ function WingsEarnerRibbon({
               >
                 Salute the pilot
               </Link>
-              <Link
-                to="/honor"
-                className="uf-btn uf-btn--sm"
-                style={{
-                  background: "transparent",
-                  color: "#3a2a08",
-                  borderColor: "#4a3608",
-                }}
-              >
-                <span>Wall of Honor</span>
-                <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-              </Link>
-            </div>
+            )}
+            <Link
+              to="/honor"
+              className="uf-btn uf-btn--sm"
+              style={{
+                background: "transparent",
+                color: "#3a2a08",
+                borderColor: "#4a3608",
+              }}
+            >
+              <span>Wall of Honor</span>
+              <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+            </Link>
           </div>
         </div>
       </div>
@@ -189,6 +207,7 @@ export default function Home() {
   const groups = useQuery(api.groups.listGroups, {});
   const fleetReports = useQuery(api.content.listFleetReports, { limit: 1 });
   const latestWings = useQuery(api.starfighters.latestWingsEarner, {});
+  const wingsSettings = useQuery(api.wings.getWingsSettings, {});
 
   const primaryStory = featuredStories?.[0] ?? null;
   const secondaryStory = featuredStories?.[1] ?? null;
@@ -247,8 +266,8 @@ export default function Home() {
       {/* =========== LIVE COMMAND STRIP (telemetry + sector chatter) ====== */}
       <LiveCommandStrip />
 
-      {/* =========== LATEST WINGS EARNER (gold lace ribbon) =============== */}
-      <WingsEarnerRibbon earner={latestWings} />
+      {/* =========== LATEST WINGS EARNER (gold-plate box) ================ */}
+      <WingsEarnerBox earner={latestWings} enabled={wingsSettings?.homepageRibbonEnabled} />
 
       {/* =========== FEATURED STORIES (3-col) ============ */}
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">

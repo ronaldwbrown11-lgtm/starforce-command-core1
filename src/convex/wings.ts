@@ -339,6 +339,8 @@ export const getWingsSettings = query({
       xpThreshold: row?.xpThreshold ?? WINGS_DEFAULTS.xpThreshold,
       xpRank: row?.xpRank ?? WINGS_DEFAULTS.xpRank,
       reportThreshold: row?.reportThreshold ?? WINGS_DEFAULTS.reportThreshold,
+      // Homepage box defaults OFF until the operator turns it on.
+      homepageRibbonEnabled: row?.homepageRibbonEnabled ?? false,
       updatedAt: row?.updatedAt ?? null,
     };
   },
@@ -349,6 +351,7 @@ export const setWingsSettings = mutation({
     xpThreshold: v.number(),
     xpRank: v.string(),
     reportThreshold: v.number(),
+    homepageRibbonEnabled: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { me } = await requireOperatorCapability(ctx, [
@@ -358,33 +361,33 @@ export const setWingsSettings = mutation({
     const xpThreshold = Math.max(0, Math.min(1_000_000, Math.round(args.xpThreshold)));
     const reportThreshold = Math.max(0, Math.min(1000, Math.round(args.reportThreshold)));
     const xpRank = args.xpRank.trim().slice(0, 40) || WINGS_DEFAULTS.xpRank;
+    const patch = {
+      xpThreshold,
+      xpRank,
+      reportThreshold,
+      homepageRibbonEnabled: args.homepageRibbonEnabled ?? false,
+      updatedAt: Date.now(),
+      updatedBy: me,
+    };
     const row = await ctx.db
       .query("wingsSettings")
       .withIndex("by_key", (q) => q.eq("key", "main"))
       .first();
     if (row) {
-      await ctx.db.patch(row._id, {
-        xpThreshold,
-        xpRank,
-        reportThreshold,
-        updatedAt: Date.now(),
-        updatedBy: me,
-      });
+      await ctx.db.patch(row._id, patch);
     } else {
-      await ctx.db.insert("wingsSettings", {
-        key: "main",
-        xpThreshold,
-        xpRank,
-        reportThreshold,
-        updatedAt: Date.now(),
-        updatedBy: me,
-      });
+      await ctx.db.insert("wingsSettings", { key: "main", ...patch });
     }
     await ctx.db.insert("auditLog", {
       actorId: me,
       action: "wings.settings",
       target: "wingsSettings:main",
-      meta: JSON.stringify({ xpThreshold, xpRank, reportThreshold }),
+      meta: JSON.stringify({
+        xpThreshold,
+        xpRank,
+        reportThreshold,
+        homepageRibbonEnabled: patch.homepageRibbonEnabled,
+      }),
       createdAt: Date.now(),
     });
     return { ok: true };
@@ -393,7 +396,11 @@ export const setWingsSettings = mutation({
 
 async function loadRules(
   ctx: Pick<QueryCtx, "db">,
-): Promise<{ xpThreshold: number; xpRank: string; reportThreshold: number }> {
+): Promise<{
+  xpThreshold: number;
+  xpRank: string;
+  reportThreshold: number;
+}> {
   const row = await ctx.db
     .query("wingsSettings")
     .withIndex("by_key", (q) => q.eq("key", "main"))
