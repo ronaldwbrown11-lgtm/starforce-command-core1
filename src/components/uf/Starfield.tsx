@@ -69,6 +69,14 @@ export function Starfield({
     window.addEventListener("resize", resize);
 
     const total = Math.floor(w * h * DENSITY_MAP[density]);
+    // PERF: the canvas is aria-hidden eye-candy behind everything — it must
+    // never compete with clicks for main-thread time. Cap the work at ~24fps
+    // and drop whole frames when the tab is busy (visibility-based skip).
+    const MIN_FRAME_MS = 42; // ≈24fps ceiling for the star canvas
+    let lastDraw = 0;
+    let pageVisible = !document.hidden;
+    const onVis = () => { pageVisible = !document.hidden; };
+    document.addEventListener("visibilitychange", onVis);
     const stars = Array.from({ length: total }, () => ({
       x: Math.random() * w,
       y: Math.random() * h,
@@ -79,7 +87,11 @@ export function Starfield({
       t: 0,
     }));
 
-    const draw = () => {
+    const draw = (ts: number) => {
+      raf = requestAnimationFrame(draw);
+      if (!pageVisible) return; // hidden tab: skip painting entirely
+      if (ts - lastDraw < MIN_FRAME_MS) return; // throttle to ~24fps
+      lastDraw = ts;
       ctx.clearRect(0, 0, w, h);
       if (wash) {
         const grad = ctx.createLinearGradient(0, 0, w, h);
@@ -110,13 +122,13 @@ export function Starfield({
         ctx.fillStyle = `rgba(${hue === "violet" ? "180,160,255" : "200,240,255"}, ${a})`;
         ctx.fill();
       }
-      raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw);
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
+      document.removeEventListener("visibilitychange", onVis);
     };
   }, [density, hue, wash]);
 
