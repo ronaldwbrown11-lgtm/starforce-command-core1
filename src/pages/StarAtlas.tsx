@@ -3,15 +3,20 @@ import { DiscoveryMap } from "@/components/widgets/DiscoveryMap";
 import { useAuth } from "@/hooks/use-auth";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { Link } from "react-router";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useFactionCanonSync } from "@/hooks/use-faction-canon-sync";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
 import { Compass, Crosshair, Flag, Route, Users } from "lucide-react";
-import Atlas3D from "@/components/atlas3d/Atlas3D";
-import AtlasSubmissions from "@/components/atlas3d/AtlasSubmissions";
+// PERF-CRITICAL: three.js + @react-three/fiber ship their own ~1.4MB of JS
+// and a second React reconciler. The rest of the app uses eager imports, so a
+// static import here would put all of it into the main bundle — paid by every
+// page boot on the site, while the 3D view only ever renders on /map. Lazy
+// loading confines that cost to the Atlas page (and the 3D view itself).
+const Atlas3D = lazy(() => import("@/components/atlas3d/Atlas3D"));
+const AtlasSubmissions = lazy(() => import("@/components/atlas3d/AtlasSubmissions"));
 
 export default function StarAtlas() {
   const { isAuthenticated } = useAuth();
@@ -114,10 +119,10 @@ export default function StarAtlas() {
           </span>
         </div>
         {viewMode === "3d" ? (
-          <>
+          <Suspense fallback={<div className="uf-skeleton" style={{ height: 680 }} />}> 
             <Atlas3D />
             <AtlasSubmissions />
-          </>
+          </Suspense>
         ) : (
           <DiscoveryMap height={680} />
         )}
