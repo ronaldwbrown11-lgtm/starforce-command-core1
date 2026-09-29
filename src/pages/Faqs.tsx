@@ -19,15 +19,15 @@ function FaqItem({ q, a }: { q: string; a: string }) {
     <div className="border border-[color:var(--uf-border)] rounded-lg overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left bg-[rgba(5,8,22,0.5)] hover:bg-[rgba(5,8,22,0.8)] transition-colors cursor-pointer"
+        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left bg-[rgba(10,16,32,0.85)] hover:bg-[rgba(12,19,38,0.95)] transition-colors cursor-pointer"
         aria-expanded={open}
       >
         <span className="text-sm font-semibold text-uf-text">{q}</span>
         {open ? <ChevronUp className="h-4 w-4 text-uf-muted shrink-0" /> : <ChevronDown className="h-4 w-4 text-uf-muted shrink-0" />}
       </button>
       {open ? (
-        <div className="px-5 py-4 border-t border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.3)]">
-          <p className="text-sm text-uf-muted leading-relaxed">{a}</p>
+        <div className="px-5 py-4 border-t border-[color:var(--uf-border)] bg-[rgba(8,13,26,0.9)]">
+          <p className="text-sm text-[#D9E5F7] leading-relaxed">{a}</p>
         </div>
       ) : null}
     </div>
@@ -111,7 +111,7 @@ export default function Faqs() {
             {[1, 2, 3, 4, 5].map((i) => (<div key={i} className="uf-skeleton" style={{ height: 56 }} />))}
           </div>
         ) : filtered.length === 0 ? (
-          <HoloCard>
+          <HoloCard className="!bg-[linear-gradient(145deg,rgba(16,24,39,0.9),rgba(11,18,32,0.8))]">
             <div className="uf-empty">
               <HelpCircle className="h-8 w-8 mx-auto mb-3 opacity-40" />
               <p>{search ? "No questions match your search." : "No FAQs published yet."}</p>
@@ -143,10 +143,10 @@ export default function Faqs() {
         )}
 
         {/* Still need help */}
-        <HoloCard className="mt-10 text-center">
+        <HoloCard className="mt-10 text-center !bg-[linear-gradient(145deg,rgba(16,24,39,0.9),rgba(11,18,32,0.8))]">
           <MessageSquare className="h-8 w-8 mx-auto mb-3 text-[var(--uf-cyan)]" />
           <h3 className="text-lg font-semibold text-uf-text mb-1">Still need help?</h3>
-          <p className="text-uf-muted text-sm mb-4">Our operators are standing by.</p>
+          <p className="text-[#D9E5F7] text-sm mb-4">Our operators are standing by.</p>
           <Link to="/support" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--uf-cyan)] text-[#0a0a0c] font-semibold text-sm hover:brightness-110 transition">
             Open Support
           </Link>

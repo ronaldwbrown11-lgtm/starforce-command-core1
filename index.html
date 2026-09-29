@@ -62,6 +62,21 @@
 </head>
 
 <body>
+  <style>
+    /* SPA route transitions: the router re-renders in place, so give each
+       client-side navigation visible feedback instead of an apparent no-op
+       (a transitionless paint can make a nav click feel "swallowed"). */
+    @keyframes uf-route-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .uf-route-fade {
+      animation: uf-route-fade-in 300ms ease-out both;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .uf-route-fade { animation: none !important; }
+    }
+  </style>
   <div id="boot-fallback" role="status" aria-live="polite">
     <style>
       #boot-fallback {
@@ -98,6 +113,73 @@
       <p>If this message remains, refresh the page or contact the site operator. No database credentials are required in your browser.</p>
     </div>
   </div>
+  <script>
+    // SPA route transitions: the router re-renders in place, so give each
+    // client-side navigation visible feedback instead of an apparent no-op.
+    // The #root content fades in briefly; the boot screen keeps its own
+    // stronger boot animation and is untouched by this.
+    (function () {
+      var bootScreen = document.querySelector("#boot-fallback > div");
+      if (bootScreen && bootScreen.animate) {
+        bootScreen.animate(
+          [
+            { opacity: 0, transform: "translateY(6px)" },
+            { opacity: 1, transform: "translateY(0)" },
+          ],
+          { duration: 400, easing: "ease-out", fill: "both" }
+        );
+      }
+      var root = document.getElementById("root");
+      if (!root) return;
+      // React Router performs SPA navigation via the History API, so wrapping
+      // pushState/replaceState + popstate catches exactly the route changes —
+      // not data loads or toasts — with zero coupling to the app bundle.
+      //
+      // pushState fires BEFORE React has rendered the new page, so fading
+      // there would flash the OLD page back in. Instead we just "arm" the
+      // transition, and the fade starts only when React's commit actually
+      // mutates the DOM (caught by a MutationObserver), painting the NEW
+      // page in.
+      var armed = false;
+      var disarmTimer = 0;
+      var lastFade = 0;
+      var fadeNow = function () {
+        var now = Date.now();
+        if (now - lastFade < 400) return; // coalesce rapid successive commits
+        lastFade = now;
+        root.classList.remove("uf-route-fade");
+        // Force a reflow so the animation restarts cleanly.
+        void root.offsetWidth;
+        root.classList.add("uf-route-fade");
+      };
+      var arm = function () {
+        if (armed) return;
+        armed = true;
+        var mo = new MutationObserver(function () {
+          mo.disconnect();
+          armed = false;
+          window.clearTimeout(disarmTimer);
+          fadeNow();
+        });
+        mo.observe(root, { childList: true, subtree: true });
+        // If React never mutates the DOM (e.g. re-navigating to the same
+        // route), disarm so a later unrelated mutation can't fire the fade.
+        disarmTimer = window.setTimeout(function () {
+          mo.disconnect();
+          armed = false;
+        }, 1500);
+      };
+      ["pushState", "replaceState"].forEach(function (type) {
+        var original = history[type];
+        history[type] = function () {
+          var result = original.apply(this, arguments);
+          arm();
+          return result;
+        };
+      });
+      window.addEventListener("popstate", arm);
+    })();
+  </script>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>
