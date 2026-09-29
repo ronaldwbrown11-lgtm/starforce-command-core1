@@ -154,6 +154,7 @@ function MegaMenuDropdown({ group }: { group: NavGroup }) {
                 <li key={item.href}>
                   <Link
                     to={item.href}
+                    onClick={() => setOpen(false)}
                     className={cn(
                       "flex flex-col rounded-lg px-3 py-2 transition-colors",
                       pathname === item.href

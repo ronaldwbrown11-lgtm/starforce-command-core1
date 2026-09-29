@@ -76,6 +76,24 @@
     @media (prefers-reduced-motion: reduce) {
       .uf-route-fade { animation: none !important; }
     }
+    /* Instant tactile feedback: the moment a link is pressed it visibly
+       responds, so a click can never feel swallowed while the next page
+       loads. */
+    a:active { opacity: 0.7; }
+    /* Route-change progress bar across the top of the viewport. */
+    #uf-route-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      width: 0;
+      opacity: 0;
+      z-index: 2147483000;
+      pointer-events: none;
+      background: linear-gradient(90deg, #00E5FF, #8B5CF6, #FF3DF2);
+      box-shadow: 0 0 10px rgba(0, 229, 255, 0.7);
+      border-radius: 0 2px 2px 0;
+    }
   </style>
   <div id="boot-fallback" role="status" aria-live="polite">
     <style>
@@ -143,23 +161,54 @@
       var armed = false;
       var disarmTimer = 0;
       var lastFade = 0;
-      var fadeNow = function () {
-        var now = Date.now();
-        if (now - lastFade < 400) return; // coalesce rapid successive commits
-        lastFade = now;
-        root.classList.remove("uf-route-fade");
-        // Force a reflow so the animation restarts cleanly.
-        void root.offsetWidth;
-        root.classList.add("uf-route-fade");
+      var bar = document.getElementById("uf-route-progress");
+      var barTimer = 0;
+      var barStart = function () {
+        if (!bar) return;
+        window.clearTimeout(barTimer);
+        bar.style.transition = "none";
+        bar.style.width = "12%";
+        bar.style.opacity = "1";
+        // Next frame: let the bar creep toward the finish while loading.
+        requestAnimationFrame(function () {
+          bar.style.transition = "width 9s cubic-bezier(0.1, 0.9, 0.2, 1)";
+          bar.style.width = "85%";
+        });
       };
-      var arm = function () {
+      var barDone = function () {
+        if (!bar) return;
+        bar.style.transition = "width 220ms ease-out, opacity 260ms ease-out 200ms";
+        bar.style.width = "100%";
+        bar.style.opacity = "0";
+        barTimer = window.setTimeout(function () {
+          bar.style.transition = "none";
+          bar.style.width = "0";
+        }, 500);
+      };
+      var fadeNow = function (scrollToTop) {
+        var now = Date.now();
+        if (now - lastFade >= 400) {
+          // coalesce rapid successive commits
+          lastFade = now;
+          root.classList.remove("uf-route-fade");
+          // Force a reflow so the animation restarts cleanly.
+          void root.offsetWidth;
+          root.classList.add("uf-route-fade");
+        }
+        barDone();
+        // New page starts at the top, so the navigation is unmistakable —
+        // but only for forward navigation (back/forward keeps position).
+        if (scrollToTop) window.scrollTo(0, 0);
+      };
+      var arm = function (scrollToTop) {
         if (armed) return;
         armed = true;
+        barStart();
         var mo = new MutationObserver(function () {
           mo.disconnect();
           armed = false;
           window.clearTimeout(disarmTimer);
-          fadeNow();
+          fadeNow(scrollToTop);
         });
         mo.observe(root, { childList: true, subtree: true });
         // If React never mutates the DOM (e.g. re-navigating to the same
@@ -167,20 +216,24 @@
         disarmTimer = window.setTimeout(function () {
           mo.disconnect();
           armed = false;
+          barDone();
         }, 1500);
       };
       ["pushState", "replaceState"].forEach(function (type) {
         var original = history[type];
         history[type] = function () {
           var result = original.apply(this, arguments);
-          arm();
+          arm(true);
           return result;
         };
       });
-      window.addEventListener("popstate", arm);
+      window.addEventListener("popstate", function () {
+        arm(false);
+      });
     })();
   </script>
   <div id="root"></div>
+  <div id="uf-route-progress" aria-hidden="true"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 

@@ -9,8 +9,14 @@
 "use strict";
 
 const CACHE_NAME = "uf-offline-articles-v1";
+const IMAGE_CACHE = "uf-page-images-v1";
 const ARTICLE_ROUTE =
   /^\/(?:stories|story|lore|maps|map|vault|missions|resources)\/?($|\?)/;
+// Heavy page artwork (honor wall template, section art). Cached after first
+// fetch so navigating back to a page is instant instead of re-downloading —
+// a slow re-fetch here is what makes a route change feel like it "did
+// nothing". Cache-first is safe: these change only via explicit operator
+// re-uploads, and the cache name bumps wipe them on deploy.
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -21,7 +27,9 @@ self.addEventListener("activate", (event) => {
     (async () => {
       const keys = await caches.keys();
       await Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)),
+        keys
+          .filter((k) => k !== CACHE_NAME && k !== IMAGE_CACHE)
+          .map((k) => caches.delete(k)),
       );
       await self.clients.claim();
     })(),
@@ -33,6 +41,21 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  // Heavy static page artwork: cache-first (instant repeat visits).
+  if (url.pathname.startsWith("/assets/") && /\.(png|jpe?g|webp|avif)$/i.test(url.pathname)) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(IMAGE_CACHE);
+        const hit = await cache.match(request);
+        if (hit) return hit;
+        const fresh = await fetch(request);
+        if (fresh && fresh.ok) cache.put(request, fresh.clone());
+        return fresh;
+      })(),
+    );
+    return;
+  }
 
   // Only article routes participate in offline caching.
   if (!ARTICLE_ROUTE.test(url.pathname)) return;
