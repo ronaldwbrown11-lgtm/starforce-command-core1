@@ -114,6 +114,14 @@ export default function ArgManage() {
           timeline that unlocks on schedule; signals created with a campaign
           assigned only surface while that season drives the Vault.
         </p>
+        <p className="text-uf-muted text-xs mb-6">
+          Launch the season here, then open{" "}
+          <a href="/operator/signals" className="text-uf-cyan hover:underline">
+            Signal Vault
+          </a>{" "}
+          to auto-forge a batch of signals with AI and attach them to this
+          campaign in one step.
+        </p>
 
         <HoloCard accent="violet" className="mb-8">
           <h2 className="uf-eyebrow mb-1 flex items-center gap-1.5">

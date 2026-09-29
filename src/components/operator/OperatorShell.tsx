@@ -1,6 +1,6 @@
 import { Link, NavLink, useLocation } from "react-router";
 import { useState } from "react";
-import { Activity, Award, BookOpen, BookOpenText, CalendarPlus, ClipboardCheck, Coins, Compass, CreditCard, Feather, FileCheck2, Flag, GaugeCircle, History, IdCard, LayoutDashboard, LifeBuoy, ListChecks, Link as LinkIcon, Map as MapIcon, MapPin, Megaphone, RadioTower, Rocket, Ship, ShipWheel, Menu, Palette, ShieldCheck, ShoppingBag, Sparkles, Users, UsersRound, X } from "lucide-react";
+import { Activity, Award, BookOpen, BookOpenText, CalendarPlus, ClipboardCheck, Coins, Compass, CreditCard, Feather, FileCheck2, Flag, GaugeCircle, History, IdCard, KeyRound, LayoutDashboard, LifeBuoy, ListChecks, Link as LinkIcon, Map as MapIcon, MapPin, Megaphone, RadioTower, Rocket, Ship, ShipWheel, Menu, Palette, ShieldCheck, ShoppingBag, Sparkles, Users, UsersRound, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SiteShell, ParallaxBackground } from "@/components/uf";
 import { FleetStatus } from "@/components/widgets/FleetStatus";
@@ -35,6 +35,7 @@ const NAV = [
   { label: "Wings", href: "/operator/wings", icon: Feather },
   { label: "Requisition Depot", href: "/operator/store", icon: ShoppingBag },
   { label: "ARG Campaigns", href: "/operator/arg", icon: RadioTower },
+  { label: "Signal Vault", href: "/operator/signals", icon: KeyRound },
   { label: "Captain's Log", href: "/operator/log", icon: ShipWheel },
   { label: "Changelog", href: "/operator/changelog", icon: Rocket },
   { label: "Support Inbox", href: "/operator/support", icon: LifeBuoy },

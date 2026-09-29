@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
@@ -22,6 +22,23 @@ export async function requireOperatorCapability(
   }
   return { me, user };
 }
+
+// Action-safe variant of the gate above: actions have no db handle, so
+// node-runtime actions (e.g. the AI signal forge) run this internal query to
+// make the exact same authorization decision server-side.
+export const isOperatorWithCaps = internalQuery({
+  args: { caps: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const me = await getAuthUserId(ctx);
+    if (!me) return { allowed: false, error: "Sign in required." };
+    const user = await ctx.db.get(me);
+    if (!user) return { allowed: false, error: "User not found." };
+    if (user.role !== "admin" && !args.caps.includes(String(user.opRole ?? ""))) {
+      return { allowed: false, error: "Forbidden." };
+    }
+    return { allowed: true, error: null };
+  },
+});
 
 // -----------------------------------------------------------------------------
 // Broadcasts

@@ -61,6 +61,7 @@ import type * as seed from "../seed.js";
 import type * as seedHelpers from "../seedHelpers.js";
 import type * as serviceDossiers from "../serviceDossiers.js";
 import type * as ships from "../ships.js";
+import type * as signalForge from "../signalForge.js";
 import type * as signals from "../signals.js";
 import type * as siteAppearance from "../siteAppearance.js";
 import type * as sitemap from "../sitemap.js";
@@ -141,6 +142,7 @@ declare const fullApi: ApiFromModules<{
   seedHelpers: typeof seedHelpers;
   serviceDossiers: typeof serviceDossiers;
   ships: typeof ships;
+  signalForge: typeof signalForge;
   signals: typeof signals;
   siteAppearance: typeof siteAppearance;
   sitemap: typeof sitemap;

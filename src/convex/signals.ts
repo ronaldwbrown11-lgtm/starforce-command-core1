@@ -199,3 +199,110 @@ export const archiveSignal = mutation({
     return { ok: true };
   },
 });
+
+// ---------------------------------------------------------------------------
+// Operator console — manage the vault directly.
+// ---------------------------------------------------------------------------
+
+/** Every signal (active + archived) with solver counts, for the console. */
+export const listSignalsForOperator = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+      "lore_archivist",
+    ]);
+    const rows = await ctx.db.query("signals").order("desc").take(200);
+    const campaigns = await ctx.db.query("argCampaigns").collect();
+    const campaignTitle = new Map(campaigns.map((c) => [c._id, `Season ${c.season} — ${c.title}`]));
+    return rows.map((s) => ({
+      _id: s._id,
+      title: s.title,
+      ciphertext: s.ciphertext,
+      hint: s.hint,
+      answer: s.plaintext,
+      rewardXp: s.rewardXp ?? DEFAULT_REWARD_XP,
+      rewardCredits: s.rewardCredits ?? DEFAULT_REWARD_CREDITS,
+      tierRequired: s.tierRequired ?? null,
+      active: s.active,
+      solvedCount: s.solvedBy.length,
+      campaignName: s.campaignId ? (campaignTitle.get(s.campaignId) ?? null) : null,
+      createdAt: s.createdAt,
+    }));
+  },
+});
+
+/**
+ * Auto-creation for ARG campaigns: attach a batch of pre-forged signals to a
+ * season in one call. Each draft becomes an active signal bound to the
+ * campaign, so launching a season populates the Vault in one shot instead of
+ * one form submission per signal.
+ */
+export const createSignalsForCampaign = mutation({
+  args: {
+    campaignId: v.id("argCampaigns"),
+    drafts: v.array(
+      v.object({
+        title: v.string(),
+        ciphertext: v.string(),
+        hint: v.string(),
+        answer: v.string(),
+        rewardXp: v.optional(v.number()),
+        rewardCredits: v.optional(v.number()),
+        tierRequired: v.optional(v.string()),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+      "lore_archivist",
+    ]);
+    const campaign = await ctx.db.get(args.campaignId);
+    if (!campaign) throw new Error("Campaign not found.");
+    if (args.drafts.length === 0) throw new Error("No signal drafts supplied.");
+    if (args.drafts.length > 12) {
+      throw new Error("Attach at most 12 signals per campaign batch.");
+    }
+
+    const now = Date.now();
+    const created: string[] = [];
+    for (const d of args.drafts) {
+      const title = d.title.trim();
+      const ciphertext = d.ciphertext.trim();
+      const hint = d.hint.trim();
+      const plaintext = normalizeAnswer(d.answer);
+      if (!title || !ciphertext || !hint || !plaintext) {
+        throw new Error(`Draft "${title || "(untitled)"}" is missing a field.`);
+      }
+      if (d.tierRequired && !TIER_ORDER.includes(d.tierRequired as TierId)) {
+        throw new Error(`Unknown clearance tier on draft "${title}".`);
+      }
+      const id = await ctx.db.insert("signals", {
+        title: title.slice(0, 120),
+        ciphertext,
+        hint,
+        plaintext,
+        rewardXp: d.rewardXp,
+        rewardCredits: d.rewardCredits,
+        solvedBy: [],
+        active: true,
+        tierRequired: (d.tierRequired as TierId | undefined) ?? undefined,
+        campaignId: args.campaignId,
+        createdBy: me,
+        createdAt: now,
+      });
+      created.push(id);
+    }
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "signal.batchCreate",
+      target: `argCampaign:${args.campaignId}`,
+      meta: JSON.stringify({ count: created.length }),
+      createdAt: now,
+    });
+    return { ok: true, count: created.length, ids: created };
+  },
+});
