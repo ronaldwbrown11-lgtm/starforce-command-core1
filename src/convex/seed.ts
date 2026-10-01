@@ -861,7 +861,6 @@ const TRANSMISSION_SPECS: TransmissionSpec[] = [
 const RESOURCE_SPECS = [
   { title: "Onboarding Handbook", slug: "onboarding-handbook", description: "Equip, ranks, fleet code of conduct.", resourceType: "onboarding" },
   { title: "Lore Style Guide", slug: "lore-style-guide", description: "How we write lore at Star Force Base 1198.", resourceType: "policy" },
-  { title: "Signal Log Decoder", slug: "signal-log-decoder", description: "Tool to decode temporal signal pattern.", resourceType: "tool" },
   { title: "Community Charter", slug: "community-charter", description: "Community expectations, escalation paths.", resourceType: "policy" },
   { title: "Cadet Reading List", slug: "cadet-reading-list", description: "Recommended archive entries for new cadets.", resourceType: "guide" },
   {
