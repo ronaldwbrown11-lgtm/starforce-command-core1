@@ -19,7 +19,7 @@ import {
 // → type "onboarding" with a file), the page shows THAT guide front and
 // center — clicking it opens the document right on the page (inline reader,
 // no download). Without an uploaded guide, the page falls back to the
-// six-step card layout. The six-month growth plan also opens on the page.
+// six-step card layout.
 // ---------------------------------------------------------------------------
 
 const EARNING_ROWS: Array<{ what: string; rate: string }> = [
@@ -245,21 +245,6 @@ export default function CadetManual() {
               Credits can also be requisitioned directly from the Depot, but
               everything cosmetic is earnable by play alone.
             </p>
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={() =>
-                  setReader({
-                    url: "/downloads/starforce-growth-plan.pdf",
-                    name: "Six-month fleet plan (PDF)",
-                  })
-                }
-                className="inline-flex items-center gap-2 rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.5)] px-4 py-2 text-sm text-uf-text transition-colors hover:bg-[rgba(0,229,255,0.08)]"
-              >
-                <BookOpen className="h-4 w-4" aria-hidden />
-                Open the six-month fleet plan (PDF)
-              </button>
-            </div>
           </HoloCard>
         </div>
       </section>

@@ -8,8 +8,7 @@ import { Download, FileText, Loader2, ExternalLink, X } from "lucide-react";
 // attachment on the URL) and rendered inside an inline <iframe>, so PDFs,
 // images, and text files read right where the member is. Formats that
 // can't preview (DOC/DOCX/…) fall back to open-in-new-tab + download
-// links. Used by the Resources cards, the Cadets Manual guide, and the
-// fleet-plan button.
+// links. Used by the Resources cards and the Cadets Manual guide.
 // =========================================================================
 
 const PREVIEWABLE = (type: string, name: string): boolean => {
@@ -90,14 +89,14 @@ export function DocViewer({
 
   return (
     <div
-      className="fixed inset-0 z-[2000] grid place-items-center bg-black/75 p-4 sm:p-8"
+      className="fixed inset-0 z-[2000] grid place-items-center bg-black/75 p-3 sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-label={fileName ?? "Document viewer"}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-5xl rounded-xl border border-[color:var(--uf-border)] bg-[#0a1020] shadow-2xl overflow-hidden flex flex-col max-h-full"
+        className="w-full max-w-5xl h-full max-h-full rounded-xl border border-[color:var(--uf-border)] bg-[#0a1020] shadow-2xl overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--uf-border)]">
@@ -130,9 +129,9 @@ export function DocViewer({
           </button>
         </header>
 
-        <div className="p-3 min-h-[50vh] flex-1 overflow-auto">
+        <div className="p-3 min-h-0 flex-1 overflow-auto">
           {status === "loading" ? (
-            <div className="grid place-items-center h-[50vh] text-uf-muted text-sm gap-2">
+            <div className="grid place-items-center h-full min-h-[60vh] text-uf-muted text-sm gap-2">
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
               Opening document…
             </div>
@@ -140,10 +139,10 @@ export function DocViewer({
             <iframe
               src={objectUrl}
               title={fileName ?? "Document"}
-              className="w-full h-[70vh] rounded-md border border-[color:var(--uf-border)] bg-white"
+              className="w-full h-full min-h-[75vh] rounded-md border border-[color:var(--uf-border)] bg-white"
             />
           ) : status === "unsupported" || status === "error" ? (
-            <div className="grid place-items-center h-[50vh] text-center px-6">
+            <div className="grid place-items-center h-full min-h-[60vh] text-center px-6">
               <div>
                 <p className="text-uf-text text-sm font-medium">
                   This file can&apos;t be previewed in the page.
