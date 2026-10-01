@@ -62,6 +62,7 @@ import OpArcs from "./pages/operator/Arcs.tsx";
 import OpHonors from "./pages/operator/Honors.tsx";
 import OpWings from "./pages/operator/Wings.tsx";
 import OpSignals from "./pages/operator/Signals.tsx";
+import OpRanks from "./pages/operator/Ranks.tsx";
 import OpAiSpend from "./pages/operator/AiSpend.tsx";
 import OpStore from "./pages/operator/StoreManage.tsx";
 import OpArg from "./pages/operator/ArgManage.tsx";
@@ -210,6 +211,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/operator/honors" element={<OperatorGuard><OpHonors /></OperatorGuard>} />
               <Route path="/operator/wings" element={<OperatorGuard><OpWings /></OperatorGuard>} />
               <Route path="/operator/signals" element={<OperatorGuard><OpSignals /></OperatorGuard>} />
+              <Route path="/operator/ranks" element={<OperatorGuard><OpRanks /></OperatorGuard>} />
               <Route path="/operator/ai-spend" element={<OperatorGuard><OpAiSpend /></OperatorGuard>} />
               <Route path="/operator/store" element={<OperatorGuard><OpStore /></OperatorGuard>} />
               <Route path="/operator/arg" element={<OperatorGuard><OpArg /></OperatorGuard>} />

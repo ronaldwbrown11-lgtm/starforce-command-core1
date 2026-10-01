@@ -284,7 +284,6 @@ export default function Account() {
                   <ProfileEditor
                     initial={{
                       displayName: user?.displayName,
-                      rank: user?.rank,
                       fleet: user?.fleet,
                       bio: user?.bio,
                       flair: user?.flair,

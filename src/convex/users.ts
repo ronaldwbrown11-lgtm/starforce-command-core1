@@ -3,6 +3,7 @@ import { mutation, query, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { awardAchievements, tierBadgeId } from "./achievements";
+import { evaluateMember } from "./progression";
 
 /**
  * Get the current signed in user. Returns null if the user is not signed in.
@@ -228,7 +229,10 @@ export const updateProfile = mutation({
   args: {
     displayName: v.optional(v.string()),
     bio: v.optional(v.string()),
-    rank: v.optional(v.string()),
+    // NOTE: `rank` was removed from this endpoint — rank is system-managed
+    // by the Capped Star Force progression system and can only be changed
+    // through promotion (checklist/XP) or manually by an operator
+    // (rankAdmin.setMemberRank).
     fleet: v.optional(v.string()),
     // Paid-tier perk (#32): custom display flair.
     flair: v.optional(v.string()),
@@ -247,7 +251,6 @@ export const updateProfile = mutation({
     const patch: {
       displayName?: string;
       bio?: string;
-      rank?: string;
       fleet?: string;
       flair?: string;
       avatarStorageId?: Id<"_storage">;
@@ -288,14 +291,6 @@ export const updateProfile = mutation({
       patch.bio = bio.length ? bio : undefined;
     }
 
-    if (args.rank !== undefined) {
-      const rank = args.rank.trim();
-      if (rank.length > 40) {
-        throw new Error("Rank must be 40 characters or fewer.");
-      }
-      patch.rank = rank.length ? rank : undefined;
-    }
-
     if (args.fleet !== undefined) {
       const fleet = args.fleet.trim();
       if (fleet.length > 60) {
@@ -328,6 +323,9 @@ export const updateProfile = mutation({
     }
 
     await ctx.db.patch(userId, patch);
+    // Editing the dossier completes onboarding step one — re-derive rank state
+    // so Ensign → Lieutenant promotions land immediately (spec §1.1).
+    await evaluateMember(ctx, userId);
     return { ok: true };
   },
 });
@@ -418,6 +416,9 @@ export const completeOnboarding = mutation({
     }
 
     await ctx.db.patch(userId, patch);
+    // Stamp/verify progression state (fresh accounts enter as Tier 7 Ensign
+    // and orientation completes two induction steps) — see progression.ts.
+    await evaluateMember(ctx, userId);
     return {
       ok: true,
       starterMissionSlug: args.skip ? null : (args.starterMissionSlug ?? null),

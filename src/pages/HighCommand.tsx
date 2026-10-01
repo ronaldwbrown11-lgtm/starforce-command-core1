@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { Link } from "react-router";
 import { SiteShell, PageHero, HoloCard, StatusPill } from "@/components/uf";
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -46,11 +47,34 @@ function fmt(n: number) {
   return n.toLocaleString("en-US");
 }
 
+/** Operator-managed rank insignia (uploaded in the Rank Ladder console). */
+function RankInsignia({
+  storageId,
+  className = "h-6 w-6 rounded-sm",
+}: {
+  storageId: string | null;
+  className?: string;
+}) {
+  const url = useQuery(
+    api.assets.coverUrl,
+    storageId ? { storageId: storageId as Id<"_storage"> } : "skip",
+  );
+  if (!storageId || !url) return null;
+  return <img src={url} alt="" aria-hidden className={`${className} object-cover`} />;
+}
+
 export default function HighCommand() {
   const { isAuthenticated } = useAuth();
   const progress = useQuery(api.progression.myProgress);
   const council = useQuery(api.progression.council);
   const catalog = useQuery(api.progression.ranksCatalog);
+  // Insignia for the personal rank badge (operator-managed).
+  const rankBadgeUrl = useQuery(
+    api.assets.coverUrl,
+    progress?.rank.imageStorageId
+      ? { storageId: progress.rank.imageStorageId }
+      : "skip",
+  );
   const completeStep = useMutation(api.progression.onboardingComplete);
 
   usePageMeta({
@@ -149,9 +173,18 @@ export default function HighCommand() {
                   }}
                   aria-hidden
                 >
-                  <span className="text-xs font-bold tracking-[0.14em]">
-                    {progress.rank.short}
-                  </span>
+                  {rankBadgeUrl ? (
+                    <img
+                      src={rankBadgeUrl}
+                      alt=""
+                      aria-hidden
+                      className="h-full w-full rounded-[0.6rem] object-cover"
+                    />
+                  ) : (
+                    <span className="text-xs font-bold tracking-[0.14em]">
+                      {progress.rank.short}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <span className="uf-eyebrow">Tier {progress.rank.tier}</span>
@@ -500,14 +533,19 @@ export default function HighCommand() {
                           {r.tier}
                         </td>
                         <td className="py-2.5 pr-2">
-                          <span
-                            className={
-                              r.flagOfficer
-                                ? "text-[color:var(--uf-gold)] font-medium"
-                                : "text-uf-text font-medium"
-                            }
-                          >
-                            {r.label}
+                          <span className="flex items-center gap-2">
+                            <RankInsignia storageId={r.imageStorageId} />
+                            <span
+                              className={
+                                r.flagOfficer
+                                  ? "text-[color:var(--uf-gold)] font-medium"
+                                  : r.canonical
+                                    ? "text-uf-text font-medium"
+                                    : "text-uf-violet font-medium"
+                              }
+                            >
+                              {r.label}
+                            </span>
                           </span>
                         </td>
                         <td className="py-2.5 pr-2 font-mono tabular-nums text-right">
@@ -523,7 +561,9 @@ export default function HighCommand() {
                               ? `Flag officer — hard cap of ${catalog.seatCap} active seats`
                               : r.key === "captain"
                                 ? "Excess above 35,000 held as Prestige XP"
-                                : "Automatic on XP"}
+                                : r.canonical
+                                  ? "Automatic on XP"
+                                  : "Assigned by command"}
                         </td>
                       </tr>
                     ))}

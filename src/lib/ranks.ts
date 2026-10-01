@@ -194,12 +194,17 @@ export interface DeriveRankInput {
  *     when a Rear Admiral loses their seat (falls back to the XP ladder,
  *     i.e. Captain (Fleet)).
  */
-export function deriveRankKey(input: DeriveRankInput): RankKey {
+export function deriveRankKey(input: DeriveRankInput): RankKey | string {
   const { xp, checklistComplete = false, seatActive = false } = input;
   if (seatActive) return "rear_admiral";
 
   const byXp = rankForXp(xp);
-  const current = isRankKey(input.currentRankKey) ? input.currentRankKey : null;
+  const currentKey = input.currentRankKey;
+  // Operator-assigned ranks outside the canonical ladder (created in the
+  // Rank Ladder console) are sticky: only the operator can change them —
+  // XP evaluation never rewrites them.
+  if (currentKey && !isRankKey(currentKey)) return currentKey;
+  const current = isRankKey(currentKey) ? currentKey : null;
 
   if (current === "ensign") {
     if (checklistComplete) return xp >= RANK_LADDER[1].minXp ? byXp : "lieutenant";

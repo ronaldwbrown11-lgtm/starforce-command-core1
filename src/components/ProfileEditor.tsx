@@ -13,7 +13,6 @@ const AVATAR_MIME = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 
 export type ProfileEditorFields = {
   displayName?: string | null;
-  rank?: string | null;
   fleet?: string | null;
   bio?: string | null;
   flair?: string | null;
@@ -21,9 +20,12 @@ export type ProfileEditorFields = {
 };
 
 /**
- * Shared inline editor for a member's public dossier: display name, rank,
- * fleet, bio, and avatar. Single source of truth for identity editing — the
- * profile page and the account page both render this, so the two can't drift.
+ * Shared inline editor for a member's public dossier: display name, fleet,
+ * bio, and avatar. Single source of truth for identity editing — the
+ * profile page and the account page both render this, so the two can't
+ * drift. Rank is intentionally NOT editable: it is system-managed by the
+ * Capped Star Force progression system (checklist + XP promotions, or
+ * manual operator changes) and renders next to the profile name.
  */
 export function ProfileEditor({
   initial,
@@ -46,7 +48,6 @@ export function ProfileEditor({
   const generateUserUploadUrl = useMutation(api.users.generateUserUploadUrl);
 
   const [nameDraft, setNameDraft] = useState(initial.displayName ?? "");
-  const [rankDraft, setRankDraft] = useState(initial.rank ?? "");
   const [fleetDraft, setFleetDraft] = useState(initial.fleet ?? "");
   const [bioDraft, setBioDraft] = useState(initial.bio ?? "");
   const [flairDraft, setFlairDraft] = useState(initial.flair ?? "");
@@ -66,7 +67,6 @@ export function ProfileEditor({
       setSaving(true);
       await updateProfile({
         displayName: name,
-        rank: rankDraft.trim() || undefined,
         fleet: fleetDraft.trim() || undefined,
         bio: bioDraft.trim() || undefined,
         ...(paidMember ? { flair: flairDraft.trim() || undefined } : {}),
@@ -129,16 +129,6 @@ export function ProfileEditor({
           onChange={(e) => setNameDraft(e.target.value)}
           maxLength={60}
           placeholder="Your callsign"
-          className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
-        />
-      </label>
-      <label className="text-xs uppercase tracking-[0.16em] text-uf-muted flex flex-col gap-1">
-        Rank
-        <input
-          value={rankDraft}
-          onChange={(e) => setRankDraft(e.target.value)}
-          maxLength={40}
-          placeholder="e.g. Commander"
           className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
         />
       </label>

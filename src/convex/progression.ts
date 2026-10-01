@@ -15,6 +15,7 @@ import {
   XP_RATES,
   clampXpForCategory,
   deriveRankKey,
+  isRankKey,
   rankForXp,
   rankProgressInfo,
   rankSpec,
@@ -188,11 +189,116 @@ export async function evaluateMember(
   if (Object.keys(patch).length) await ctx.db.patch(userId, patch);
   if (promoted) await recordPromotion(ctx, userId, prevKey, nextKey, now);
 
-  if (totalXp >= FLAG_OFFICER_MIN_XP) {
+  // Only actual Captains (or seated Rear Admirals) enter the queue — an
+  // Ensign sitting on unspent XP, or an operator-assigned custom rank,
+  // never joins the waitlist automatically.
+  if (
+    totalXp >= FLAG_OFFICER_MIN_XP &&
+    (nextKey === "captain" || nextKey === "rear_admiral")
+  ) {
     await ensureQueueRow(ctx, userId, totalXp, now);
   }
 
   return { promoted, allDone: summary.allDone, rankKey: promoted ? nextKey : (user.rankKey ?? nextKey) };
+}
+
+// ---------------------------------------------------------------------------
+// Display rank resolution — one helper so every surface shows the same
+// commissioned rank, label, and insignia image.
+// ---------------------------------------------------------------------------
+
+export interface DisplayRank {
+  key: string;
+  label: string;
+  short: string;
+  tier: number;
+  flagOfficer: boolean;
+  blurb: string;
+  imageStorageId: Id<"_storage"> | null;
+}
+
+function initials(label: string): string {
+  return label
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 4)
+    .toUpperCase();
+}
+
+/**
+ * Resolve a member's commissioned rank for display: derives the ladder
+ * position from XP + checklist state (so it is never stale), applies any
+ * operator label override / insignia image from the `ranks` table, and
+ * passes through operator-assigned custom ranks.
+ */
+export async function resolveDisplayRank(
+  ctx: QueryCtx | MutationCtx,
+  user: Doc<"users">,
+  /** Pre-computed checklist result — skips re-deriving when the caller has it. */
+  checklistAllDone?: boolean,
+): Promise<DisplayRank> {
+  // Fast path: operator-assigned custom ranks are outside the ladder.
+  const stored = user.rankKey;
+  if (stored && !isRankKey(stored) && stored !== "rear_admiral") {
+    const row = await ctx.db
+      .query("ranks")
+      .withIndex("by_key", (q) => q.eq("key", stored))
+      .unique();
+    const label = row?.label ?? user.rank ?? stored;
+    return {
+      key: stored,
+      label,
+      short: initials(label),
+      tier: row?.tier ?? 0,
+      flagOfficer: false,
+      blurb: row?.blurb ?? "",
+      imageStorageId: row?.imageStorageId ?? null,
+    };
+  }
+
+  let allDone: boolean;
+  if (checklistAllDone !== undefined) {
+    allDone = checklistAllDone;
+  } else {
+    const checklistDone = await deriveChecklist(ctx, user._id, user);
+    allDone = QUEST_STEPS.every((s) => checklistDone[s.key]);
+  }
+  const key = deriveRankKey({
+    xp: user.xp ?? 0,
+    currentRankKey: stored,
+    checklistComplete: allDone,
+    seatActive: stored === "rear_admiral",
+  });
+  const row = await ctx.db
+    .query("ranks")
+    .withIndex("by_key", (q) => q.eq("key", key))
+    .unique();
+
+  if (isRankKey(key)) {
+    const spec = rankSpec(key);
+    return {
+      key,
+      label: row?.label ?? spec.label,
+      short: spec.short,
+      tier: row?.tier ?? spec.tier,
+      flagOfficer: spec.flagOfficer,
+      blurb: row?.blurb ?? spec.blurb,
+      imageStorageId: row?.imageStorageId ?? null,
+    };
+  }
+  // Unreachable (deriveRankKey always returns a canonical key here), but
+  // keep a safe fallback rather than ever rendering "undefined".
+  const label = row?.label ?? user.rank ?? "Ensign";
+  return {
+    key,
+    label,
+    short: initials(label),
+    tier: row?.tier ?? 0,
+    flagOfficer: false,
+    blurb: row?.blurb ?? "",
+    imageStorageId: row?.imageStorageId ?? null,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -400,6 +506,10 @@ export const evaluateAdmiralQueue = internalMutation({
         if (!u) continue;
         const xp = u.xp ?? 0;
         if (xp < FLAG_OFFICER_MIN_XP) continue;
+        // Seats go to Captains (Fleet): legacy accounts resolve through the
+        // XP ladder; Ens and operator-assigned custom ranks are skipped.
+        const effectiveKey = u.rankKey ?? rankForXp(xp);
+        if (effectiveKey !== "captain") continue;
         candidates.push({ row, xp });
       }
       candidates.sort((a, b) => b.xp - a.xp);
@@ -474,14 +584,9 @@ export const myProgress = query({
     const totalXp = user.xp ?? 0;
 
     const queueRow = await queueRowFor(ctx, me);
-    const seatActive = queueRow?.status === "active";
-    const rankKey = deriveRankKey({
-      xp: totalXp,
-      currentRankKey: user.rankKey,
-      checklistComplete: checklist.allDone,
-      seatActive,
-    });
-    const progress = rankProgressInfo(rankKey, totalXp);
+    const resolved = await resolveDisplayRank(ctx, user, checklist.allDone);
+    const onLadder = isRankKey(resolved.key);
+    const progress = onLadder ? rankProgressInfo(resolved.key, totalXp) : null;
 
     // Daily engagement cap usage (UTC day).
     const day = utcDayKey(Date.now());
@@ -518,16 +623,17 @@ export const myProgress = query({
       .take(8);
 
     return {
-      rankKey,
+      rankKey: resolved.key,
       rank: {
-        key: progress.current.key,
-        label: progress.current.label,
-        short: progress.current.short,
-        tier: progress.current.tier,
-        blurb: progress.current.blurb,
-        flagOfficer: progress.current.flagOfficer,
+        key: resolved.key,
+        label: resolved.label,
+        short: resolved.short,
+        tier: resolved.tier,
+        blurb: resolved.blurb,
+        flagOfficer: resolved.flagOfficer,
+        imageStorageId: resolved.imageStorageId,
       },
-      next: progress.next
+      next: progress?.next
         ? {
             label: progress.next.label,
             tier: progress.next.tier,
@@ -604,9 +710,16 @@ export const council = query({
       totalXp: number;
       joinedAt: number;
     }> = [];
-    for (const row of waitingRows.slice(0, 5)) {
+    let waitlistTotal = 0;
+    for (const row of waitingRows) {
       const u = await ctx.db.get(row.userId);
       if (!u) continue;
+      // Only actual Captains wait for the flag — operator-assigned custom
+      // ranks and un-promoted Ens never appear on the waitlist.
+      const effectiveKey = u.rankKey ?? rankForXp(u.xp ?? 0);
+      if (effectiveKey !== "captain") continue;
+      waitlistTotal++;
+      if (waitlist.length >= 5) continue;
       waitlist.push({
         userId: row.userId,
         name: u.displayName ?? u.name ?? "Unknown officer",
@@ -621,7 +734,7 @@ export const council = query({
       seatCap: ADMIRAL_SEAT_CAP,
       openSeats: Math.max(0, ADMIRAL_SEAT_CAP - seats.length),
       waitlist,
-      waitlistTotal: waitingRows.length,
+      waitlistTotal,
       inactiveFlagOfficers: rows.filter((r) => r.status === "inactive_flag_officer").length,
       flagOfficerMinXp: FLAG_OFFICER_MIN_XP,
     };
@@ -635,20 +748,54 @@ export const council = query({
 export const ranksCatalog = query({
   args: {},
   handler: async (ctx) => {
-    const users = await ctx.db.query("users").collect();
+    const [users, rows] = await Promise.all([
+      ctx.db.query("users").collect(),
+      ctx.db.query("ranks").collect(),
+    ]);
     const counts: Record<string, number> = {};
     for (const u of users) {
       if (u.isAnonymous) continue;
       const key = u.rankKey ?? rankForXp(u.xp ?? 0);
       counts[key] = (counts[key] ?? 0) + 1;
     }
-    const seeded = (await ctx.db.query("ranks").collect()).length > 0;
-    return {
-      seeded,
-      ranks: RANK_LADDER.map((r) => ({
-        ...r,
+    const rowByKey = new Map(rows.map((r) => [r.key, r]));
+
+    // Canonical ladder first (DB row supplies operator label/image overrides),
+    // then operator-created custom ranks (manual-assignment only).
+    const canonical = RANK_LADDER.map((r, i) => {
+      const row = rowByKey.get(r.key);
+      return {
+        key: r.key,
+        label: row?.label ?? r.label,
+        tier: row?.tier ?? r.tier,
+        order: i,
+        minXp: r.minXp,
+        flagOfficer: r.flagOfficer,
+        blurb: row?.blurb ?? r.blurb,
+        imageStorageId: row?.imageStorageId ?? null,
+        canonical: true as const,
         holderCount: counts[r.key] ?? 0,
-      })),
+      };
+    });
+    const custom = rows
+      .filter((r) => !isRankKey(r.key))
+      .sort((a, b) => a.tier - b.tier || a.order - b.order)
+      .map((row) => ({
+        key: row.key,
+        label: row.label,
+        tier: row.tier,
+        order: row.order,
+        minXp: row.minXp,
+        flagOfficer: row.flagOfficer,
+        blurb: row.blurb,
+        imageStorageId: row.imageStorageId ?? null,
+        canonical: false as const,
+        holderCount: counts[row.key] ?? 0,
+      }));
+
+    return {
+      seeded: rows.length > 0,
+      ranks: [...canonical, ...custom],
       seatCap: ADMIRAL_SEAT_CAP,
       inactivityDays: ADMIRAL_INACTIVITY_DAYS,
       dailyCap: DAILY_XP_CAP,

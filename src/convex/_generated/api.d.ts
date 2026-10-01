@@ -55,6 +55,7 @@ import type * as nighthawk from "../nighthawk.js";
 import type * as operator from "../operator.js";
 import type * as progression from "../progression.js";
 import type * as quest from "../quest.js";
+import type * as rankAdmin from "../rankAdmin.js";
 import type * as rateLimit from "../rateLimit.js";
 import type * as search from "../search.js";
 import type * as sectorMap from "../sectorMap.js";
@@ -137,6 +138,7 @@ declare const fullApi: ApiFromModules<{
   operator: typeof operator;
   progression: typeof progression;
   quest: typeof quest;
+  rankAdmin: typeof rankAdmin;
   rateLimit: typeof rateLimit;
   search: typeof search;
   sectorMap: typeof sectorMap;

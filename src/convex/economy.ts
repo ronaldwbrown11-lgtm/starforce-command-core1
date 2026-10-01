@@ -162,9 +162,13 @@ export async function applyXpGain(
     await recordPromotion(ctx, userId, prevKey, nextKey, now);
   }
 
-  // Admiral Queue bookkeeping: create the waitlist row when a Captain
-  // crosses 35,000; refresh the snapshot for existing queue members.
-  if (totalXp >= FLAG_OFFICER_MIN_XP) {
+  // Admiral Queue bookkeeping: only actual Captains (or seated Rear
+  // Admirals) join the waitlist — an Ensign sitting on unspent XP or an
+  // operator-assigned custom rank never enters the queue automatically.
+  if (
+    totalXp >= FLAG_OFFICER_MIN_XP &&
+    (nextKey === "captain" || nextKey === "rear_admiral")
+  ) {
     const queueRow = await ctx.db
       .query("admiralQueue")
       .withIndex("by_user", (q) => q.eq("userId", userId))

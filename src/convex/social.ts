@@ -7,9 +7,9 @@ import {
   evaluateAchievements,
 } from "./achievements";
 import { CREDIT_RATES, grantCredits } from "./economy";
-import { deriveChecklist } from "./progression";
+import { deriveChecklist, resolveDisplayRank } from "./progression";
 import { QUEST_STEPS } from "./quest";
-import { deriveRankKey, rankProgressInfo } from "../lib/ranks";
+import { isRankKey, rankProgressInfo } from "../lib/ranks";
 import type { Id } from "./_generated/dataModel";
 
 // =========================================================================
@@ -350,29 +350,28 @@ export const rankProgress = query({
     // shared with the /high-command dashboard and the backend evaluators.
     const done = await deriveChecklist(ctx, target, u);
     const checklistComplete = QUEST_STEPS.every((s) => done[s.key]);
-    const rankKey = deriveRankKey({
-      xp,
-      currentRankKey: u.rankKey,
-      checklistComplete,
-      // A stored rear_admiral rank implies an active seat — the queue cron
-      // clears the key the moment a seat is revoked.
-      seatActive: u.rankKey === "rear_admiral",
-    });
-    const info = rankProgressInfo(rankKey, xp);
+    const resolved = await resolveDisplayRank(ctx, u, checklistComplete);
+    const onLadder = isRankKey(resolved.key);
+    const info = onLadder ? rankProgressInfo(resolved.key, xp) : null;
     const checklistPercent = Math.round(
       (QUEST_STEPS.filter((s) => done[s.key]).length / QUEST_STEPS.length) * 100,
     );
 
     return {
       xp,
-      rank: info.current.label,
-      rankKey: info.current.key,
-      tierNumber: info.current.tier,
-      nextRank: info.next?.label ?? null,
-      nextThreshold: info.target,
-      // Ensigns advance through the induction checklist, not XP.
-      percent:
-        info.current.key === "ensign" ? checklistPercent : info.percent,
+      rank: resolved.label,
+      rankKey: resolved.key,
+      tierNumber: resolved.tier,
+      rankImageStorageId: resolved.imageStorageId,
+      nextRank: info?.next?.label ?? null,
+      nextThreshold: info?.target ?? null,
+      // Ensigns advance through the induction checklist, not XP; custom
+      // operator-assigned ranks sit outside the XP ladder.
+      percent: !info
+        ? 100
+        : info.current.key === "ensign"
+          ? checklistPercent
+          : info.percent,
       prestigeXp: u.prestigeXp ?? 0,
       tier: u.tier ?? "free",
     };
@@ -468,7 +467,23 @@ export const listMembers = query({
 
 export const userProfile = query({
   args: { id: v.id("users") },
-  handler: async (ctx, { id }) => ctx.db.get(id),
+  handler: async (ctx, { id }) => {
+    const user = await ctx.db.get(id);
+    if (!user) return null;
+    // The profile NAME carries the commissioned rank (system-managed —
+    // members can no longer edit it). Derived from the ladder + checklist
+    // state so it is correct the moment a promotion lands, with the
+    // operator-managed label/insignia override from the `ranks` table.
+    const display = await resolveDisplayRank(ctx, user);
+    return {
+      ...user,
+      rank: display.label,
+      rankKey: display.key,
+      rankTier: display.tier,
+      rankFlagOfficer: display.flagOfficer,
+      rankImageStorageId: display.imageStorageId,
+    };
+  },
 });
 
 // Everything a member has authored, grouped by content type, newest first.

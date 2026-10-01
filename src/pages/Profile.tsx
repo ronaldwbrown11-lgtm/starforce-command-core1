@@ -38,6 +38,13 @@ export default function Profile() {
       ? { storageId: profile.avatarStorageId as Id<"_storage"> }
       : "skip",
   );
+  // Rank insignia image (operator-managed in the Rank Ladder console).
+  const rankImageUrl = useQuery(
+    api.assets.coverUrl,
+    profile?.rankImageStorageId
+      ? { storageId: profile.rankImageStorageId as Id<"_storage"> }
+      : "skip",
+  );
   const contributions = useQuery(
     api.social.userContributions,
     id ? { id: id as Id<"users"> } : "skip",
@@ -171,6 +178,38 @@ export default function Profile() {
                   <h2 className="text-xl font-semibold truncate">
                     {profileName}
                   </h2>
+                  {/* Commissioned rank — system-managed, updates on promotion */}
+                  {profile.rank ? (
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold"
+                      style={
+                        profile.rankFlagOfficer
+                          ? {
+                              color: "var(--uf-gold)",
+                              borderColor: "rgba(230,168,23,0.55)",
+                              background: "rgba(230,168,23,0.10)",
+                            }
+                          : {
+                              color: "var(--uf-cyan)",
+                              borderColor: "rgba(0,229,255,0.45)",
+                              background: "rgba(0,229,255,0.08)",
+                            }
+                      }
+                    >
+                      {rankImageUrl ? (
+                        <img
+                          src={rankImageUrl}
+                          alt=""
+                          aria-hidden
+                          className="h-4 w-4 rounded-sm object-cover"
+                        />
+                      ) : null}
+                      {profile.rankTier > 0 ? (
+                        <span className="opacity-70">T{profile.rankTier}</span>
+                      ) : null}
+                      {profile.rank}
+                    </span>
+                  ) : null}
                   {profile.title && TITLE_CATALOG[profile.title] ? (
                     <span
                       className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold"
@@ -191,9 +230,6 @@ export default function Profile() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
-              {profile.rank ? (
-                <StatusPill variant="info">{profile.rank}</StatusPill>
-              ) : null}
               {profile.tier ? (
                 <StatusPill variant={tierPillVariant(profile.tier)}>
                   {tierLabel(profile.tier)}
@@ -229,7 +265,6 @@ export default function Profile() {
                 <ProfileEditor
                   initial={{
                     displayName: profile.displayName,
-                    rank: profile.rank,
                     fleet: profile.fleet,
                     bio: profile.bio,
                     flair: profile.flair,

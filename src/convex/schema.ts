@@ -1686,6 +1686,10 @@ const schema = defineSchema(
       flagOfficer: v.boolean(), // subject to the 10-seat hard cap
       maxActiveSeats: v.optional(v.number()), // 10 for Rear Admiral
       blurb: v.string(),
+      // Operator-managed insignia image (uploaded from the Rank Ladder
+      // console) — rendered on profiles, the High Command badge, and the
+      // ladder table. Resolve with assets.coverUrl.
+      imageStorageId: v.optional(v.id("_storage")),
       createdAt: v.number(),
     })
       .index("by_key", ["key"])

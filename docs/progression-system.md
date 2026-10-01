@@ -259,7 +259,31 @@ handler():
   seat placeholders), plus the top 5 Captains on the promotion waitlist.
 - **Progression ladder + XP rate tables** and the **FAQ**.
 
-### A.4 Where the code lives
+### A.4 Rank presentation & operator controls
+
+- **Rank renders beside the member's name** on their profile (`/u/:id`) and
+  on the High Command badge/ladder — with the operator-managed insignia image
+  when one has been uploaded.
+- **Members can no longer choose or edit ranks.** The rank field was removed
+  from the dossier editor and from `users:updateProfile` server-side; rank
+  changes only come from the progression engine (checklist/XP) or an
+  operator's manual assignment.
+- **Rank Ladder console** (`/operator/ranks`, capability `operator` /
+  `senior_operator`):
+  - upload / replace / remove an **insignia image per rank** — including
+    ranks you **create** for future commissions (label, tier, min XP, blurb,
+    image at creation);
+  - rename any rank (label override stored in the `ranks` table, applied
+    everywhere via `resolveDisplayRank`);
+  - **manual promotion**: search a member → pick any rank → apply. Seat rules
+    still hold — promoting to Rear Admiral consumes one of the 10 seats and
+    the hard cap is enforced; demoting an admiral releases the seat back to
+    the waitlist.
+- Canonical ladder thresholds (1,500 / 4,000 / 9,000 / 23,000 / 35,000) are
+  doctrine enforced by `src/lib/ranks.ts` and are not editable; custom ranks
+  are manual-assignment only — the XP evaluator never awards them.
+
+### A.5 Where the code lives
 
 | Concern | File |
 |---|---|
@@ -270,3 +294,5 @@ handler():
 | Daily queue cron | `src/convex/cronJobs.ts` |
 | Daily engagement XP + lazy evaluation | `src/convex/engagement.ts` (`touchStreak`) |
 | Dashboard UI | `src/pages/HighCommand.tsx` |
+| Operator Rank Ladder console (images, creation, manual promotion) | `src/convex/rankAdmin.ts`, `src/pages/operator/Ranks.tsx` |
+| Display-rank resolution (profile name, insignia) | `resolveDisplayRank` in `src/convex/progression.ts` |
