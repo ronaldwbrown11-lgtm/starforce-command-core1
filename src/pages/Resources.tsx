@@ -71,27 +71,49 @@ export default function Resources() {
                 </div>
                 <h3 className="text-lg font-semibold">{r.title}</h3>
                 <p className="text-uf-muted text-sm mt-2">{r.description}</p>
-                {r.url ? (
-                  <a
-                    href={r.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="uf-btn uf-btn--ghost mt-3"
-                  >
-                    Open resource ↗
-                    <span className="sr-only"> (opens in a new tab)</span>
-                  </a>
-                ) : (
-                  <div className="mt-3 rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] px-3 py-2">
-                    <p className="text-xs font-mono uppercase tracking-wider text-uf-muted">
-                      Document pending
-                    </p>
-                    <p className="text-[11px] text-uf-muted/80 mt-0.5">
-                      This record is registered but its file hasn't been
-                      uploaded yet — check back soon.
-                    </p>
-                  </div>
-                )}
+                {r.fileMeta?.fileName ? (
+                  <p className="text-uf-muted text-xs mt-1 font-mono break-all">
+                    {r.fileMeta.fileName}
+                  </p>
+                ) : null}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {r.fileUrl ? (
+                    <a
+                      href={r.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="uf-btn uf-btn--primary"
+                    >
+                      Download document
+                      {r.fileMeta?.byteSize
+                        ? ` · ${formatBytes(r.fileMeta.byteSize)}`
+                        : ""}
+                      <span className="sr-only"> (opens in a new tab)</span>
+                    </a>
+                  ) : null}
+                  {r.url ? (
+                    <a
+                      href={r.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="uf-btn uf-btn--ghost"
+                    >
+                      Open resource ↗
+                      <span className="sr-only"> (opens in a new tab)</span>
+                    </a>
+                  ) : null}
+                  {!r.fileUrl && !r.url ? (
+                    <div className="w-full rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] px-3 py-2">
+                      <p className="text-xs font-mono uppercase tracking-wider text-uf-muted">
+                        Document pending
+                      </p>
+                      <p className="text-[11px] text-uf-muted/80 mt-0.5">
+                        This record is registered but its file hasn't been
+                        uploaded yet — check back soon.
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
               </HoloCard>
             ))}
             {items === undefined && [0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="uf-skeleton" style={{ height: 180 }} />)}

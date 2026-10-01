@@ -745,6 +745,14 @@ function ResourcesPanel({ onEdit }: { onEdit: (e: any) => void }) {
                         Tier · {tierLabel(r.tierRequired as any)}
                       </StatusPill>
                     ) : null}
+                    {r.fileMeta?.fileName ? (
+                      <StatusPill variant="success">
+                        FILE · {r.fileMeta.fileName.slice(0, 36)}
+                      </StatusPill>
+                    ) : null}
+                    {r.url ? (
+                      <StatusPill variant="violet">external link</StatusPill>
+                    ) : null}
                   </p>
                 </div>
                 <div className="flex gap-1 shrink-0">
@@ -813,7 +821,7 @@ function ResourceEditorModal({
     }
     setBusy(true);
     try {
-      await upsert({
+      const savedId = await upsert({
         id: form.id,
         title: form.title,
         slug: form.slug,
@@ -822,8 +830,15 @@ function ResourceEditorModal({
         resourceType: form.resourceType || undefined,
         tierRequired: (form.tierRequired as any) || undefined,
       });
-      toast.success(form.id ? "Saved." : "Created.");
-      onClose();
+      if (form.id) {
+        toast.success("Saved.");
+        onClose();
+      } else {
+        // Stay open in edit mode so the document can be attached to the
+        // freshly created resource immediately (the FilePicker needs a row).
+        setForm((f) => ({ ...f, id: savedId }));
+        toast.success("Created — attach the document below.");
+      }
     } catch {
       toast.error("Save failed.");
     } finally {
@@ -836,18 +851,22 @@ function ResourceEditorModal({
       title={form.id ? "Edit resource" : "New resource"}
       onClose={onClose}
     >
-      {form.id ? (
-        <div className="mb-4">
-          <FilePicker
-            kind="document"
-            rowId={form.id}
-            currentStorageId={initial?.fileStorageId ?? null}
-            currentFileName={initial?.fileMeta?.fileName ?? null}
-            currentUrl={initial?.fileUrl ?? null}
-            currentByteSize={initial?.fileMeta?.byteSize ?? null}
-          />
-        </div>
-      ) : null}
+      <div className="mb-4">
+        <FilePicker
+          kind="document"
+          rowId={form.id}
+          currentStorageId={initial?.fileStorageId ?? null}
+          currentFileName={initial?.fileMeta?.fileName ?? null}
+          currentUrl={initial?.fileUrl ?? null}
+          currentByteSize={initial?.fileMeta?.byteSize ?? null}
+        />
+        {!form.id ? (
+          <p className="text-uf-muted text-xs mt-2" role="note">
+            Save the resource first (button below) to enable the file upload —
+            the modal stays open so you can attach it right after creating.
+          </p>
+        ) : null}
+      </div>
       <div className="flex flex-col gap-3">
         <FieldRow
           label="Title"

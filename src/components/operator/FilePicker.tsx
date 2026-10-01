@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
 import { FileText, Loader2, Trash2, Upload } from "lucide-react";
 
@@ -53,6 +54,18 @@ export function FilePicker({
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Tracks a file attached during THIS modal session so the picker reflects
+  // the upload immediately (the parent's `initial` row is a captured
+  // snapshot and only refreshes after a reopen).
+  const [attached, setAttached] = useState<{
+    storageId: string;
+    fileName: string;
+    byteSize: number;
+  } | null>(null);
+  const liveUrl = useQuery(
+    api.assets.coverUrl,
+    attached ? { storageId: attached.storageId as Id<"_storage"> } : "skip",
+  );
 
   const generateUploadUrl = useMutation(api.assets.generateUploadUrl);
   const attachTransmissionFile = useMutation(api.assets.attachTransmissionFile);
@@ -67,6 +80,12 @@ export function FilePicker({
     kind === "video"
       ? "MP4 · WebM · OGG · MOV · ≤ 200 MB"
       : "PDF · DOC · DOCX · TXT · MD · images · ≤ 25 MB";
+
+  // A file attached this session wins over the captured `initial` snapshot.
+  const hasFile = !!attached || !!currentUrl;
+  const displayUrl = attached ? (liveUrl ?? null) : (currentUrl ?? null);
+  const displayName = attached ? attached.fileName : (currentFileName ?? null);
+  const displaySize = attached ? attached.byteSize : (currentByteSize ?? null);
 
   async function attach(storageId: string, meta: Record<string, unknown>) {
     if (!rowId) throw new Error("Save the entry first.");
@@ -91,6 +110,7 @@ export function FilePicker({
       setBusy(true);
       if (kind === "video") await removeTransmissionFile({ id: rowId as any });
       else await removeResourceFile({ id: rowId as any });
+      setAttached(null);
       toast.success("File removed.");
       onChange?.();
     } catch (e) {
@@ -129,11 +149,14 @@ export function FilePicker({
       });
       if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
       const { storageId } = (await res.json()) as { storageId: string };
+      const fileName =
+        file.name.replace(/[^\w.\- ]+/g, "").slice(0, 120) || file.name;
       await attach(storageId, {
-        fileName: file.name.replace(/[^\w.\- ]+/g, "").slice(0, 120) || file.name,
+        fileName,
         mimeType: file.type,
         byteSize: file.size,
       });
+      setAttached({ storageId, fileName, byteSize: file.size });
       toast.success(kind === "video" ? "Video attached." : "Document attached.");
       onChange?.();
     } catch (e) {
@@ -150,7 +173,7 @@ export function FilePicker({
     >
       <header className="mb-3 flex items-center justify-between gap-2">
         <span className="uf-eyebrow">{label}</span>
-        {currentStorageId && rowId ? (
+        {hasFile && rowId ? (
           <button
             type="button"
             disabled={busy}
@@ -163,24 +186,30 @@ export function FilePicker({
         ) : null}
       </header>
 
-      {currentUrl ? (
+      {hasFile ? (
         <div className="rounded-md border border-[color:var(--uf-border)] p-3 bg-[rgba(16,24,39,0.85)]">
           <p className="flex items-center gap-2 text-sm font-medium break-all">
             <FileText className="h-4 w-4 text-uf-cyan shrink-0" aria-hidden />
-            {currentFileName || "Uploaded file"}
+            {displayName || "Uploaded file"}
           </p>
           <p className="text-uf-muted text-xs mt-1">
-            {currentByteSize ? formatBytes(currentByteSize) : ""}
+            {displaySize ? formatBytes(displaySize) : ""}
             {kind === "video" ? " · plays inline on the channel" : " · linked on the Resources page"}
           </p>
-          <a
-            href={currentUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="uf-btn uf-btn--ghost mt-2 text-xs"
-          >
-            Open file
-          </a>
+          {displayUrl ? (
+            <a
+              href={displayUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="uf-btn uf-btn--ghost mt-2 text-xs"
+            >
+              Open file
+            </a>
+          ) : (
+            <p className="text-uf-muted text-xs mt-2" role="status">
+              Attached — resolving preview…
+            </p>
+          )}
         </div>
       ) : (
         <div
@@ -215,7 +244,7 @@ export function FilePicker({
             <>
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Uploading…
             </>
-          ) : currentUrl ? (
+          ) : hasFile ? (
             <>
               <Upload className="h-4 w-4" aria-hidden /> Replace file
             </>
