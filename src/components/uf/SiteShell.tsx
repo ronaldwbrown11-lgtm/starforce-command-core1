@@ -52,6 +52,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Maps", labelKey: "nav.maps", href: "/maps", desc: "Sector charts", descKey: "desc.maps" },
       { label: "Star Atlas", labelKey: "nav.starAtlas", href: "/map", desc: "Interactive galaxy", descKey: "desc.starAtlas" },
       { label: "Transmissions", labelKey: "nav.videos", href: "/videos", desc: "Video & audio", descKey: "desc.videos" },
+      { label: "Podcasts", labelKey: "nav.podcasts", href: "/videos?tab=audio", desc: "Listen to the fleet", descKey: "desc.podcasts" },
       { label: "Missions", labelKey: "nav.missions", href: "/missions", desc: "Active operations", descKey: "desc.missions" },
       { label: "Awards & Honors", labelKey: "nav.awards", href: "/awards", desc: "Ribbons, medals & the Locker", descKey: "desc.awards" },
       { label: "Honors", labelKey: "nav.honor", href: "/honor", desc: "The Wall of Honor", descKey: "desc.honor" },
@@ -723,6 +724,7 @@ function Footer() {
             <li><Link to="/maps">{t("nav.maps")}</Link></li>
             <li><Link to="/map">{t("nav.starAtlas")}</Link></li>
             <li><Link to="/videos">{t("nav.videos")}</Link></li>
+            <li><Link to="/videos?tab=audio">{t("nav.podcasts")}</Link></li>
             <li><Link to="/missions">{t("nav.missions")}</Link></li>
             <li><Link to="/vault">{t("nav.vault")}</Link></li>
             <li><Link to="/events">{t("nav.events")}</Link></li>

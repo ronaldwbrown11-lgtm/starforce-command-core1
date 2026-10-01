@@ -2,7 +2,8 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { SiteShell, PageHero, HoloCard, StatusPill } from "@/components/uf";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { Headphones } from "lucide-react";
 
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -21,6 +22,21 @@ function playableUrl(t: Transmission): string | null {
 // (podcast episodes, mission recordings, audio lore deep-dives).
 function kindOf(t: Transmission): "audio" | "video" {
   return t.audioUrl ? "audio" : "video";
+}
+
+// A podcast is a TYPE, not a format: episodes can be audio-only or full
+// video. Drives the Podcasts tab grouping and the card badges.
+function isPodcast(t: Transmission): boolean {
+  return t.transmissionType === "podcast";
+}
+
+// Tab membership: the Podcasts tab gathers every audio-format row PLUS any
+// podcast-typed video episodes; the Video tab keeps all video-format rows
+// (podcast videos appear in both — they are still watchable videos).
+function inTab(t: Transmission, tab: TabKey): boolean {
+  if (tab === "all") return true;
+  if (tab === "audio") return kindOf(t) === "audio" || isPodcast(t);
+  return kindOf(t) === "video";
 }
 
 function embedUrl(url: string): { kind: "embed"; src: string } | { kind: "video"; src: string } | null {
@@ -92,18 +108,35 @@ function AudioCard({ t }: { t: Transmission }) {
 const TABS = [
   { key: "all", label: "All" },
   { key: "video", label: "Video" },
-  { key: "audio", label: "Audio / Podcasts" },
+  { key: "audio", label: "Podcasts & Audio" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
+
+// Deep links (nav → Podcasts) select a tab via ?tab=. `audio` and the
+// friendlier alias `podcasts` both open the Podcasts & Audio tab.
+function tabFromParam(value: string | null): TabKey | null {
+  if (value === "audio" || value === "podcasts") return "audio";
+  if (value === "video") return "video";
+  if (value === "all") return "all";
+  return null;
+}
 
 export default function Videos() {
   const featured = useQuery(api.content.featuredTransmission);
   const list = useQuery(api.content.listTransmissions, { limit: 12 });
   const [active, setActive] = useState<Transmission | null>(null);
-  const [tab, setTab] = useState<TabKey>("all");
+  const [searchParams] = useSearchParams();
+  const paramTab = tabFromParam(searchParams.get("tab"));
+  const [tab, setTab] = useState<TabKey>(paramTab ?? "all");
 
-  const filtered = (list ?? []).filter((t) => tab === "all" || kindOf(t) === tab);
+  // Re-select when the nav deep link changes (e.g. clicking Podcasts while
+  // already on the page). Manual tab clicks keep their own state.
+  useEffect(() => {
+    if (paramTab) setTab(paramTab);
+  }, [paramTab]);
+
+  const filtered = (list ?? []).filter((t) => inTab(t, tab));
 
   const renderThumb = (t: Transmission) => {
     if (kindOf(t) === "audio") return <AudioCard t={t} />;
@@ -170,9 +203,14 @@ export default function Videos() {
                 </div>
               </>
             )}
-            <header className="p-6 pt-0 flex items-center justify-between">
+            <header className="p-6 pt-0 flex items-center justify-between gap-3">
               <h2 className="text-2xl font-semibold">{featured.title}</h2>
-              <StatusPill variant="info">Featured</StatusPill>
+              <div className="flex items-center gap-2 shrink-0">
+                {isPodcast(featured) && (
+                  <StatusPill variant="violet">Podcast</StatusPill>
+                )}
+                <StatusPill variant="info">Featured</StatusPill>
+              </div>
             </header>
           </HoloCard>
         )}
@@ -228,6 +266,11 @@ export default function Videos() {
                   >
                     {renderThumb(t)}
                   </button>
+                  {isPodcast(t) && (
+                    <div className="mt-3">
+                      <StatusPill variant="violet">Podcast</StatusPill>
+                    </div>
+                  )}
                   <h3 className="text-lg font-semibold">{t.title}</h3>
                   <p className="text-uf-muted text-sm mt-2">{t.description}</p>
                   {playableUrl(t) && (
