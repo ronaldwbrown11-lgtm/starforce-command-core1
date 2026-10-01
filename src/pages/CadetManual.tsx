@@ -24,60 +24,6 @@ const EARNING_ROWS: Array<{ what: string; rate: string }> = [
   { what: "Contests & vault ciphers", rate: "Varies by event" },
 ];
 
-const PHASES: Array<{ phase: string; window: string; title: string; items: string[] }> = [
-  {
-    phase: "Phase 1",
-    window: "Months 1–2",
-    title: "Make the economy real",
-    items: [
-      "Cosmetic Lab expansion: titles, boosts, rotation shelf (shipped)",
-      "Full-card profile frames (shipped)",
-      "Star Credit caches in the Requisition Depot",
-      "Aspirational deep-sink items (5,000★+)",
-    ],
-  },
-  {
-    phase: "Phase 2",
-    window: "Months 2–3",
-    title: "Social spending",
-    items: [
-      "Credit gifting & tipping on stories and lore",
-      "Profile display cases for owned cosmetics",
-      "Group treasuries with pooled perks",
-    ],
-  },
-  {
-    phase: "Phase 3",
-    window: "Months 3–4",
-    title: "Recurring events drive demand",
-    items: [
-      "Seasonal Cosmetic Pass with limited editions",
-      "Weekly contest entry fees with merch prize pools",
-      "Base-wide community goals unlocking canon content",
-    ],
-  },
-  {
-    phase: "Phase 4",
-    window: "Months 4–5",
-    title: "Premium & creators",
-    items: [
-      "Lore rentals — 48h access to tier-gated archives",
-      "Creator program — members sell through the depot",
-      "ARG campaigns with credit bounties",
-    ],
-  },
-  {
-    phase: "Phase 5",
-    window: "Month 6",
-    title: "Polish & scale",
-    items: [
-      "Credit economy dashboard in the operator console",
-      "Achievement-linked earned cosmetics",
-      "Referral rewards for recruiting active members",
-    ],
-  },
-];
-
 export default function CadetManual() {
   usePageMeta({
     title: "New Cadets Manual — Star Force Base 1198",
@@ -225,30 +171,6 @@ export default function CadetManual() {
               </a>
             </div>
           </HoloCard>
-        </div>
-
-        {/* Six-month plan timeline (echoes the downloadable PDF) */}
-        <h2 className="text-2xl font-semibold mt-12 mb-6">
-          The road ahead — six-month fleet plan
-        </h2>
-        <div className="uf-grid uf-grid--2">
-          {PHASES.map((p) => (
-            <HoloCard key={p.phase}>
-              <div className="flex items-center justify-between gap-3">
-                <span className="uf-eyebrow">{p.phase}</span>
-                <span className="text-xs font-mono text-[var(--uf-cyan)]">{p.window}</span>
-              </div>
-              <h3 className="text-lg font-semibold mt-1">{p.title}</h3>
-              <ul className="list-none p-0 m-0 mt-3 space-y-1.5 text-sm text-uf-muted">
-                {p.items.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span style={{ color: "var(--uf-cyan)" }} aria-hidden>▸</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </HoloCard>
-          ))}
         </div>
       </section>
     </SiteShell>
