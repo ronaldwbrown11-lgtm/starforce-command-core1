@@ -1,5 +1,6 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import { callerIsOperator, isOperatorOnlyResource } from "./content";
 
 // =========================================================================
 // Site-wide full-text search.
@@ -135,11 +136,14 @@ export const siteSearch = query({
       .withSearchIndex("search_title", (idx) => idx.search("title", q))
       .take(per);
 
-    // ---- Resources (title index) ----
-    const resources = await ctx.db
-      .query("resources")
-      .withSearchIndex("search_title", (idx) => idx.search("title", q))
-      .take(per);
+    // ---- Resources (title index; operator-only rows withheld) ----
+    const operatorOnly = await callerIsOperator(ctx);
+    const resources = (
+      await ctx.db
+        .query("resources")
+        .withSearchIndex("search_title", (idx) => idx.search("title", q))
+        .take(per)
+    ).filter((r) => operatorOnly || !isOperatorOnlyResource(r.slug));
 
     // ---- Forum threads (title index) ----
     const forumThreads = await ctx.db

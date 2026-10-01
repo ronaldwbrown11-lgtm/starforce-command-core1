@@ -1,5 +1,7 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthUserId } from "@convex-dev/auth/server";
+import type { QueryCtx } from "./_generated/server";
 import { staticImageFor } from "./staticCovers";
 
 // =========================================================================
@@ -7,7 +9,50 @@ import { staticImageFor } from "./staticCovers";
 // All queries resolve `coverUrl` server-side so consumers don't need a
 // second roundtrip for image rendering. They retain a `null` coverUrl when
 // no `coverStorageId` is attached.
+//
+// Exception: operator-only resources (see below) are withheld from
+// anonymous and non-operator callers at the query level.
 // =========================================================================
+
+// ---------------------------------------------------------------------------
+// Operator-only resources (server-side gating)
+//
+// The admin handbook is the uploaded resource row whose file is
+// "Ultra Force Admin Handbook .pdf" (slug `operator-briefing-templates`,
+// title "Operator Briefing Templates"). It must never be viewable or
+// downloadable by anyone without an operator capability, so both
+// `listResources` and the site-wide search drop these rows for non-operators
+// — the file's storage URL is never even resolved for them.
+// Add future command-only documents here by slug.
+// ---------------------------------------------------------------------------
+export const OPERATOR_ONLY_RESOURCE_SLUGS = ["operator-briefing-templates"];
+
+/** The operator roles gated in `convex/operator.ts` (plus `role === "admin"`). */
+const OPERATOR_ROLES = [
+  "operator",
+  "senior_operator",
+  "story_editor",
+  "lore_archivist",
+];
+
+/** True when the signed-in caller holds an operator-level capability. */
+export async function callerIsOperator(ctx: QueryCtx): Promise<boolean> {
+  const me = await getAuthUserId(ctx);
+  if (!me) return false;
+  const user = await ctx.db.get(me);
+  if (!user) return false;
+  return (
+    user.role === "admin" ||
+    OPERATOR_ROLES.includes(String(user.opRole ?? ""))
+  );
+}
+
+/** Whether a resource row is on the operator-only list. */
+export function isOperatorOnlyResource(
+  slug: string | null | undefined,
+): boolean {
+  return !!slug && OPERATOR_ONLY_RESOURCE_SLUGS.includes(slug);
+}
 
 const STORY_STATUS_VALUES = [
   "draft",
@@ -303,9 +348,12 @@ export const listResources = query({
       .query("resources")
       .order("desc")
       .take(limit);
-    const filtered = args.type
-      ? all.filter((r) => r.resourceType === args.type)
-      : all;
+    const operatorOnly = await callerIsOperator(ctx);
+    const filtered = all
+      .filter((r) => (args.type ? r.resourceType === args.type : true))
+      // Admin handbook & friends: operators only — never surfaced (and the
+      // file URL never resolved) for anyone else.
+      .filter((r) => operatorOnly || !isOperatorOnlyResource(r.slug));
     return await withFileUrls(ctx, filtered);
   },
 });
