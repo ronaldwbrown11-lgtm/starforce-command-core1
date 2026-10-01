@@ -279,7 +279,7 @@ function LoreEditorModal({
   const upsert = useMutation(api.admin.upsertLore);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
-    id: initial?.id,
+    id: initial?._id ?? initial?.id,
     title: initial?.title ?? "",
     slug: initial?.slug ?? "",
     excerpt: initial?.excerpt ?? "",
@@ -292,7 +292,7 @@ function LoreEditorModal({
   });
   useEffect(() => {
     setForm({
-      id: initial?.id,
+      id: initial?._id ?? initial?.id,
       title: initial?.title ?? "",
       slug: initial?.slug ?? "",
       excerpt: initial?.excerpt ?? "",
@@ -537,7 +537,7 @@ function TransmissionEditorModal({
   const upsert = useMutation(api.admin.upsertTransmission);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
-    id: initial?.id,
+    id: initial?._id ?? initial?.id,
     title: initial?.title ?? "",
     slug: initial?.slug ?? "",
     description: initial?.description ?? "",
@@ -548,7 +548,7 @@ function TransmissionEditorModal({
   });
   useEffect(() => {
     setForm({
-      id: initial?.id,
+      id: initial?._id ?? initial?.id,
       title: initial?.title ?? "",
       slug: initial?.slug ?? "",
       description: initial?.description ?? "",
@@ -791,7 +791,7 @@ function ResourceEditorModal({
   const upsert = useMutation(api.admin.upsertResource);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
-    id: initial?.id,
+    id: initial?._id ?? initial?.id,
     title: initial?.title ?? "",
     slug: initial?.slug ?? "",
     description: initial?.description ?? "",
@@ -801,7 +801,7 @@ function ResourceEditorModal({
   });
   useEffect(() => {
     setForm({
-      id: initial?.id,
+      id: initial?._id ?? initial?.id,
       title: initial?.title ?? "",
       slug: initial?.slug ?? "",
       description: initial?.description ?? "",
@@ -1056,7 +1056,7 @@ function MissionEditorModal({
   const upsert = useMutation(api.admin.upsertMission);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
-    id: initial?.id,
+    id: initial?._id ?? initial?.id,
     title: initial?.title ?? "",
     slug: initial?.slug ?? "",
     description: initial?.description ?? "",
@@ -1074,7 +1074,7 @@ function MissionEditorModal({
   });
   useEffect(() => {
     setForm({
-      id: initial?.id,
+      id: initial?._id ?? initial?.id,
       title: initial?.title ?? "",
       slug: initial?.slug ?? "",
       description: initial?.description ?? "",

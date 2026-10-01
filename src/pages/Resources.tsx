@@ -2,11 +2,13 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState } from "react";
 import { SiteShell, PageHero, HoloCard, StatusPill } from "@/components/uf";
+import { DocViewer } from "@/components/widgets/DocViewer";
 
 import { usePageMeta } from "@/hooks/use-page-meta";
 export default function Resources() {
   const [type, setType] = useState("");
   const [search, setSearch] = useState("");
+  const [reader, setReader] = useState<{ url: string; name: string } | null>(null);
   const items = useQuery(api.content.listResources, { type: type || undefined, limit: 60 });
   const filtered = (items ?? []).filter((r) =>
     !search ||
@@ -21,6 +23,21 @@ export default function Resources() {
     return `${b} B`;
   };
   usePageMeta({ title: "Resources — Star Force Base 1198", description: "Guides, tools, policies, and onboarding materials for Star Force personnel.", noindex: false });
+
+  // Cards are clickable: uploaded files open ON THE PAGE (inline reader),
+  // external resources open in a new tab.
+  const openResource = (r: {
+    title: string;
+    fileUrl?: string | null;
+    url?: string | null;
+    fileMeta?: { fileName?: string } | null;
+  }) => {
+    if (r.fileUrl) {
+      setReader({ url: r.fileUrl, name: r.fileMeta?.fileName ?? r.title });
+    } else if (r.url) {
+      window.open(r.url, "_blank", "noopener,noreferrer");
+    }
+  };
 
 
   return (
@@ -64,7 +81,22 @@ export default function Resources() {
         ) : (
           <div className="uf-grid uf-grid--3">
             {filtered.map((r) => (
-              <HoloCard key={r._id}>
+              <HoloCard
+                key={r._id}
+                className={r.fileUrl || r.url ? "cursor-pointer" : ""}
+                htmlProps={{
+                  role: "button",
+                  tabIndex: 0,
+                  "aria-label": `Open ${r.title}`,
+                  onClick: () => openResource(r),
+                  onKeyDown: (e: React.KeyboardEvent) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openResource(r);
+                    }
+                  },
+                }}
+              >
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <StatusPill variant="info">{r.resourceType ?? "guide"}</StatusPill>
                   {r.tierRequired && <StatusPill variant="warning">Tier: {r.tierRequired}</StatusPill>}
@@ -78,24 +110,39 @@ export default function Resources() {
                 ) : null}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {r.fileUrl ? (
-                    <a
-                      href={r.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="uf-btn uf-btn--primary"
-                    >
-                      Download document
-                      {r.fileMeta?.byteSize
-                        ? ` · ${formatBytes(r.fileMeta.byteSize)}`
-                        : ""}
-                      <span className="sr-only"> (opens in a new tab)</span>
-                    </a>
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReader({
+                            url: r.fileUrl!,
+                            name: r.fileMeta?.fileName ?? r.title,
+                          });
+                        }}
+                        className="uf-btn uf-btn--primary"
+                      >
+                        Read document
+                        {r.fileMeta?.byteSize
+                          ? ` · ${formatBytes(r.fileMeta.byteSize)}`
+                          : ""}
+                      </button>
+                      <a
+                        href={r.fileUrl}
+                        download
+                        onClick={(e) => e.stopPropagation()}
+                        className="uf-btn uf-btn--ghost"
+                      >
+                        Download
+                      </a>
+                    </>
                   ) : null}
                   {r.url ? (
                     <a
                       href={r.url}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
                       className="uf-btn uf-btn--ghost"
                     >
                       Open resource ↗
@@ -120,6 +167,13 @@ export default function Resources() {
           </div>
         )}
       </section>
+
+      {/* On-page document reader — opens guides here instead of downloading */}
+      <DocViewer
+        url={reader?.url ?? null}
+        fileName={reader?.name ?? null}
+        onClose={() => setReader(null)}
+      />
     </SiteShell>
   );
 }

@@ -1,5 +1,9 @@
-import { Download, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { BookOpen, Sparkles } from "lucide-react";
 import { SiteShell, PageHero, HoloCard } from "@/components/uf";
+import { DocViewer } from "@/components/widgets/DocViewer";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import {
   FRAME_CATALOG,
@@ -9,9 +13,13 @@ import {
 } from "@/lib/economy";
 
 // ---------------------------------------------------------------------------
-// New Cadets Manual — the standing orientation document. Covers the base's
-// systems in reading order: identity, earning, spending, contributing. The
-// six-month growth plan is downloadable as a print-ready PDF.
+// New Cadets Manual — the standing orientation document.
+//
+// If High Command has uploaded an onboarding guide (Content Desk → Resources
+// → type "onboarding" with a file), the page shows THAT guide front and
+// center — clicking it opens the document right on the page (inline reader,
+// no download). Without an uploaded guide, the page falls back to the
+// six-step card layout. The six-month growth plan also opens on the page.
 // ---------------------------------------------------------------------------
 
 const EARNING_ROWS: Array<{ what: string; rate: string }> = [
@@ -36,6 +44,29 @@ export default function CadetManual() {
     },
   });
 
+  // Uploaded onboarding guide (preferred) vs. fallback card layout.
+  const guides = useQuery(api.content.listResources, {
+    type: "onboarding",
+    limit: 10,
+  });
+  const [reader, setReader] = useState<{ url: string; name: string } | null>(
+    null,
+  );
+  const guideWithFile = (guides ?? []).find((g) => g.fileUrl);
+  const guide = guideWithFile ?? (guides ?? []).find((g) => g.url);
+
+  const openGuide = () => {
+    if (!guide) return;
+    if (guide.fileUrl) {
+      setReader({
+        url: guide.fileUrl,
+        name: guide.fileMeta?.fileName ?? "Cadet guide",
+      });
+    } else if (guide.url) {
+      window.open(guide.url, "_blank", "noopener,noreferrer");
+    }
+  };
+
   return (
     <SiteShell>
       <PageHero
@@ -46,6 +77,55 @@ export default function CadetManual() {
         secondary={{ label: "Back to base", href: "/", variant: "ghost" }}
       />
 
+      {guides !== undefined && guide ? (
+        /* ---------- Guide-first layout: the uploaded guide opens on-page ---------- */
+        <section className="uf-section max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12">
+          <HoloCard
+            className="!p-6 cursor-pointer"
+            htmlProps={{
+              role: "button",
+              tabIndex: 0,
+              "aria-label": "Open the cadet guide",
+              onClick: openGuide,
+              onKeyDown: (e: { key: string; preventDefault: () => void }) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openGuide();
+                }
+              },
+            }}
+          >
+            <span className="uf-eyebrow">Cadet guide · uploaded by High Command</span>
+            <h2 className="text-2xl md:text-3xl mt-2 flex items-center gap-3 flex-wrap">
+              <BookOpen className="h-6 w-6 text-uf-cyan" aria-hidden />
+              {guide.fileMeta?.fileName ?? guide.title}
+            </h2>
+            <p className="text-uf-muted text-sm mt-2 max-w-[60ch]">
+              {guide.description ||
+                "Click to read the guide right here on the page — it opens in an on-page reader, no download needed."}
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="uf-btn uf-btn--primary">
+                <BookOpen className="h-4 w-4 mr-1.5" aria-hidden />
+                Read the guide
+              </span>
+              {guide.fileUrl ? (
+                <span className="text-uf-muted text-xs uppercase tracking-[0.14em]">
+                  or use Download inside the reader
+                </span>
+              ) : (
+                <span className="text-uf-muted text-xs uppercase tracking-[0.14em]">
+                  opens in a new tab
+                </span>
+              )}
+            </div>
+          </HoloCard>
+        </section>
+      ) : guides === undefined ? (
+        <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+          <div className="uf-skeleton" style={{ height: 320 }} />
+        </section>
+      ) : (
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
         <div className="uf-grid uf-grid--2">
           <HoloCard>
@@ -166,18 +246,31 @@ export default function CadetManual() {
               everything cosmetic is earnable by play alone.
             </p>
             <div className="mt-4">
-              <a
-                href="/downloads/starforce-growth-plan.pdf"
-                download
+              <button
+                type="button"
+                onClick={() =>
+                  setReader({
+                    url: "/downloads/starforce-growth-plan.pdf",
+                    name: "Six-month fleet plan (PDF)",
+                  })
+                }
                 className="inline-flex items-center gap-2 rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.5)] px-4 py-2 text-sm text-uf-text transition-colors hover:bg-[rgba(0,229,255,0.08)]"
               >
-                <Download className="h-4 w-4" aria-hidden />
-                Download the six-month fleet plan (PDF)
-              </a>
+                <BookOpen className="h-4 w-4" aria-hidden />
+                Open the six-month fleet plan (PDF)
+              </button>
             </div>
           </HoloCard>
         </div>
       </section>
+      )}
+
+      {/* On-page document reader — guides open here, never auto-download */}
+      <DocViewer
+        url={reader?.url ?? null}
+        fileName={reader?.name ?? null}
+        onClose={() => setReader(null)}
+      />
     </SiteShell>
   );
 }
