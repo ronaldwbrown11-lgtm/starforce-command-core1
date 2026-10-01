@@ -20,6 +20,7 @@ import Contests from "@/pages/Contests";
 import ContestDetail from "@/pages/ContestDetail";
 import Store from "@/pages/Store";
 import Leaderboard from "@/pages/Leaderboard";
+import HighCommand from "@/pages/HighCommand";
 import Changelog from "@/pages/Changelog";
 import ToolsAssistant from "@/pages/ToolsAssistant";
 import EmbedStory from "@/pages/EmbedStory";
@@ -96,6 +97,7 @@ export const PUBLIC_ROUTES: PublicPageRoute[] = [
   { path: "/contests/:slug", label: "Contest", element: <ContestDetail />, appearance: false },
   { path: "/store", label: "Requisition Depot", element: <Store /> },
   { path: "/leaderboard", label: "Leaderboard", element: <Leaderboard /> },
+  { path: "/high-command", label: "High Command", element: <HighCommand /> },
   { path: "/changelog", label: "Changelog", element: <Changelog /> },
   { path: "/blog", label: "Blog", element: <BlogPage /> },
   { path: "/blog/:slug", label: "Blog post", element: <BlogDetailPage />, appearance: false },

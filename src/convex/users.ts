@@ -332,20 +332,14 @@ export const updateProfile = mutation({
   },
 });
 
-// Canonical rank ladder offered by the first-run pilot orientation. Kept
-// server-side too so the onboarding picker can't drift from what's accepted.
-const ONBOARD_RANKS = [
-  "Recruit",
-  "Aspirant",
-  "Pilot",
-  "Commander",
-  "Captain",
-  "Admiral",
-] as const;
+// Rank is no longer chosen at orientation: the Capped Star Force
+// progression system (src/lib/ranks.ts) stamps fresh accounts as Tier 7
+// Ensign and the ladder is advanced by the induction checklist + XP.
 
 /**
- * One-screen pilot orientation completed at first login: pick a rank, a
- * fleet, and optionally a starter mission, then get flagged onboarded.
+ * One-screen pilot orientation completed at first login: display name,
+ * fleet affiliation, and optionally a starter mission, then get flagged
+ * onboarded. Rank is NOT selectable — see the note above.
  * `skip: true` marks the account onboarded without selections. The starter
  * mission is validated as an active, free-cleared operation before the
  * client is allowed to deep-link into it.
@@ -371,9 +365,20 @@ export const completeOnboarding = mutation({
     const patch: {
       displayName?: string;
       rank?: string;
+      rankKey?: string;
       fleet?: string;
       onboarded: boolean;
     } = { onboarded: true };
+
+    // Capped progression: every fresh account enters at Tier 7 Ensign
+    // (spec §1.1). Rank becomes system-managed from here — the legacy
+    // orientation `rank` argument is ignored so members can't self-assign
+    // senior ranks. Accounts that already earned XP are left untouched
+    // (grandfathered by the XP ladder on first evaluation).
+    if (!user.rankKey && (user.xp ?? 0) === 0) {
+      patch.rankKey = "ensign";
+      patch.rank = "Ensign";
+    }
 
     if (!args.skip) {
       if (args.displayName !== undefined) {
@@ -385,14 +390,6 @@ export const completeOnboarding = mutation({
           throw new Error("Display name must be 60 characters or fewer.");
         }
         patch.displayName = name;
-      }
-
-      if (args.rank !== undefined) {
-        const rank = args.rank.trim();
-        if (!ONBOARD_RANKS.includes(rank as (typeof ONBOARD_RANKS)[number])) {
-          throw new Error("Pick a valid rank.");
-        }
-        patch.rank = rank;
       }
 
       if (args.fleet !== undefined) {

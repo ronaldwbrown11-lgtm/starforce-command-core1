@@ -7,6 +7,8 @@ import {
   grantCreditsExact,
 } from "./economy";
 import { awardAchievements } from "./achievements";
+import { evaluateMember } from "./progression";
+import { dailyActivityXp } from "../lib/ranks";
 
 // =========================================================================
 // Member engagement layer
@@ -242,6 +244,11 @@ export const touchStreak = mutation({
     const user = await ctx.db.get(me);
     if (!user) return null;
 
+    // Capped progression: re-derive rank/checklist state on every app-shell
+    // visit (cheap read) so Ensign → Lieutenant promotions land even when no
+    // XP changed since the last evaluation.
+    const evaluation = await evaluateMember(ctx, me);
+
     const today = dayKey(Date.now());
     if (user.streakLastDay === today) {
       return { streak: user.streakCount ?? 0, alreadyCounted: true };
@@ -268,6 +275,14 @@ export const touchStreak = mutation({
     );
     await grantCredits(ctx, me, daily, `streak_day_${streak}`);
 
+    // Daily engagement XP (spec §2: 20–30 XP/day, hard cap 50 XP/day). The
+    // cap is enforced from the xpLedger inside applyXpGain, so overlapping
+    // daily-category awards can never exceed it in one UTC day.
+    const dailyXp = await applyXpGain(ctx, me, dailyActivityXp(streak), {
+      source: "daily_activity",
+      category: "daily",
+    });
+
     // Milestone bonuses pay exactly once — they key on `streak`, and a
     // streak value is only ever reached once per chain.
     let milestone = 0;
@@ -276,7 +291,14 @@ export const touchStreak = mutation({
       await grantCreditsExact(ctx, me, milestone, `streak_milestone_${streak}`);
     }
 
-    return { streak, daily, milestone: milestone || undefined, best };
+    return {
+      streak,
+      daily,
+      dailyXp,
+      milestone: milestone || undefined,
+      best,
+      promoted: evaluation?.promoted ?? false,
+    };
   },
 });
 

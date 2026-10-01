@@ -53,15 +53,18 @@ export default function CadetManual() {
             <h2 className="text-xl font-semibold mt-1">Arrive & identify</h2>
             <p className="text-uf-muted text-sm mt-2">
               Sign in with your email and complete Pilot Orientation: choose a
-              callsign, a starting rank, and a fleet affiliation, then assign
-              your starship through the six-step wizard. Everything is editable
-              later from your Account page — nothing you pick now is permanent.
+              callsign and a fleet affiliation, then assign your starship
+              through the six-step wizard. You enter the fleet as a Tier 7
+              Ensign — everything is editable later from your Account page,
+              nothing you pick now is permanent.
             </p>
             <p className="text-uf-muted text-sm mt-2">
               When orientation finishes, the Cadet Induction quest lights up.
               It walks you through joining a group, reacting to a story, filing
               a report, and earning your first badge — paying out XP and Star
-              Credits as you go.
+              Credits as you go. Finish the induction checklist at 100% on the
+              High Command dashboard and you're promoted to Lieutenant, where
+              XP tracking begins.
             </p>
           </HoloCard>
 
@@ -70,10 +73,12 @@ export default function CadetManual() {
             <h2 className="text-xl font-semibold mt-1">Climb the ranks</h2>
             <p className="text-uf-muted text-sm mt-2">
               XP comes from quests, missions, contests, Signal Vault ciphers,
-              and community activity. Ranks climb automatically — Recruit,
-              Aspirant at 500 XP, Pilot at 1,500, Commander at 4,000, Captain
-              at 9,000, Admiral at 20,000. Paid tiers climb faster through
-              their XP multipliers, but every rank is earnable on Free.
+              and community activity. Ranks climb automatically: Ensign
+              (checklist) → Lieutenant at 1,500 XP → Lieutenant Commander at
+              4,000 → Commander at 9,000 → Captain (Fleet) at 23,000 → Rear
+              Admiral at 35,000, where ten active seats form the High Command.
+              Paid tiers climb faster through their XP multipliers, but every
+              rank is earnable on Free.
             </p>
           </HoloCard>
 

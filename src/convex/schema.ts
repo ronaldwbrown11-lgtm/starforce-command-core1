@@ -79,7 +79,21 @@ const schema = defineSchema(
 
       // Ultra Force extensions
       displayName: v.optional(v.string()),
-      rank: v.optional(v.string()), // Recruit / Aspirant / Pilot / Commander / Captain / Admiral
+      // Legacy/cosmetic display rank string. The authoritative ladder lives in
+      // `rankKey` (Capped Star Force progression system) and is system-managed.
+      rank: v.optional(v.string()),
+      // ---- Capped Star Force progression system (src/lib/ranks.ts) --------
+      // System-managed ladder key: ensign / lieutenant / lieutenant_commander /
+      // commander / captain / rear_admiral. Absent = legacy account that
+      // predates the ladder (grandfathered by XP on first evaluation).
+      rankKey: v.optional(v.string()),
+      // Timestamp of the member's most recent XP grant — drives the Rear
+      // Admiral inactivity decay (zero XP for 45 consecutive days = seat
+      // revocation).
+      lastXpAt: v.optional(v.number()),
+      // Excess total XP above 35,000 held while waiting on the Rear Admiral
+      // Queue at Captain (Fleet) rank ("Prestige XP").
+      prestigeXp: v.optional(v.number()),
       xp: v.optional(v.number()),
       fleet: v.optional(v.string()), // faction name
       tier: v.optional(tierValidator),
@@ -1655,6 +1669,76 @@ const schema = defineSchema(
     })
       .index("by_status", ["status"])
       .index("by_author", ["authorId"]),
+
+    // =======================================================================
+    // Capped Star Force Progression System (Deliverable A data model)
+    // =======================================================================
+
+    // Ranks — the rank catalog. Seeded from src/lib/ranks.ts by
+    // progression.ensureRanks (called from the daily queue evaluation); the
+    // UI falls back to the built-in ladder if the table hasn't been seeded.
+    ranks: defineTable({
+      key: v.string(), // RankKey, e.g. "lieutenant"
+      label: v.string(), // display label, e.g. "Lieutenant Commander"
+      tier: v.number(), // 7–11, 13 (tier 12 intentionally unused)
+      order: v.number(), // ladder position (0-based)
+      minXp: v.number(), // minimum TOTAL XP required
+      flagOfficer: v.boolean(), // subject to the 10-seat hard cap
+      maxActiveSeats: v.optional(v.number()), // 10 for Rear Admiral
+      blurb: v.string(),
+      createdAt: v.number(),
+    })
+      .index("by_key", ["key"])
+      .index("by_order", ["order"]),
+
+    // UserXP ledger — one row per XP grant. Powers the 50 XP/day engagement
+    // cap, the dashboard's XP history, and inactivity tracking.
+    xpLedger: defineTable({
+      userId: v.id("users"),
+      amount: v.number(), // XP actually credited (after multipliers & caps)
+      source: v.string(), // e.g. "daily_activity" | "quest_induction" | "signal_solve"
+      category: v.string(), // daily / weekly / lore / story / milestone / other
+      day: v.string(), // UTC day key "YYYY-MM-DD" (daily cap window)
+      createdAt: v.number(),
+    })
+      .index("by_user_day", ["userId", "day"])
+      .index("by_user_created", ["userId", "createdAt"])
+      .index("by_day", ["day"])
+      .index("by_user", ["userId"]),
+
+    // OnboardingTasks — audited completion records for the Ensign induction
+    // checklist. Live checklist state is DERIVED from real activity (see
+    // progression.deriveChecklist); rows are written when a step is verified
+    // complete so the audit trail survives.
+    onboardingTasks: defineTable({
+      userId: v.id("users"),
+      taskKey: v.string(), // profile / ship / group / react / report / badge
+      label: v.string(),
+      completedAt: v.number(),
+      createdAt: v.number(),
+    })
+      .index("by_user", ["userId"])
+      .index("by_user_task", ["userId", "taskKey"]),
+
+    // AdmiralQueue — the Rear Admiral waitlist and active seat registry.
+    // Rows are created when a Captain crosses 35,000 total XP (status
+    // "waiting"); the daily evaluateAdmiralQueue cron assigns up to 10 active
+    // seats and applies the 45-day inactivity decay.
+    //   waiting               — Rear Admiral Eligible, awaiting a seat
+    //   active                — holds one of the 10 seats
+    //   inactive_flag_officer — seat revoked after 45 idle days
+    admiralQueue: defineTable({
+      userId: v.id("users"),
+      status: v.string(), // waiting / active / inactive_flag_officer
+      totalXp: v.number(), // snapshot refreshed on evaluation (waitlist rank)
+      joinedAt: v.number(),
+      seatGrantedAt: v.optional(v.number()),
+      seatRevokedAt: v.optional(v.number()),
+      lastXpAt: v.optional(v.number()), // last observed XP activity
+      updatedAt: v.number(),
+    })
+      .index("by_user", ["userId"])
+      .index("by_status", ["status"]),
   },
   {
     schemaValidation: false,

@@ -70,6 +70,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Requisition Depot", labelKey: "nav.store", href: "/store", desc: "Lore bibles & merch", descKey: "desc.store" },
       { label: "Members", labelKey: "nav.members", href: "/members", desc: "Fleet roster", descKey: "desc.members" },
       { label: "Leaderboard", labelKey: "nav.leaderboard", href: "/leaderboard", desc: "Top contributors", descKey: "desc.leaderboard" },
+      { label: "High Command", labelKey: "nav.highCommand", href: "/high-command", desc: "Ranks, seats & progression", descKey: "desc.highCommand" },
       { label: "Events", labelKey: "nav.events", href: "/events", desc: "Upcoming ops", descKey: "desc.events" },
       { label: "Submit", labelKey: "nav.submit", href: "/submit", desc: "File a report", descKey: "desc.submit" },
       { label: "Messages", labelKey: "nav.messages", href: "/messages", desc: "Direct comms", descKey: "desc.messages" },
@@ -220,6 +221,7 @@ const ROUTE_PALETTES: Record<string, PaletteName> = {
   "/u": "emerald-cyan",
   "/account": "emerald-cyan",
   "/leaderboard": "amber-magenta",
+  "/high-command": "amber-magenta",
   "/changelog": "sapphire",
   "/membership": "cyan-violet",
   "/search": "cyan-violet",
@@ -735,6 +737,7 @@ function Footer() {
             <li><Link to="/groups">{t("nav.groups")}</Link></li>
             <li><Link to="/store">{t("nav.store")}</Link></li>
             <li><Link to="/membership">{t("nav.membership")}</Link></li>
+            <li><Link to="/high-command">{t("nav.highCommand")}</Link></li>
           </ul>
         </div>
         <div>

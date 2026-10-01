@@ -53,6 +53,7 @@ import type * as messages from "../messages.js";
 import type * as missions from "../missions.js";
 import type * as nighthawk from "../nighthawk.js";
 import type * as operator from "../operator.js";
+import type * as progression from "../progression.js";
 import type * as quest from "../quest.js";
 import type * as rateLimit from "../rateLimit.js";
 import type * as search from "../search.js";
@@ -134,6 +135,7 @@ declare const fullApi: ApiFromModules<{
   missions: typeof missions;
   nighthawk: typeof nighthawk;
   operator: typeof operator;
+  progression: typeof progression;
   quest: typeof quest;
   rateLimit: typeof rateLimit;
   search: typeof search;

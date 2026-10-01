@@ -262,7 +262,37 @@ export const FAQ_SEED: FaqSeed[] = [
     category: "account",
     question: "How do XP and ranks work?",
     answer:
-      "You earn XP from quests, missions, contests, ciphers, and community activity. Ranks climb automatically: Recruit, then Aspirant at 500 XP, Pilot at 1,500, Commander at 4,000, Captain at 9,000, and Admiral at 20,000. Paid tiers climb faster via their XP multipliers.",
+      "You earn XP from quests, missions, contests, ciphers, and community activity. Ranks climb automatically on the capped ladder: Ensign on arrival (promoted to Lieutenant at 100% induction), Lieutenant at 1,500 XP, Lieutenant Commander at 4,000, Commander at 9,000, Captain (Fleet) at 23,000, and Rear Admiral at 35,000 — where only 10 active seats exist. Paid tiers climb faster via their XP multipliers.",
+  },
+  {
+    category: "account",
+    question: "How do I rank up from Ensign?",
+    answer:
+      "Complete the induction checklist at 100% — set up your profile, assign a starship, join a fleet group, react to a story, file a field report, and earn your first badge. The moment the sixth step lands you're auto-promoted to Lieutenant, where numerical XP tracking begins. Track it live on the High Command dashboard (/high-command).",
+  },
+  {
+    category: "account",
+    question: "What happens when I hit 35,000 XP at Captain rank?",
+    answer:
+      "You join the Rear Admiral Queue with Rear Admiral Eligible status. All excess XP above 35,000 is held as Prestige XP while you wait — nothing is lost, and your waitlist position is ranked by total XP. The top eligible Captain is promoted automatically whenever a seat opens.",
+  },
+  {
+    category: "account",
+    question: "How are the 10 Rear Admiral seats awarded?",
+    answer:
+      "There is a hard cap of 10 active Rear Admiral seats. Captains at 35,000+ total XP join the waitlist; a daily fleet evaluation promotes the highest-total-XP eligible Captain whenever active seats drop below 10. If all 10 seats are full, qualified Captains stay at Captain (Fleet) with Rear Admiral Eligible status.",
+  },
+  {
+    category: "account",
+    question: "What happens if a Rear Admiral becomes inactive?",
+    answer:
+      "45 consecutive days with zero XP triggers inactivity decay: the seat is revoked, the officer is shifted to Inactive Flag Officer status, and the top-ranked eligible Captain is promoted into the open seat. Earning XP again returns you to the waitlist — and your XP is never reduced.",
+  },
+  {
+    category: "account",
+    question: "Do I lose my XP while waiting for an Admiral seat?",
+    answer:
+      "Never. XP only moves forward. Everything above 35,000 is safely banked as Prestige XP while you wait, your total still counts for waitlist ranking, and no promotion or seat change reduces your XP.",
   },
   {
     category: "account",

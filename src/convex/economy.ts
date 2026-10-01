@@ -2,7 +2,7 @@ import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { MutationCtx } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import {
   CREDIT_RATES,
   FRAME_CATALOG,
@@ -10,6 +10,14 @@ import {
   BOOST_CATALOG,
   type FrameId,
 } from "../lib/economy";
+import {
+  DAILY_XP_CAP,
+  FLAG_OFFICER_MIN_XP,
+  deriveRankKey,
+  rankSpec,
+  utcDayKey,
+  type XpCategory,
+} from "../lib/ranks";
 
 // =========================================================================
 // Star Credits (#8 — Ultra Force virtual currency)
@@ -57,21 +65,169 @@ function creditSurgeActive(user: { creditSurgeUntil?: number }): boolean {
 }
 
 /**
+ * Optional grant metadata for the Capped Star Force progression system.
+ * `category: "daily"` engagement XP counts against the hard 50 XP/day cap
+ * (enforced from the xpLedger); every grant is journaled + evaluated for
+ * rank promotion.
+ */
+export interface XpGrantOptions {
+  source?: string; // e.g. "daily_activity", "quest_induction", "signal_solve"
+  category?: XpCategory;
+}
+
+/**
  * Award XP to a member, scaled by their tier's multiplier and any active
- * XP Surge. Returns XP granted.
+ * XP Surge. Returns XP granted (0 when the daily engagement cap blocked it).
+ *
+ * Side effects (Capped Star Force progression system):
+ *  - journals the grant to `xpLedger` (daily-cap accounting + XP history),
+ *  - refreshes `lastXpAt` (Rear Admiral inactivity decay clock),
+ *  - mirrors excess >35,000 into `prestigeXp`,
+ *  - evaluates ladder promotion up to Captain (Fleet). Ensign → Lieutenant
+ *    is checklist-gated and handled exclusively by
+ *    `progression.onboardingComplete`; Rear Admiral seats are granted only
+ *    by the Admiral Queue cron — never by XP alone.
  */
 export async function applyXpGain(
   ctx: MutationCtx,
   userId: Id<"users">,
   baseXp: number,
+  opts: XpGrantOptions = {},
 ): Promise<number> {
   if (!baseXp || baseXp <= 0) return 0;
   const user = await ctx.db.get(userId);
   if (!user) return 0;
   const surge = xpSurgeActive(user) ? 2 : 1;
-  const gained = Math.round(baseXp * tierXpMultiplier(user.tier) * surge);
-  await ctx.db.patch(userId, { xp: (user.xp ?? 0) + gained });
+  let gained = Math.round(baseXp * tierXpMultiplier(user.tier) * surge);
+
+  const category: XpCategory = opts.category ?? "other";
+  const source = opts.source ?? "activity";
+  const now = Date.now();
+  const day = utcDayKey(now);
+
+  // Hard cap: max 50 engagement XP per UTC day (spec §2). Counted from the
+  // ledger, so multiple daily-category grants in one day can't exceed it.
+  if (category === "daily") {
+    const todayRows = await ctx.db
+      .query("xpLedger")
+      .withIndex("by_user_day", (q) => q.eq("userId", userId).eq("day", day))
+      .collect();
+    // Only engagement XP counts against the engagement cap — story/lore/
+    // milestone awards landing the same day never block a daily check-in.
+    const used = todayRows
+      .filter((r) => r.category === "daily")
+      .reduce((sum, r) => sum + r.amount, 0);
+    gained = Math.min(gained, Math.max(0, DAILY_XP_CAP - used));
+    if (gained <= 0) return 0;
+  }
+
+  const totalXp = (user.xp ?? 0) + gained;
+
+  const patch: Partial<Doc<"users">> = { xp: totalXp, lastXpAt: now };
+  // Prestige XP — a Captain's excess above the 35,000 flag-officer floor is
+  // held while they wait on the Rear Admiral Queue (spec §1.5).
+  if (totalXp > FLAG_OFFICER_MIN_XP) {
+    patch.prestigeXp = totalXp - FLAG_OFFICER_MIN_XP;
+  }
+
+  // Ladder evaluation. Captains crossing 35,000 join the queue as
+  // "waiting" (Rear Admiral Eligible) — seats are assigned by the cron.
+  const seatActive = user.rankKey === "rear_admiral";
+  const nextKey = deriveRankKey({
+    xp: totalXp,
+    currentRankKey: user.rankKey,
+    checklistComplete: false,
+    seatActive,
+  });
+  const prevKey = user.rankKey ?? null;
+  const promoted = nextKey !== prevKey;
+  if (promoted) {
+    const spec = rankSpec(nextKey);
+    patch.rankKey = nextKey;
+    // Keep the legacy display string in step with the system rank on promotion.
+    patch.rank = spec.label;
+  }
+
+  await ctx.db.patch(userId, patch);
+  await ctx.db.insert("xpLedger", {
+    userId,
+    amount: gained,
+    source,
+    category,
+    day,
+    createdAt: now,
+  });
+
+  if (promoted) {
+    await recordPromotion(ctx, userId, prevKey, nextKey, now);
+  }
+
+  // Admiral Queue bookkeeping: create the waitlist row when a Captain
+  // crosses 35,000; refresh the snapshot for existing queue members.
+  if (totalXp >= FLAG_OFFICER_MIN_XP) {
+    const queueRow = await ctx.db
+      .query("admiralQueue")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+    if (!queueRow) {
+      await ctx.db.insert("admiralQueue", {
+        userId,
+        status: "waiting",
+        totalXp,
+        joinedAt: now,
+        lastXpAt: now,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.patch(queueRow._id, {
+        totalXp,
+        lastXpAt: now,
+        updatedAt: now,
+      });
+    }
+  }
+
   return gained;
+}
+
+/**
+ * Notify + record a system rank promotion (shared by the XP pipeline and
+ * the onboarding/queue evaluators in progression.ts).
+ */
+export async function recordPromotion(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  prevKey: string | null,
+  nextKey: string,
+  now: number,
+): Promise<void> {
+  const spec = rankSpec(nextKey);
+  await ctx.db.insert("notifications", {
+    userId,
+    kind: "promotion",
+    title: `Promoted to ${spec.label}`,
+    body: prevKey
+      ? `Your commission advanced from ${rankSpec(prevKey).label} to ${spec.label}.`
+      : `Your commission is now ${spec.label}. Report to the High Command dashboard.`,
+    url: "/high-command",
+    createdAt: now,
+  });
+  await ctx.db.insert("activityFeed", {
+    actorId: userId,
+    verb: "completed",
+    targetType: "rank",
+    targetId: nextKey,
+    url: "/high-command",
+    summary: `was promoted to ${spec.label}`,
+    createdAt: now,
+  });
+  await ctx.db.insert("auditLog", {
+    actorId: userId,
+    action: "rank.promote",
+    target: `user:${userId}`,
+    meta: JSON.stringify({ from: prevKey, to: nextKey, tier: spec.tier }),
+    createdAt: now,
+  });
 }
 
 /**

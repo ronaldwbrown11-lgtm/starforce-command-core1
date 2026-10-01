@@ -8,6 +8,8 @@
  * Pricing is in USD. Generations and storage are product limits.
  */
 
+import { RANK_LADDER } from "./ranks";
+
 export const TIER_IDS = [
   "free",
   "cadet",
@@ -179,14 +181,11 @@ export const TIER_FLAIR_PRESETS: Record<TierId, string[]> = {
   gia_agent: ["G.I.A Agent", "Deep Cover", "Cipher", "Station Chief"],
 };
 
-export const RANK_THRESHOLDS: Array<{ rank: string; xp: number }> = [
-  { rank: "Recruit", xp: 0 },
-  { rank: "Aspirant", xp: 500 },
-  { rank: "Pilot", xp: 1500 },
-  { rank: "Commander", xp: 4000 },
-  { rank: "Captain", xp: 9000 },
-  { rank: "Admiral", xp: 20000 },
-];
+// Capped Star Force progression ladder — canonical source is src/lib/ranks.ts.
+// (Ensign → Lieutenant is gated by the induction checklist, not XP.)
+export const RANK_THRESHOLDS: Array<{ rank: string; xp: number }> = RANK_LADDER.map(
+  (r) => ({ rank: r.label, xp: r.minXp }),
+);
 
 export function tierLabel(id: TierId | null | undefined): string {
   if (!id) return "Free Member";

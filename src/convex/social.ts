@@ -7,6 +7,9 @@ import {
   evaluateAchievements,
 } from "./achievements";
 import { CREDIT_RATES, grantCredits } from "./economy";
+import { deriveChecklist } from "./progression";
+import { QUEST_STEPS } from "./quest";
+import { deriveRankKey, rankProgressInfo } from "../lib/ranks";
 import type { Id } from "./_generated/dataModel";
 
 // =========================================================================
@@ -342,40 +345,35 @@ export const rankProgress = query({
     const u = await ctx.db.get(target);
     if (!u) return null;
     const xp = u.xp ?? 0;
-    // Renamed rank ladder so the "Cadet" rank no longer collides with
-    // the Cadet membership tier.
-    const thresholds: Array<[string, number]> = [
-      ["Recruit", 0],
-      ["Aspirant", 500],
-      ["Pilot", 1500],
-      ["Commander", 4000],
-      ["Captain", 9000],
-      ["Admiral", 20000],
-    ];
-    let nextRank: string | null = null;
-    let nextThreshold: number | null = null;
-    for (const [rank, threshold] of thresholds) {
-      if (xp < threshold) {
-        nextRank = rank;
-        nextThreshold = threshold;
-        break;
-      }
-    }
-    let percent = 0;
-    if (nextThreshold != null) {
-      const prev = thresholds
-        .filter(([, t]) => t <= xp)
-        .map(([, t]) => t)
-        .pop() ?? 0;
-      const range = Math.max(1, nextThreshold - prev);
-      percent = Math.min(100, Math.max(0, Math.round(((xp - prev) / range) * 100)));
-    }
+
+    // Capped Star Force progression (src/lib/ranks.ts) — the ONE ladder,
+    // shared with the /high-command dashboard and the backend evaluators.
+    const done = await deriveChecklist(ctx, target, u);
+    const checklistComplete = QUEST_STEPS.every((s) => done[s.key]);
+    const rankKey = deriveRankKey({
+      xp,
+      currentRankKey: u.rankKey,
+      checklistComplete,
+      // A stored rear_admiral rank implies an active seat — the queue cron
+      // clears the key the moment a seat is revoked.
+      seatActive: u.rankKey === "rear_admiral",
+    });
+    const info = rankProgressInfo(rankKey, xp);
+    const checklistPercent = Math.round(
+      (QUEST_STEPS.filter((s) => done[s.key]).length / QUEST_STEPS.length) * 100,
+    );
+
     return {
       xp,
-      rank: u.rank ?? "Recruit",
-      nextRank,
-      nextThreshold,
-      percent,
+      rank: info.current.label,
+      rankKey: info.current.key,
+      tierNumber: info.current.tier,
+      nextRank: info.next?.label ?? null,
+      nextThreshold: info.target,
+      // Ensigns advance through the induction checklist, not XP.
+      percent:
+        info.current.key === "ensign" ? checklistPercent : info.percent,
+      prestigeXp: u.prestigeXp ?? 0,
       tier: u.tier ?? "free",
     };
   },

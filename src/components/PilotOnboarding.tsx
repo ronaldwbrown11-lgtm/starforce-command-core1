@@ -10,16 +10,16 @@ import { ShipAssignmentFlow } from "@/components/ships/ShipAssignmentFlow";
 import { SEED_FACTIONS } from "@/lib/factions";
 import { useFactionCanonSync } from "@/hooks/use-faction-canon-sync";
 
-// Canonical rank ladder (mirrors the server validator in convex/users.ts and
-// the thresholds used by social:rankProgress).
-const RANKS: Array<{ id: string; blurb: string }> = [
-  { id: "Recruit", blurb: "First step off the gangway" },
-  { id: "Aspirant", blurb: "500 XP — proven to the Bridge" },
-  { id: "Pilot", blurb: "1,500 XP — at home in the black" },
-  { id: "Commander", blurb: "4,000 XP — runs a deck" },
-  { id: "Captain", blurb: "9,000 XP — commands a ship" },
-  { id: "Admiral", blurb: "20,000 XP — commands the fleet" },
-];
+// Capped Star Force progression: orientation no longer picks a rank — every
+// fresh account enters as Tier 7 Ensign and advances via the induction
+// checklist + XP (server-stamped in users.completeOnboarding, ladder in
+// src/lib/ranks.ts, dashboard at /high-command).
+const ENTRY_RANK = {
+  key: "ensign",
+  tier: 7,
+  label: "Ensign",
+  blurb: "Entry rank — finish the induction checklist on the High Command dashboard to earn Lieutenant.",
+};
 
 // Fallback faction names — mirrors the canon seed catalog in src/lib/factions
 // (the same source the factions table is seeded from), used only if the
@@ -46,7 +46,6 @@ export default function PilotOnboarding() {
     [factionsData],
   );
   const [displayName, setDisplayName] = useState("");
-  const [rank, setRank] = useState<string | null>(null);
   const [fleet, setFleet] = useState<string | null>(null);
   const [missionSlug, setMissionSlug] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -80,15 +79,10 @@ export default function PilotOnboarding() {
 
   const submit = async (skip: boolean) => {
     if (saving) return;
-    if (!skip && !rank) {
-      toast.info("Pick a starting rank — or skip and set it later.");
-      return;
-    }
     setSaving(true);
     try {
       const res = await complete({
         displayName: skip || !displayName.trim() ? undefined : displayName.trim(),
-        rank: skip ? undefined : (rank ?? undefined),
         fleet: skip ? undefined : (fleet ?? undefined),
         starterMissionSlug: skip ? undefined : (missionSlug ?? undefined),
         skip,
@@ -148,35 +142,22 @@ export default function PilotOnboarding() {
               />
             </div>
 
-            {/* Rank */}
-            <fieldset className="md:col-span-2">
-              <legend className="uf-eyebrow">Rank</legend>
-              <p className="text-uf-muted text-xs mt-1 mb-3">
-                Your starting rank is ceremony, not a gate — XP moves you up the
-                ladder as you run operations.
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {RANKS.map((r) => {
-                  const active = rank === r.id;
-                  return (
-                    <button
-                      key={r.id}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => setRank(r.id)}
-                      className={`rounded-md border px-3 py-2 text-left transition-colors ${
-                        active
-                          ? "border-[rgba(0,229,255,0.7)] bg-[rgba(0,229,255,0.12)] text-uf-text"
-                          : "border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] text-uf-muted hover:text-uf-text hover:border-[rgba(0,229,255,0.35)]"
-                      }`}
-                    >
-                      <span className="block text-sm font-medium">{r.id}</span>
-                      <span className="block text-[11px] opacity-70">{r.blurb}</span>
-                    </button>
-                  );
-                })}
+            {/* Entry rank — system-managed by the Capped progression ladder */}
+            <div className="md:col-span-2">
+              <span className="uf-eyebrow">Starting rank</span>
+              <div className="mt-2 rounded-md border border-[rgba(0,229,255,0.35)] bg-[rgba(0,229,255,0.06)] px-3 py-2.5">
+                <span className="block text-sm font-medium text-uf-text">
+                  Tier {ENTRY_RANK.tier} · {ENTRY_RANK.label}
+                </span>
+                <span className="block text-[11px] text-uf-muted mt-0.5">
+                  {ENTRY_RANK.blurb}{" "}
+                  <Link to="/high-command" className="text-uf-cyan underline underline-offset-2">
+                    Open the High Command
+                  </Link>
+                  .
+                </span>
               </div>
-            </fieldset>
+            </div>
 
             {/* Fleet */}
             <fieldset className="md:col-span-2">
