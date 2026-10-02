@@ -534,6 +534,11 @@
   color: #1A1300;
   border-color: transparent;
 }
+/* Gold CTAs glow gold on hover (Forge of Canon command deck). */
+.uf-btn--gold:hover {
+  box-shadow: 0 0 28px rgba(230, 168, 23, 0.55);
+  border-color: transparent;
+}
 
 .uf-btn--amber {
   background: linear-gradient(180deg, var(--uf-amber), #E68A00);
@@ -559,6 +564,19 @@
   background: rgba(0, 229, 255, 0.06);
   color: var(--uf-text);
   border-color: var(--uf-border-strong);
+}
+
+/* Gold-outline secondary CTA (Forge of Canon command deck). */
+.uf-btn--goldline {
+  background: transparent;
+  border-color: rgba(230, 168, 23, 0.75);
+  color: var(--uf-gold);
+}
+.uf-btn--goldline:hover {
+  background: rgba(230, 168, 23, 0.1);
+  border-color: var(--uf-gold);
+  color: var(--uf-gold);
+  box-shadow: 0 0 24px rgba(230, 168, 23, 0.45);
 }
 
 /* ===========================================================================

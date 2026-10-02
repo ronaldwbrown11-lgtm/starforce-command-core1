@@ -1,15 +1,15 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Link } from "react-router";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
   SiteShell,
-  PageHero,
   HoloCard,
   NeonButton,
   StatusPill,
   StatCard,
+  Starfield,
 } from "@/components/uf";
 import { ScaleReveal } from "@/hooks/use-scroll-reveal";
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -38,19 +38,20 @@ import {
   User,
   Users,
 } from "lucide-react";
+import goldPlateUrl from "@/assets/gold-plate-texture.jpg";
 
 // =========================================================================
-// Creator Hub — the central command for creators.
+// THE FORGE OF CANON — Creator Hub command deck.
 //
-// Five sections, all wired to real product surfaces:
-//   1. Create      — propose a NEW canon entry (character, starship, sector,
+// Five battle stations, all wired to real product surfaces:
+//   1. Create      — draft a NEW canon entry (character, starship, sector,
 //                    species, technology, faction, event, timeline)
-//   2. Expand      — propose an expansion on an EXISTING lore entry
+//   2. Expand      — reinforce an EXISTING lore entry
 //                    (background, history, culture, visual, event, mission,
 //                    character connection)
-//   3. Collaborate — join groups, forums, contests, and lore arcs
+//   3. Operations  — report to a unit, squad, forum, contest, or arc
 //   4. Resources   — bibles, maps, guides, blueprints, faction profiles
-//   5. Recognition — spotlight, leaderboard, rank, credits, badges
+//   5. Recognition — commendation, standings, rank, credits, badges
 //
 // Proposals flow to the operator Content Desk → Proposals tab, where an
 // approval publishes to the lore archive and rewards the author.
@@ -64,13 +65,13 @@ type CreateType = {
 };
 
 const CREATE_TYPES: CreateType[] = [
-  { id: "character", label: "Add Character", hint: "A person, pilot, or entity in the canon.", icon: User },
-  { id: "starship", label: "Add Starship", hint: "A hull, class, or named vessel.", icon: Rocket },
-  { id: "sector", label: "Add Sector", hint: "A region of charted space.", icon: Globe },
-  { id: "species", label: "Add Species", hint: "A people or biological lineage.", icon: Dna },
-  { id: "technology", label: "Add Technology", hint: "A device, system, or innovation.", icon: Cpu },
-  { id: "faction", label: "Add Faction", hint: "A power, bloc, or organization.", icon: Flag },
-  { id: "event", label: "Add Event", hint: "A battle, disaster, or turning point.", icon: Calendar },
+  { id: "character", label: "Add Character", hint: "Personnel file: a pilot, officer, or entity of record.", icon: User },
+  { id: "starship", label: "Add Starship", hint: "Hull record: a class or named vessel in the registry.", icon: Rocket },
+  { id: "sector", label: "Add Sector", hint: "A region of charted space under fleet watch.", icon: Globe },
+  { id: "species", label: "Add Species", hint: "A people or biological lineage on file.", icon: Dna },
+  { id: "technology", label: "Add Technology", hint: "A device, system, or innovation fielded by the fleet.", icon: Cpu },
+  { id: "faction", label: "Add Faction", hint: "A power, bloc, or command structure.", icon: Flag },
+  { id: "event", label: "Add Event", hint: "A battle, disaster, or turning point in the record.", icon: Calendar },
   { id: "timeline", label: "Timeline Entry", hint: "A dated marker on the historical record.", icon: Hourglass },
 ];
 
@@ -106,11 +107,140 @@ const EMPTY_FORM: ProposalForm = {
   parentLoreId: undefined,
 };
 
+// ---------------------------------------------------------------------------
+// GOLD PLATE ACCENTS
+// Same asset as the Wall of Honor plaques and the Home command plate. Applied
+// as the hero lettering, section rules, card trim, CTA plates, and the final
+// command panel so the texture reads as one material across the deck.
+// ---------------------------------------------------------------------------
+
+const goldLayer = `linear-gradient(180deg, rgba(255,244,200,0.50) 0%, rgba(255,255,255,0) 35%, rgba(90,60,10,0.26) 100%), url(${goldPlateUrl})`;
+
+/** Full plate — frames, plates, and framed panels. */
+const GOLD_PLATE: CSSProperties = {
+  backgroundImage: goldLayer,
+  backgroundSize: "100% 100%, cover",
+  backgroundPosition: "center",
+  backgroundRepeat: "no-repeat",
+};
+
+/** Plate under a dark scrim — panels where light text must stay readable. */
+const goldScrim = (top: string, bottom: string): CSSProperties => ({
+  backgroundColor: "#070B14",
+  backgroundImage: `linear-gradient(180deg, ${top}, ${bottom}), url(${goldPlateUrl})`,
+  backgroundSize: "100% 100%, cover",
+  backgroundPosition: "center",
+  backgroundRepeat: "no-repeat",
+});
+
+/** Thin gold rule used under headings and between battle stations. */
+const GOLD_RULE: CSSProperties = {
+  backgroundImage: `linear-gradient(90deg, rgba(243,200,73,0.95) 0%, rgba(230,168,23,0.35) 60%, rgba(230,168,23,0) 100%), url(${goldPlateUrl})`,
+  backgroundSize: "100% 100%, cover",
+};
+
+const GOLD_RULE_FLIP: CSSProperties = {
+  backgroundImage: `linear-gradient(270deg, rgba(243,200,73,0.95) 0%, rgba(230,168,23,0.35) 60%, rgba(230,168,23,0) 100%), url(${goldPlateUrl})`,
+  backgroundSize: "100% 100%, cover",
+};
+
+/** Trim strip across the top edge of every command card. */
+const GOLD_EDGE: CSSProperties = {
+  backgroundImage: `linear-gradient(90deg, rgba(230,168,23,0) 0%, rgba(243,200,73,0.85) 18%, rgba(243,200,73,0.85) 82%, rgba(230,168,23,0) 100%), url(${goldPlateUrl})`,
+  backgroundSize: "100% 100%, cover",
+};
+
+/** Primary CTA plate — bright gold for dark command-deck text. */
+const GOLD_BUTTON: CSSProperties = {
+  backgroundImage: `linear-gradient(180deg, rgba(255,244,200,0.55) 0%, rgba(255,255,255,0.08) 45%, rgba(90,60,10,0.24) 100%), url(${goldPlateUrl})`,
+  backgroundSize: "100% 100%, cover",
+  backgroundPosition: "center",
+  backgroundRepeat: "no-repeat",
+};
+
+/** Headline lettering filled with the plate itself (solid gold fallback). */
+const GOLD_LETTERING: CSSProperties = {
+  backgroundColor: "#F3C849",
+  backgroundImage: `url(${goldPlateUrl})`,
+  backgroundSize: "cover",
+  backgroundPosition: "center",
+  WebkitBackgroundClip: "text",
+  backgroundClip: "text",
+  color: "transparent",
+  WebkitTextFillColor: "transparent",
+};
+
+const HOLO_GRID: CSSProperties = {
+  backgroundImage:
+    "linear-gradient(rgba(0,229,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.07) 1px, transparent 1px)",
+  backgroundSize: "44px 44px",
+  WebkitMaskImage:
+    "radial-gradient(75% 65% at 50% 45%, #000 25%, transparent 100%)",
+  maskImage: "radial-gradient(75% 65% at 50% 45%, #000 25%, transparent 100%)",
+};
+
+/** Gold trim strip pinned to the top edge of a command card. */
+function GoldEdge() {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 top-0 h-[3px]"
+      style={GOLD_EDGE}
+    />
+  );
+}
+
+/** Animated holographic gold divider with a glowing command glyph. */
+function GoldDivider({ glyph = "◆" }: { glyph?: string }) {
+  return (
+    <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-12" aria-hidden>
+      <div className="flex items-center gap-3">
+        <span className="h-[2px] flex-1" style={GOLD_RULE} />
+        <span
+          className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-sm border border-[color:var(--uf-gold)] px-1.5 text-[0.6rem] font-bold text-[#1A1300] animate-pulse"
+          style={GOLD_PLATE}
+        >
+          {glyph}
+        </span>
+        <span className="h-[2px] flex-1" style={GOLD_RULE_FLIP} />
+      </div>
+    </div>
+  );
+}
+
+/** Command-deck section header: gold eyebrow, gold rule, muted briefing. */
+function DeckHeader({
+  index,
+  label,
+  title,
+  lead,
+}: {
+  index: string;
+  label: string;
+  title: string;
+  lead: string;
+}) {
+  return (
+    <header className="mb-6">
+      <span className="uf-eyebrow uf-eyebrow--gold">
+        {index} · {label}
+      </span>
+      <h2 className="text-3xl font-semibold mt-2">{title}</h2>
+      <span
+        aria-hidden
+        className="mt-3 block h-[3px] w-36 rounded-full"
+        style={GOLD_RULE}
+      />
+      <p className="text-uf-muted text-sm mt-3 max-w-2xl">{lead}</p>
+    </header>
+  );
+}
+
 export default function CreatorHub() {
   usePageMeta({
-    title: "Creator Hub — Star Force Base 1198",
+    title: "The Forge of Canon — Creator Hub · Star Force Base 1198",
     description:
-      "Create, expand, and collaborate on the Star Force canon. Propose new entries, grow existing lore, join teams, and earn recognition.",
+      "Draft new canon, reinforce existing records, deploy with your unit, and earn recognition aboard Star Force Base 1198 — the Creator Hub, Forge of Canon.",
   });
 
   const { isAuthenticated, user } = useAuth();
@@ -156,7 +286,7 @@ export default function CreatorHub() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!isAuthenticated) {
-      toast.info("Sign in to submit a proposal.");
+      toast.info("Sign in to file a proposal.");
       return;
     }
     if (!form.title.trim()) return toast.error("A title is required.");
@@ -183,7 +313,7 @@ export default function CreatorHub() {
         parentLoreId: form.parentLoreId,
       });
       toast.success(
-        "Proposal received — it's in the operator review queue. You'll be notified on the verdict.",
+        "Dossier filed — it's in the operator review queue. You'll be notified of the verdict.",
       );
       setForm(EMPTY_FORM);
       setActivePanel("none");
@@ -201,40 +331,120 @@ export default function CreatorHub() {
 
   return (
     <SiteShell>
-      <PageHero
-        eyebrow="Creator Hub"
-        title="Build the universe."
-        lead="Create new canon, expand what exists, collaborate with the fleet, and earn your place in the records. Every proposal is reviewed by operators — approved work is published and rewarded."
-        primary={{ label: "Start creating", href: "#create", variant: "primary" }}
-        secondary={{ label: "Open the lore archive", href: "/lore", variant: "ghost" }}
-      />
+      {/* ================================================================ */}
+      {/* COMMAND-DECK HERO — THE FORGE OF CANON                           */}
+      {/* ================================================================ */}
+      <section
+        className="relative overflow-hidden border-b border-[color:var(--uf-border)]"
+        style={{
+          background:
+            "radial-gradient(120% 90% at 50% 0%, #0B1A34 0%, #060C18 55%, #04070F 100%)",
+        }}
+      >
+        <Starfield hue="mixed" density="medium" wash={false} />
+        {/* holographic grid overlay */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-70"
+          style={HOLO_GRID}
+        />
+        {/* command-deck lighting — slow gold wash over the deck */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 animate-pulse"
+          style={{
+            backgroundImage:
+              "linear-gradient(180deg, rgba(230,168,23,0.14) 0%, rgba(230,168,23,0) 32%, rgba(230,168,23,0) 68%, rgba(4,7,15,0.92) 100%)",
+          }}
+        />
+        {/* gold corner framing */}
+        {[
+          "left-3 top-3 border-l-2 border-t-2",
+          "right-3 top-3 border-r-2 border-t-2",
+          "left-3 bottom-3 border-l-2 border-b-2",
+          "right-3 bottom-3 border-r-2 border-b-2",
+        ].map((pos) => (
+          <span
+            key={pos}
+            aria-hidden
+            className={`pointer-events-none absolute h-8 w-8 border-[color:var(--uf-gold)] opacity-70 ${pos}`}
+          />
+        ))}
 
-      {/* ----------------------------------------------------------------- */}
-      {/* 1 — CREATE                                                         */}
-      {/* ----------------------------------------------------------------- */}
+        <div className="relative z-10 mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-12 py-16 md:py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <span className="uf-eyebrow uf-eyebrow--gold uf-fade-in">
+              Creator Hub · Command Deck
+            </span>
+            <h1 className="mt-4 text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight uf-fade-in">
+              THE FORGE{" "}
+              <span className="uf-glow-text--amber" style={GOLD_LETTERING}>
+                OF CANON
+              </span>
+            </h1>
+            <span
+              aria-hidden
+              className="mx-auto mt-5 block h-[3px] w-48 rounded-full"
+              style={GOLD_RULE}
+            />
+            <p className="text-uf-muted text-base md:text-lg mt-5 max-w-2xl mx-auto">
+              Draft new canon, reinforce the records already in service, deploy with
+              your unit, and earn your place in the archive. Every proposal is
+              scanned by the operator staff — approved dossiers publish to the
+              record and earn XP and Star Credits.
+            </p>
+
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <a href="#create">
+                <NeonButton variant="gold" style={GOLD_BUTTON}>
+                  <PenLine className="h-4 w-4" aria-hidden /> Begin Creation
+                </NeonButton>
+              </a>
+              <Link to="/map">
+                <NeonButton variant="ghost" className="uf-btn--goldline">
+                    <Rocket className="h-4 w-4" aria-hidden /> Explore the Galaxy
+                  </NeonButton>
+              </Link>
+            </div>
+
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
+              <StatusPill variant="gold">8 entry classes</StatusPill>
+              <StatusPill variant="cyan">7 reinforcement types</StatusPill>
+              <StatusPill variant="info">Operator-reviewed dossiers</StatusPill>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <GoldDivider glyph="01" />
+
+      {/* ================================================================ */}
+      {/* 1 — CREATE                                                        */}
+      {/* ================================================================ */}
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12" id="create">
-        <header className="mb-6">
-          <span className="uf-eyebrow">01 · Create</span>
-          <h2 className="text-3xl font-semibold mt-2">Add something new to the canon.</h2>
-          <p className="text-uf-muted text-sm mt-2 max-w-2xl">
-            Pick an entry type. Operators review every proposal against existing canon —
-            approvals publish to the archive and earn XP and Star Credits.
-          </p>
-        </header>
+        <DeckHeader
+          index="01"
+          label="Create"
+          title="Draft something new into the canon."
+          lead="Select an entry class. Operator staff review every proposal against
+            existing canon — approved dossiers publish to the archive and earn XP
+            and Star Credits."
+        />
         <div className="uf-grid uf-grid--4">
           {CREATE_TYPES.map((t, idx) => (
             <ScaleReveal key={t.id} staggerIndex={idx}>
               <button
                 type="button"
                 onClick={() => openCreate(t.id)}
-                className="w-full text-left uf-card p-5 h-full hover:border-[color:var(--uf-cyan)] transition-colors cursor-pointer"
+                className="w-full text-left uf-card p-5 h-full hover:border-[color:var(--uf-gold)] transition-colors cursor-pointer"
                 aria-label={t.label}
               >
+                <GoldEdge />
                 <t.icon className="h-6 w-6 text-uf-cyan" aria-hidden />
                 <h3 className="text-lg font-semibold mt-3">{t.label}</h3>
                 <p className="text-uf-muted text-sm mt-1">{t.hint}</p>
-                <span className="text-uf-cyan text-xs mt-3 inline-flex items-center gap-1">
-                  <PenLine className="h-3.5 w-3.5" aria-hidden /> Propose
+                <span className="text-uf-gold text-xs mt-3 inline-flex items-center gap-1">
+                  <PenLine className="h-3.5 w-3.5" aria-hidden /> Draft entry
                 </span>
               </button>
             </ScaleReveal>
@@ -245,12 +455,12 @@ export default function CreatorHub() {
         <div className="mt-6 flex flex-wrap gap-3">
           <Link to="/submit">
             <NeonButton variant="ghost">
-              <Pencil className="h-4 w-4" aria-hidden /> Submit a story
+              <Pencil className="h-4 w-4" aria-hidden /> Deploy a story
             </NeonButton>
           </Link>
           <Link to="/lore/submit">
             <NeonButton variant="ghost">
-              <Library className="h-4 w-4" aria-hidden /> Upload a lore bible
+              <Library className="h-4 w-4" aria-hidden /> Upload a canon bible
             </NeonButton>
           </Link>
           <Link to="/map">
@@ -279,18 +489,20 @@ export default function CreatorHub() {
         ) : null}
       </section>
 
-      {/* ----------------------------------------------------------------- */}
-      {/* 2 — EXPAND                                                         */}
-      {/* ----------------------------------------------------------------- */}
+      <GoldDivider glyph="02" />
+
+      {/* ================================================================ */}
+      {/* 2 — EXPAND                                                        */}
+      {/* ================================================================ */}
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12" id="expand">
-        <header className="mb-6">
-          <span className="uf-eyebrow">02 · Expand</span>
-          <h2 className="text-3xl font-semibold mt-2">Grow the lore that already exists.</h2>
-          <p className="text-uf-muted text-sm mt-2 max-w-2xl">
-            Pick what you want to add, then choose the entry it belongs to. Approved
-            expansions are appended to that entry in the archive, credited to you.
-          </p>
-        </header>
+        <DeckHeader
+          index="02"
+          label="Expand"
+          title="Reinforce the record that already stands."
+          lead="Choose what you're adding, then select the entry it reinforces.
+            Approved expansions append to that entry in the archive — credited
+            to you."
+        />
 
         <div className="uf-grid uf-grid--3">
           {EXPAND_TYPES.map((t, idx) => (
@@ -298,9 +510,10 @@ export default function CreatorHub() {
               <button
                 type="button"
                 onClick={() => openExpand(t.id)}
-                className="w-full text-left uf-card p-4 h-full hover:border-[color:var(--uf-violet)] transition-colors cursor-pointer"
+                className="w-full text-left uf-card p-4 h-full hover:border-[color:var(--uf-gold)] transition-colors cursor-pointer"
                 aria-label={t.label}
               >
+                <GoldEdge />
                 <div className="flex items-center gap-2">
                   <t.icon className="h-5 w-5 text-uf-violet shrink-0" aria-hidden />
                   <h3 className="text-base font-semibold">{t.label}</h3>
@@ -315,8 +528,12 @@ export default function CreatorHub() {
         <div className="mt-8">
           <header className="mb-4 flex items-end justify-between gap-3 flex-wrap">
             <div>
-              <span className="uf-eyebrow">Expand an existing entry</span>
-              <h3 className="text-xl font-semibold mt-1">Pick a target from the archive.</h3>
+              <span className="uf-eyebrow uf-eyebrow--gold">
+                Reinforce an existing record
+              </span>
+              <h3 className="text-xl font-semibold mt-1">
+                Select the record you will reinforce.
+              </h3>
             </div>
             <Link to="/lore?tab=entries" className="text-uf-cyan text-sm">
               Browse all entries →
@@ -333,6 +550,7 @@ export default function CreatorHub() {
               {recentLore.slice(0, 9).map((entry, idx) => (
                 <ScaleReveal key={entry._id} staggerIndex={idx}>
                   <HoloCard className="h-full">
+                    <GoldEdge />
                     <div className="flex flex-wrap gap-2 mb-2">
                       {entry.faction ? <StatusPill variant="info">{entry.faction}</StatusPill> : null}
                       {entry.entryType ? <StatusPill variant="default">{entry.entryType}</StatusPill> : null}
@@ -372,63 +590,69 @@ export default function CreatorHub() {
         ) : null}
       </section>
 
-      {/* ----------------------------------------------------------------- */}
-      {/* 3 — COLLABORATE                                                    */}
-      {/* ----------------------------------------------------------------- */}
+      <GoldDivider glyph="03" />
+
+      {/* ================================================================ */}
+      {/* 3 — OPERATIONS (strictly military)                                */}
+      {/* ================================================================ */}
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12" id="collaborate">
-        <header className="mb-6">
-          <span className="uf-eyebrow">03 · Collaborate</span>
-          <h2 className="text-3xl font-semibold mt-2">No one charts the galaxy alone.</h2>
-          <p className="text-uf-muted text-sm mt-2 max-w-2xl">
-            Join a team, take up a thread, or enter a contest. Every collaboration
-            surface in the fleet is one click from here.
-          </p>
-        </header>
+        <DeckHeader
+          index="03"
+          label="Operations"
+          title="Report to your assigned unit."
+          lead="Join a tactical creation squad, coordinate with division leads, and
+            deploy your expertise to active operations. Every command surface in
+            the fleet is one click from here."
+        />
 
         <div className="uf-grid uf-grid--3">
-          {/* Groups (faction / sector / ship teams) */}
+          {/* Units (faction / sector / ship squads) */}
           <ScaleReveal staggerIndex={0}>
             <HoloCard className="h-full">
+              <GoldEdge />
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-uf-cyan" aria-hidden />
-                <h3 className="text-lg font-semibold">Fleet Groups</h3>
+                <h3 className="text-lg font-semibold">Tactical Squads</h3>
               </div>
               <p className="text-uf-muted text-sm mt-2">
-                Faction, sector, and starship design teams. Join a group to pool lore,
-                art, and missions with its members.
+                Faction, sector, and starship units. Report to your assigned squad
+                to pool lore, art, and missions with its members.
               </p>
               <p className="text-uf-muted text-xs mt-3">
                 {groups === undefined
                   ? "Loading…"
-                  : `${groups.length} group${groups.length === 1 ? "" : "s"} active`}
+                  : `${groups.length} unit${groups.length === 1 ? "" : "s"} active`}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Link to="/groups">
-                  <NeonButton variant="primary">Join a team</NeonButton>
+                  <NeonButton variant="primary">Join a squad</NeonButton>
                 </Link>
                 <Link to="/groups">
-                  <NeonButton variant="ghost">Create a group</NeonButton>
+                  <NeonButton variant="ghost">Raise a unit</NeonButton>
                 </Link>
               </div>
             </HoloCard>
           </ScaleReveal>
 
-          {/* Forums */}
+          {/* Ops net */}
           <ScaleReveal staggerIndex={1}>
             <HoloCard className="h-full">
+              <GoldEdge />
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-uf-cyan" aria-hidden />
-                <h3 className="text-lg font-semibold">Forums</h3>
+                <h3 className="text-lg font-semibold">Operations Net</h3>
               </div>
               <p className="text-uf-muted text-sm mt-2">
-                Open a thread, offer your skills, or request a collaborator for your
-                next piece.
+                Open a transmission, offer your skills, or request a collaborator
+                for your next operation.
               </p>
               <ul className="mt-3 flex flex-col gap-1 list-none p-0 m-0">
                 {forums === undefined ? (
                   <li className="uf-skeleton" style={{ height: 20 }} />
                 ) : forums.length === 0 ? (
-                  <li className="text-uf-muted text-sm">No threads yet — start one.</li>
+                  <li className="text-uf-muted text-sm">
+                    Net silent — open the first transmission.
+                  </li>
                 ) : (
                   forums.map((t) => (
                     <li key={t._id} className="text-sm truncate">
@@ -441,7 +665,7 @@ export default function CreatorHub() {
               </ul>
               <div className="mt-3">
                 <Link to="/forums">
-                  <NeonButton variant="primary">Open the forums</NeonButton>
+                  <NeonButton variant="primary">Open the net</NeonButton>
                 </Link>
               </div>
             </HoloCard>
@@ -450,19 +674,22 @@ export default function CreatorHub() {
           {/* Contests */}
           <ScaleReveal staggerIndex={2}>
             <HoloCard className="h-full">
+              <GoldEdge />
               <div className="flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-uf-gold" aria-hidden />
-                <h3 className="text-lg font-semibold">Contests</h3>
+                <h3 className="text-lg font-semibold">Command Contests</h3>
               </div>
               <p className="text-uf-muted text-sm mt-2">
-                Themed canon contests judged by the operator team. Enter with a story,
+                Themed canon trials judged by the operator staff. Deploy a story,
                 a design, or a lore piece.
               </p>
               <ul className="mt-3 flex flex-col gap-1 list-none p-0 m-0">
                 {contests === undefined ? (
                   <li className="uf-skeleton" style={{ height: 20 }} />
                 ) : openContests.length === 0 ? (
-                  <li className="text-uf-muted text-sm">No open contests right now.</li>
+                  <li className="text-uf-muted text-sm">
+                    No engagements open right now.
+                  </li>
                 ) : (
                   openContests.slice(0, 3).map((c) => (
                     <li key={c._id} className="text-sm truncate">
@@ -475,44 +702,46 @@ export default function CreatorHub() {
               </ul>
               <div className="mt-3">
                 <Link to="/contests">
-                  <NeonButton variant="primary">See open contests</NeonButton>
+                  <NeonButton variant="primary">See open engagements</NeonButton>
                 </Link>
               </div>
             </HoloCard>
           </ScaleReveal>
 
-          {/* Lore arcs (story arc teams) */}
+          {/* Campaign arcs (story arc units) */}
           <ScaleReveal staggerIndex={3}>
             <HoloCard className="h-full">
+              <GoldEdge />
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-uf-violet" aria-hidden />
-                <h3 className="text-lg font-semibold">Lore Arcs</h3>
+                <h3 className="text-lg font-semibold">Campaign Arcs</h3>
               </div>
               <p className="text-uf-muted text-sm mt-2">
-                Collaborative storylines. Contribute a chapter to an open arc and your
-                writing joins the canon in sequence.
+                Coordinated storylines under a single command. Contribute a chapter
+                to an open arc and your writing joins the canon in sequence.
               </p>
               <p className="text-uf-muted text-xs mt-3">
                 {arcs === undefined ? "Loading…" : `${arcs.length} arc${arcs.length === 1 ? "" : "s"} running`}
               </p>
               <div className="mt-3">
                 <Link to="/arcs">
-                  <NeonButton variant="violet">Join an arc</NeonButton>
+                  <NeonButton variant="violet">Join a campaign</NeonButton>
                 </Link>
               </div>
             </HoloCard>
           </ScaleReveal>
 
-          {/* Direct messages */}
+          {/* Direct comms */}
           <ScaleReveal staggerIndex={4}>
             <HoloCard className="h-full">
+              <GoldEdge />
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-uf-green" aria-hidden />
-                <h3 className="text-lg font-semibold">Request Collaboration</h3>
+                <h3 className="text-lg font-semibold">Direct Comms</h3>
               </div>
               <p className="text-uf-muted text-sm mt-2">
-                Found a creator whose work fits yours? Send a direct message and offer
-                to build something together.
+                Found an operator whose work fits yours? Open a direct line and
+                offer to build the next piece together.
               </p>
               <div className="mt-3">
                 <Link to="/messages">
@@ -522,16 +751,17 @@ export default function CreatorHub() {
             </HoloCard>
           </ScaleReveal>
 
-          {/* Members roster */}
+          {/* Personnel roster */}
           <ScaleReveal staggerIndex={5}>
             <HoloCard className="h-full">
+              <GoldEdge />
               <div className="flex items-center gap-2">
                 <User className="h-5 w-5 text-uf-cyan" aria-hidden />
-                <h3 className="text-lg font-semibold">Find Creators</h3>
+                <h3 className="text-lg font-semibold">Personnel Roster</h3>
               </div>
               <p className="text-uf-muted text-sm mt-2">
                 Browse the roster by rank, faction, and contribution to find
-                collaborators with the right skills.
+                operators with the right skills for your operation.
               </p>
               <div className="mt-3">
                 <Link to="/members">
@@ -543,33 +773,35 @@ export default function CreatorHub() {
         </div>
       </section>
 
-      {/* ----------------------------------------------------------------- */}
-      {/* 4 — RESOURCES                                                      */}
-      {/* ----------------------------------------------------------------- */}
+      <GoldDivider glyph="04" />
+
+      {/* ================================================================ */}
+      {/* 4 — RESOURCES                                                     */}
+      {/* ================================================================ */}
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12" id="resources">
-        <header className="mb-6">
-          <span className="uf-eyebrow">04 · Resources</span>
-          <h2 className="text-3xl font-semibold mt-2">Everything you need to write canon.</h2>
-          <p className="text-uf-muted text-sm mt-2 max-w-2xl">
-            Bibles, maps, guides, blueprints, and faction profiles — the reference
-            shelf for every creator in the fleet.
-          </p>
-        </header>
+        <DeckHeader
+          index="04"
+          label="Resources"
+          title="Loadout for every creator."
+          lead="Bibles, maps, guides, blueprints, and faction profiles — the
+            reference shelf issued to every operator in the fleet."
+        />
 
         <div className="uf-grid uf-grid--4 mb-8">
           {[
-            { label: "Universe Bible", desc: "The operating canon as documents.", href: "/lore", icon: BookOpen },
+            { label: "Universe Bible", desc: "The operating canon, issued as documents.", href: "/lore", icon: BookOpen },
             { label: "Sector Maps", desc: "Charts of every mapped region.", href: "/maps", icon: MapIcon },
             { label: "Star Atlas", desc: "The interactive 3D galaxy.", href: "/map", icon: Globe },
-            { label: "Timeline", desc: "Story arcs in chronological order.", href: "/arcs", icon: Hourglass },
+            { label: "Timeline", desc: "Campaign arcs in chronological order.", href: "/arcs", icon: Hourglass },
             { label: "Character Sheets", desc: "Personnel dossiers and rosters.", href: "/lore?tab=entries", icon: User },
-            { label: "Ship Blueprints", desc: "Fleet registry & armament sheets.", href: "/fleet-registry", icon: Ship },
-            { label: "Style Guides", desc: "Submission rules and house style.", href: "/resources", icon: PenLine },
-            { label: "Faction Profiles", desc: "Powers, blocs, and organizations.", href: "/map", icon: Flag },
+            { label: "Ship Blueprints", desc: "Fleet registry and armament sheets.", href: "/fleet-registry", icon: Ship },
+            { label: "Style Guides", desc: "Submission orders and house style.", href: "/resources", icon: PenLine },
+            { label: "Faction Profiles", desc: "Powers, blocs, and command structures.", href: "/map", icon: Flag },
           ].map((r, idx) => (
             <ScaleReveal key={r.label} staggerIndex={idx}>
               <Link to={r.href} className="block h-full">
-                <HoloCard className="h-full">
+                <HoloCard className="h-full hover:border-[color:var(--uf-gold)] transition-colors">
+                  <GoldEdge />
                   <r.icon className="h-5 w-5 text-uf-cyan" aria-hidden />
                   <h3 className="text-base font-semibold mt-2">{r.label}</h3>
                   <p className="text-uf-muted text-sm mt-1">{r.desc}</p>
@@ -581,7 +813,7 @@ export default function CreatorHub() {
 
         {/* Live downloadable resources */}
         <header className="mb-4">
-          <span className="uf-eyebrow">Downloadable resources</span>
+          <span className="uf-eyebrow uf-eyebrow--gold">Field-issued downloads</span>
         </header>
         {resources === undefined ? (
           <div className="uf-grid uf-grid--3">
@@ -590,7 +822,7 @@ export default function CreatorHub() {
             ))}
           </div>
         ) : resources.length === 0 ? (
-          <div className="uf-empty">No resources published yet.</div>
+          <div className="uf-empty">No resources issued yet.</div>
         ) : (
           <div className="uf-grid uf-grid--3">
             {resources.map((r) => (
@@ -601,7 +833,8 @@ export default function CreatorHub() {
                 rel="noreferrer"
                 className="block h-full"
               >
-                <HoloCard className="h-full">
+                <HoloCard className="h-full hover:border-[color:var(--uf-gold)] transition-colors">
+                  <GoldEdge />
                   <StatusPill variant="info">{r.resourceType ?? "guide"}</StatusPill>
                   <h4 className="text-base font-semibold mt-2">{r.title}</h4>
                   <p className="text-uf-muted text-sm mt-1 line-clamp-2">{r.description}</p>
@@ -612,54 +845,70 @@ export default function CreatorHub() {
         )}
       </section>
 
-      {/* ----------------------------------------------------------------- */}
-      {/* 5 — RECOGNITION                                                    */}
-      {/* ----------------------------------------------------------------- */}
+      <GoldDivider glyph="05" />
+
+      {/* ================================================================ */}
+      {/* 5 — RECOGNITION                                                   */}
+      {/* ================================================================ */}
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12" id="recognition">
-        <header className="mb-6">
-          <span className="uf-eyebrow">05 · Recognition</span>
-          <h2 className="text-3xl font-semibold mt-2">Your work gets seen.</h2>
-          <p className="text-uf-muted text-sm mt-2 max-w-2xl">
-            Featured creators, weekly highlights, rank progression, canon credits, and
-            badges — contribution is tracked and celebrated.
-          </p>
-        </header>
+        <DeckHeader
+          index="05"
+          label="Recognition"
+          title="Service does not go unnoticed."
+          lead="Commendations, weekly standings, rank progression, canon credits,
+            and badges — every contribution is logged and celebrated."
+        />
 
         <div className="uf-grid uf-grid--3">
-          {/* Featured creator */}
+          {/* Featured creator — single weekly commendation in a gold frame */}
           <ScaleReveal staggerIndex={0}>
-            <HoloCard className="h-full">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-uf-gold" aria-hidden />
-                <h3 className="text-lg font-semibold">Featured Creator</h3>
-              </div>
-              {spotlight === undefined ? (
-                <div className="uf-skeleton mt-3" style={{ height: 80 }} />
-              ) : spotlight === null ? (
-                <p className="text-uf-muted text-sm mt-2">No spotlight this week.</p>
-              ) : (
-                <div className="mt-3">
-                  <p className="text-xl font-semibold">
-                    {spotlight.displayName ?? "Unnamed recruit"}
-                  </p>
-                  <p className="text-uf-muted text-sm">
-                    {(spotlight.xp ?? 0).toLocaleString()} XP ·{" "}
-                    {(spotlight.contributionCount ?? 0)} contributions
-                  </p>
-                  <Link to="/members" className="text-uf-cyan text-sm mt-2 inline-block">
-                    View the roster →
-                  </Link>
+            <div className="h-full rounded-[14px] p-[3px]" style={GOLD_PLATE}>
+              <HoloCard className="h-full">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-uf-gold" aria-hidden />
+                  <h3 className="text-lg font-semibold">Weekly Commendation</h3>
                 </div>
-              )}
-            </HoloCard>
+                {spotlight === undefined ? (
+                  <div className="uf-skeleton mt-3" style={{ height: 96 }} />
+                ) : spotlight === null ? (
+                  <p className="text-uf-muted text-sm mt-2">
+                    No commendation issued this cycle — the next could be yours.
+                  </p>
+                ) : (
+                  <div className="mt-3">
+                    <p className="uf-eyebrow uf-eyebrow--gold">Commendation</p>
+                    <p className="text-xl font-semibold mt-1">
+                      Operator {spotlight.displayName}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <StatusPill variant="gold">
+                        {spotlight.rank ?? "Recruit"}
+                      </StatusPill>
+                      <span className="text-uf-muted text-sm">
+                        {(spotlight.xp ?? 0).toLocaleString()} XP ·{" "}
+                        {(spotlight.contributionCount ?? 0)} contributions
+                      </span>
+                    </div>
+                    <p className="text-uf-muted text-sm mt-3 italic">
+                      “Recognized for exemplary contributions to the Ultra Force
+                      Canon.”
+                    </p>
+                    <Link to="/members" className="text-uf-cyan text-sm mt-2 inline-block">
+                      View the roster →
+                    </Link>
+                  </div>
+                )}
+              </HoloCard>
+            </div>
           </ScaleReveal>
 
-          {/* Weekly highlights — leaderboard */}
+          {/* Weekly standings — leaderboard */}
           <ScaleReveal staggerIndex={1}>
             <HoloCard className="h-full">
+              <GoldEdge />
               <div className="flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-uf-gold" aria-hidden />
-                <h3 className="text-lg font-semibold">Weekly Highlights</h3>
+                <h3 className="text-lg font-semibold">Weekly Standings</h3>
               </div>
               {leaderboard === undefined ? (
                 <div className="uf-skeleton mt-3" style={{ height: 100 }} />
@@ -681,18 +930,19 @@ export default function CreatorHub() {
               )}
               <div className="mt-3">
                 <Link to="/leaderboard">
-                  <NeonButton variant="ghost">Full leaderboard</NeonButton>
+                  <NeonButton variant="ghost">Full standings</NeonButton>
                 </Link>
               </div>
             </HoloCard>
           </ScaleReveal>
 
-          {/* Canon credits + rank + badges */}
+          {/* Service record: credits + rank + badges */}
           <ScaleReveal staggerIndex={2}>
             <HoloCard className="h-full">
+              <GoldEdge />
               <div className="flex items-center gap-2">
                 <Lightbulb className="h-5 w-5 text-uf-cyan" aria-hidden />
-                <h3 className="text-lg font-semibold">Your Standing</h3>
+                <h3 className="text-lg font-semibold">Your Service Record</h3>
               </div>
               {!isAuthenticated ? (
                 <p className="text-uf-muted text-sm mt-2">
@@ -717,7 +967,9 @@ export default function CreatorHub() {
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Link to="/awards">
-                      <NeonButton variant="gold">Awards & honors</NeonButton>
+                      <NeonButton variant="gold" style={GOLD_BUTTON}>
+                        Awards & honors
+                      </NeonButton>
                     </Link>
                     <Link to="/high-command">
                       <NeonButton variant="ghost">Rank ladder</NeonButton>
@@ -732,10 +984,11 @@ export default function CreatorHub() {
         {/* Proposal tracker */}
         <div className="mt-8">
           <HoloCard>
+            <GoldEdge />
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-2">
                 <FileTextIcon />
-                <h3 className="text-lg font-semibold">Your proposals</h3>
+                <h3 className="text-lg font-semibold">Your filed proposals</h3>
               </div>
               {!isAuthenticated ? (
                 <Link to="/auth" className="text-uf-cyan text-sm">
@@ -748,7 +1001,7 @@ export default function CreatorHub() {
                 <div className="uf-skeleton mt-3" style={{ height: 60 }} />
               ) : proposals.length === 0 ? (
                 <p className="text-uf-muted text-sm mt-3">
-                  No proposals yet — start in the Create section above.
+                  No dossiers filed yet — start at Station 01, Create.
                 </p>
               ) : (
                 <ul className="mt-3 flex flex-col gap-2 list-none p-0 m-0">
@@ -786,6 +1039,58 @@ export default function CreatorHub() {
               </p>
             ) : null}
           </HoloCard>
+        </div>
+      </section>
+
+      {/* ================================================================ */}
+      {/* FINAL CINEMATIC CTA                                               */}
+      {/* ================================================================ */}
+      <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+        <div
+          className="relative overflow-hidden rounded-2xl border border-[color:var(--uf-gold)] px-6 py-12 md:py-16 text-center"
+          style={goldScrim("rgba(6,10,18,0.90)", "rgba(6,10,18,0.95)")}
+        >
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-3 top-3 h-8 w-8 border-l-2 border-t-2 border-[color:var(--uf-gold)] opacity-70"
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute right-3 top-3 h-8 w-8 border-r-2 border-t-2 border-[color:var(--uf-gold)] opacity-70"
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute bottom-3 left-3 h-8 w-8 border-b-2 border-l-2 border-[color:var(--uf-gold)] opacity-70"
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute bottom-3 right-3 h-8 w-8 border-b-2 border-r-2 border-[color:var(--uf-gold)] opacity-70"
+          />
+          <Starfield hue="mixed" density="low" wash={false} />
+
+          <div className="relative z-10 mx-auto max-w-3xl">
+            <span className="uf-eyebrow uf-eyebrow--gold">Final Directive</span>
+            <p className="mt-4 text-2xl md:text-4xl font-semibold leading-snug">
+              The Ultra Force Canon expands with every operator who steps forward.
+            </p>
+            <span
+              aria-hidden
+              className="mx-auto mt-5 block h-[3px] w-40 rounded-full"
+              style={GOLD_RULE}
+            />
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+              <a href="#create">
+                <NeonButton variant="gold" style={GOLD_BUTTON}>
+                  <PenLine className="h-4 w-4" aria-hidden /> Begin Creation
+                </NeonButton>
+              </a>
+              <Link to="/map">
+                <NeonButton variant="ghost" className="uf-btn--goldline">
+                    <Rocket className="h-4 w-4" aria-hidden /> Explore the Galaxy
+                  </NeonButton>
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
     </SiteShell>
@@ -832,6 +1137,7 @@ function ProposalComposer({
   if (!isAuthenticated) {
     return (
       <HoloCard>
+        <GoldEdge />
         <p className="text-uf-muted text-sm">
           Sign in to propose lore.{" "}
           <Link to="/auth" className="text-uf-cyan">
@@ -845,11 +1151,12 @@ function ProposalComposer({
 
   return (
     <HoloCard>
+      <GoldEdge />
       <form className="grid gap-4" onSubmit={onSubmit}>
         <header className="flex items-center justify-between gap-3">
           <div>
-            <span className="uf-eyebrow">
-              {form.kind === "expand" ? "Expand an entry" : "New canon entry"}
+            <span className="uf-eyebrow uf-eyebrow--gold">
+              {form.kind === "expand" ? "Reinforce an entry" : "New canon entry"}
             </span>
             <h3 className="text-xl font-semibold mt-1">
               {form.kind === "expand"
@@ -958,7 +1265,7 @@ function ProposalComposer({
 
         <div className="flex gap-2">
           <NeonButton variant="primary" type="submit" loading={busy} disabled={busy}>
-            Submit for review
+            File for operator review
           </NeonButton>
           <NeonButton variant="ghost" type="button" onClick={onCancel}>
             Cancel

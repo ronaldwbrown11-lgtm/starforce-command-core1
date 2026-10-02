@@ -1,4 +1,5 @@
 import { useParams } from "react-router";
+import { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -19,6 +20,7 @@ import { usePageMeta } from "@/hooks/use-page-meta";
 import { ShareButtons } from "@/components/ShareButtons";
 import { CodexSaveButton } from "@/components/widgets/CodexPanel";
 import { useAuth } from "@/hooks/use-auth";
+import { renderMarkdown } from "@/lib/markdown";
 import type { Doc } from "@/convex/_generated/dataModel";
 
 type LibraryItem = Doc<"loreLibrary"> & {
@@ -138,6 +140,14 @@ function LibraryItemView({ item }: { item: LibraryItem }) {
   const isDatabase = item.loreType === "database";
   const file = item.fileUrl;
   const isPdf = item.fileMeta?.mimeType === "application/pdf";
+  // Text uploads (.md/.txt) render as content — an iframe can't preview a
+  // text/markdown blob, it just offers a download.
+  const isText =
+    !isPdf &&
+    (item.fileMeta?.mimeType.startsWith("text/") ||
+      ["md", "markdown", "txt"].includes(
+        (item.fileMeta?.fileName ?? "").toLowerCase().split(".").pop() ?? "",
+      ));
   const eyebrow = [item.faction, item.sector].filter(Boolean).join(" • ") || "Lore Library";
 
   const TypeIcon = isImage ? ImageIcon : isDatabase ? Database : BookOpenText;
@@ -216,6 +226,11 @@ function LibraryItemView({ item }: { item: LibraryItem }) {
                   title={item.title}
                   className="w-full h-[72vh] rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.5)]"
                 />
+              ) : isText ? (
+                <TextDoc
+                  url={file}
+                  fileName={item.fileMeta?.fileName ?? item.title}
+                />
               ) : (
                 <div className="rounded-md border border-dashed border-[color:var(--uf-border)] p-10 text-center text-uf-muted text-sm">
                   <FileText className="h-8 w-8 mx-auto mb-3 opacity-60" aria-hidden />
@@ -275,4 +290,61 @@ function formatBytes(n: number) {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * Fetches a text/markdown document and renders it inline — formatted for
+ * `.md`, raw preformatted for everything else. Covers lore bibles uploaded
+ * as markdown, which the PDF-only iframe path could never display.
+ */
+function TextDoc({ url, fileName }: { url: string; fileName: string }) {
+  const [text, setText] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const isMd = ["md", "markdown"].includes(
+    fileName.toLowerCase().split(".").pop() ?? "",
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const body = await res.text();
+        if (!cancelled) setText(body);
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  if (failed) {
+    return (
+      <div className="rounded-md border border-dashed border-[color:var(--uf-border)] p-10 text-center text-uf-muted text-sm">
+        <FileText className="h-8 w-8 mx-auto mb-3 opacity-60" aria-hidden />
+        The document couldn&apos;t be loaded — use the download button to open{" "}
+        <strong>{fileName}</strong>.
+      </div>
+    );
+  }
+  if (text === null) {
+    return <div className="uf-skeleton" style={{ height: "60vh" }} />;
+  }
+  return (
+    <div className="rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.5)] p-4 sm:p-6 max-h-[72vh] overflow-auto">
+      {isMd ? (
+        <div
+          className="text-sm max-w-3xl"
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }}
+        />
+      ) : (
+        <pre className="text-sm text-uf-muted whitespace-pre-wrap break-words max-w-3xl">
+          {text}
+        </pre>
+      )}
+    </div>
+  );
 }

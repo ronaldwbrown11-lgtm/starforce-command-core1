@@ -1,15 +1,25 @@
 import { useEffect, useState } from "react";
 import { Download, FileText, Loader2, ExternalLink, X } from "lucide-react";
+import { renderMarkdown } from "@/lib/markdown";
 
 // =========================================================================
 // DocViewer — opens a document ON THE PAGE instead of downloading it.
 //
 // The file is fetched as a blob (defeating any Content-Disposition:
-// attachment on the URL) and rendered inside an inline <iframe>, so PDFs,
-// images, and text files read right where the member is. Formats that
-// can't preview (DOC/DOCX/…) fall back to open-in-new-tab + download
-// links. Used by the Resources cards and the Cadets Manual guide.
+// attachment on the URL) and rendered inline: PDFs and images in an
+// <iframe>, markdown/text files as formatted content (browsers won't
+// preview a text/markdown blob in an iframe — they just offer a download).
+// Formats that can't preview (DOC/DOCX/…) fall back to open-in-new-tab +
+// download links. Used by the Resources cards and the Cadets Manual guide.
 // =========================================================================
+
+const extOf = (name: string): string => name.toLowerCase().split(".").pop() ?? "";
+
+// Text formats we render ourselves — iframe preview is unreliable for these.
+const TEXT_FORMATS = ["md", "markdown", "txt", "csv"];
+const isTextFormat = (type: string, name: string): boolean =>
+  TEXT_FORMATS.includes(extOf(name)) ||
+  (type.startsWith("text/") && extOf(name) !== "svg");
 
 const PREVIEWABLE = (type: string, name: string): boolean => {
   if (type) {
@@ -37,6 +47,7 @@ export function DocViewer({
   onClose: () => void;
 }) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [textContent, setTextContent] = useState<string | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "unsupported" | "error">("loading");
 
   // Fetch as blob so the document renders inline — never force-downloads.
@@ -46,6 +57,7 @@ export function DocViewer({
     let created: string | null = null;
     setStatus("loading");
     setObjectUrl(null);
+    setTextContent(null);
 
     (async () => {
       try {
@@ -55,6 +67,16 @@ export function DocViewer({
         const name = fileName ?? url;
         if (!PREVIEWABLE(blob.type, name)) {
           if (!cancelled) setStatus("unsupported");
+          return;
+        }
+        // Text files (markdown/txt/csv): render as content. Iframes don't
+        // preview text/markdown blobs — browsers turn them into downloads.
+        if (isTextFormat(blob.type, name)) {
+          const text = await blob.text();
+          if (!cancelled) {
+            setTextContent(text);
+            setStatus("ready");
+          }
           return;
         }
         created = URL.createObjectURL(blob);
@@ -134,6 +156,19 @@ export function DocViewer({
             <div className="grid place-items-center h-full min-h-[60vh] text-uf-muted text-sm gap-2">
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
               Opening document…
+            </div>
+          ) : status === "ready" && textContent !== null ? (
+            <div className="w-full min-h-[60vh] rounded-md border border-[color:var(--uf-border)] bg-[#0e1526] p-4 sm:p-6 overflow-auto">
+              {extOf(fileName ?? "") === "md" || extOf(fileName ?? "") === "markdown" ? (
+                <div
+                  className="text-sm max-w-3xl"
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(textContent) }}
+                />
+              ) : (
+                <pre className="text-sm text-uf-muted whitespace-pre-wrap break-words max-w-3xl">
+                  {textContent}
+                </pre>
+              )}
             </div>
           ) : status === "ready" && objectUrl ? (
             <iframe

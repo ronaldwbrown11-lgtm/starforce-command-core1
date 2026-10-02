@@ -384,10 +384,15 @@ export const memberSpotlight = query({
     const all = await ctx.db.query("users").collect();
     const candidates = all.filter((u) => !u.isAnonymous && u.displayName);
     if (!candidates.length) return null;
-    // Deterministic-ish: pick highest XP from top half.
-    return candidates
+    // Weekly commendation rotation: rank the top contributors by XP, then
+    // seed the pick on the current week number so the spotlight moves between
+    // them instead of always returning the same #1 member.
+    const ranked = candidates
       .slice()
-      .sort((a, b) => (b.xp ?? 0) - (a.xp ?? 0))[0];
+      .sort((a, b) => (b.xp ?? 0) - (a.xp ?? 0))
+      .slice(0, 8);
+    const week = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000));
+    return ranked[week % ranked.length];
   },
 });
 
