@@ -28,6 +28,7 @@ import type * as captainLog from "../captainLog.js";
 import type * as changelog from "../changelog.js";
 import type * as content from "../content.js";
 import type * as contests from "../contests.js";
+import type * as creatorHub from "../creatorHub.js";
 import type * as cronJobs from "../cronJobs.js";
 import type * as diagnostics from "../diagnostics.js";
 import type * as digest from "../digest.js";
@@ -111,6 +112,7 @@ declare const fullApi: ApiFromModules<{
   changelog: typeof changelog;
   content: typeof content;
   contests: typeof contests;
+  creatorHub: typeof creatorHub;
   cronJobs: typeof cronJobs;
   diagnostics: typeof diagnostics;
   digest: typeof digest;

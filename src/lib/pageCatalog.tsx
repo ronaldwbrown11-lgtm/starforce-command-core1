@@ -25,6 +25,7 @@ import Changelog from "@/pages/Changelog";
 import ToolsAssistant from "@/pages/ToolsAssistant";
 import EmbedStory from "@/pages/EmbedStory";
 import Community from "@/pages/Community";
+import CreatorHub from "@/pages/CreatorHub";
 import Forums from "@/pages/Forums";
 import Resources from "@/pages/Resources";
 import Membership from "@/pages/Membership";
@@ -105,6 +106,7 @@ export const PUBLIC_ROUTES: PublicPageRoute[] = [
 
   // ---- Community ---------------------------------------------------------
   { path: "/community", label: "Community", element: <Community /> },
+  { path: "/creator", label: "Creator Hub", element: <CreatorHub /> },
   { path: "/forums", label: "Forums", element: <Forums /> },
   { path: "/groups", label: "Groups", element: <Groups /> },
   { path: "/groups/:slug", label: "Group", element: <GroupDetail />, appearance: false },

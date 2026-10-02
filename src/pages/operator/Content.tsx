@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import {
   Archive,
   BookOpen,
+  Lightbulb,
   ListChecks,
   Pencil,
   Plus,
@@ -21,7 +22,7 @@ import {
 } from "lucide-react";
 import { TIER_ORDER, tierLabel, tierPillVariant } from "@/lib/tiers";
 
-type Tab = "lore" | "transmissions" | "resources" | "missions";
+type Tab = "lore" | "transmissions" | "resources" | "missions" | "proposals";
 
 const MISSION_STATUSES = ["active", "locked", "completed"] as const;
 const MISSION_STATUS_LABEL: Record<string, string> = {
@@ -38,7 +39,21 @@ const MISSION_STATUS_VARIANT: Record<
   completed: "default",
 };
 
-const ENTRY_TYPES = ["character", "location", "event", "artifact"] as const;
+// Wider than the original four: Creator Hub proposals can introduce
+// starships, sectors, species, technology, factions, events, and timeline
+// entries, and every lore row must stay editable after publication.
+const ENTRY_TYPES = [
+  "character",
+  "location",
+  "event",
+  "artifact",
+  "starship",
+  "sector",
+  "species",
+  "technology",
+  "faction",
+  "timeline",
+] as const;
 const RESOURCE_TYPES = [
   "guide",
   "tool",
@@ -100,6 +115,13 @@ export default function OperatorContent() {
           icon={<Target className="h-4 w-4" aria-hidden />}
           label="Missions"
         />
+        <TabButton
+          tab="proposals"
+          active={tab === "proposals"}
+          onClick={() => setTab("proposals")}
+          icon={<Lightbulb className="h-4 w-4" aria-hidden />}
+          label="Proposals"
+        />
       </div>
 
       {tab === "lore" ? (
@@ -108,6 +130,8 @@ export default function OperatorContent() {
         <TransmissionsPanel onEdit={setEditingTransmission} />
       ) : tab === "missions" ? (
         <MissionsPanel onEdit={setEditingMission} />
+      ) : tab === "proposals" ? (
+        <ProposalsPanel />
       ) : (
         <ResourcesPanel onEdit={setEditingResource} />
       )}
@@ -1281,6 +1305,165 @@ function MissionEditorModal({
         </NeonButton>
       </div>
     </ModalShell>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Creator Hub proposals (create / expand lore)
+// -----------------------------------------------------------------------------
+
+function ProposalsPanel() {
+  const [status, setStatus] = useState<"pending" | "approved" | "rejected">("pending");
+  const rows = useQuery(api.creatorHub.proposalQueue, { status });
+  const review = useMutation(api.creatorHub.reviewProposal);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [pending, setPending] = useState<string | null>(null);
+
+  async function act(id: string, action: "approve" | "reject") {
+    setPending(`${id}_${action}`);
+    try {
+      await review({
+        id: id as any,
+        action,
+        note: notes[id]?.trim() || undefined,
+      });
+      toast.success(
+        action === "approve"
+          ? "Approved — published to the lore archive and the author rewarded."
+          : "Proposal rejected.",
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Action failed.");
+    } finally {
+      setPending(null);
+    }
+  }
+
+  const STATUS_FILTERS = [
+    { id: "pending", label: "Pending" },
+    { id: "approved", label: "Approved" },
+    { id: "rejected", label: "Rejected" },
+  ] as const;
+
+  return (
+    <section aria-labelledby="deskproposals">
+      <header className="mb-3 flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h2 id="deskproposals" className="text-xl font-semibold">
+            Creator proposals
+          </h2>
+          <p className="text-uf-muted text-xs mt-1">
+            Approve creates a new lore entry credited to the author; approve an
+            expansion appends it to the parent entry. Both reward XP + credits
+            on first approval.
+          </p>
+        </div>
+        <div className="flex gap-2" role="tablist" aria-label="Proposal status">
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              role="tab"
+              aria-selected={status === f.id}
+              onClick={() => setStatus(f.id)}
+              className={`uf-btn ${status === f.id ? "uf-btn--primary" : ""}`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </header>
+      <HoloCard>
+        {rows === undefined ? (
+          <div className="uf-skeleton" style={{ height: 120 }} />
+        ) : rows.length === 0 ? (
+          <p className="uf-empty">
+            {status === "pending"
+              ? "No proposals waiting for review."
+              : `No ${status} proposals.`}
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-3 list-none p-0 m-0">
+            {rows.map((p) => (
+              <li
+                key={p._id}
+                className="border border-[color:var(--uf-border)] rounded-md p-4 bg-[rgba(16,24,39,0.35)]"
+              >
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="min-w-0">
+                    <p className="text-base font-semibold">{p.title}</p>
+                    <p className="text-uf-muted text-xs flex flex-wrap gap-2 mt-1">
+                      <StatusPill variant={p.kind === "expand" ? "violet" : "info"}>
+                        {p.kind === "expand" ? "Expand" : "New entry"}
+                      </StatusPill>
+                      <StatusPill variant="default">{p.entryType}</StatusPill>
+                      {p.parentTitle ? (
+                        <StatusPill variant="warning">on: {p.parentTitle}</StatusPill>
+                      ) : null}
+                      {p.faction ? <StatusPill variant="info">{p.faction}</StatusPill> : null}
+                      {p.sector ? <StatusPill variant="cyan">{p.sector}</StatusPill> : null}
+                      <span className="text-uf-muted self-center">
+                        by {p.authorName}
+                      </span>
+                    </p>
+                  </div>
+                  <StatusPill
+                    variant={
+                      p.status === "approved"
+                        ? "success"
+                        : p.status === "rejected"
+                          ? "danger"
+                          : "warning"
+                    }
+                  >
+                    {p.status}
+                  </StatusPill>
+                </div>
+                <p className="text-sm text-uf-muted mt-2 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                  {p.body}
+                </p>
+                {p.note ? (
+                  <p className="text-xs text-uf-muted mt-2">
+                    Reviewer note: {p.note}
+                  </p>
+                ) : null}
+                {p.status === "pending" ? (
+                  <div className="mt-3 flex flex-col gap-2">
+                    <input
+                      value={notes[p._id] ?? ""}
+                      onChange={(e) =>
+                        setNotes((n) => ({ ...n, [p._id]: e.target.value }))
+                      }
+                      placeholder="Note to the author (optional)"
+                      className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
+                    />
+                    <div className="flex gap-2">
+                      <NeonButton
+                        variant="primary"
+                        disabled={pending !== null}
+                        onClick={() => act(p._id, "approve")}
+                      >
+                        Approve &amp; publish
+                      </NeonButton>
+                      <NeonButton
+                        variant="danger"
+                        disabled={pending !== null}
+                        onClick={async () => {
+                          if (window.confirm("Reject this proposal? This will be audit-logged."))
+                            await act(p._id, "reject");
+                        }}
+                      >
+                        Reject
+                      </NeonButton>
+                    </div>
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </HoloCard>
+    </section>
   );
 }
 

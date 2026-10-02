@@ -11,13 +11,18 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 // ctx.runMutation.
 // =========================================================================
 
+// Trim + `||` so a pasted trailing newline/whitespace (or blank value)
+// never reaches the API — an untrimmed "openai/gpt-oss-120b\n" makes Groq
+// answer HTTP 404 model_not_found. Shared by canonScanner, aiAssistant,
+// and signalForge.
 export const BASE_URL =
-  process.env.CANON_SCANNER_BASE_URL ?? "https://api.groq.com/openai/v1";
+  process.env.CANON_SCANNER_BASE_URL?.trim() ||
+  "https://api.groq.com/openai/v1";
 // Groq decommissioned llama-3.3-70b-versatile on 2026-08-16 (free/dev
 // tiers). Per Groq's deprecation notice, the recommended replacement is
 // openai/gpt-oss-120b (qwen/qwen3.6-27b is the lighter alternative).
 export const MODEL =
-  process.env.CANON_SCANNER_MODEL ?? "openai/gpt-oss-120b";
+  process.env.CANON_SCANNER_MODEL?.trim() || "openai/gpt-oss-120b";
 
 const VERDICTS = ["canon", "conflict", "needs_review"] as const;
 type Verdict = (typeof VERDICTS)[number];

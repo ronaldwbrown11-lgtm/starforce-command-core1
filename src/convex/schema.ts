@@ -506,6 +506,32 @@ const schema = defineSchema(
       createdAt: v.number(),
     }).index("by_created", ["createdAt"]),
 
+    // Creator Hub — member proposals to CREATE a new canon entry or EXPAND
+    // an existing one (background / history / cultural notes / etc.).
+    // Reviewed on the operator Content Desk; approvals publish to
+    // `loreEntries` (create) or append a section to the parent entry
+    // (expand) and reward the proposing member.
+    creatorProposals: defineTable({
+      authorId: v.id("users"),
+      kind: v.string(), // "create" | "expand"
+      entryType: v.string(), // character / starship / sector / species / technology / faction / event / timeline (create) — background / history / culture / visual / related_event / mission / character_link (expand)
+      title: v.string(),
+      body: v.string(),
+      excerpt: v.optional(v.string()),
+      faction: v.optional(v.string()),
+      sector: v.optional(v.string()),
+      parentLoreId: v.optional(v.id("loreEntries")),
+      parentTitle: v.optional(v.string()),
+      status: v.string(), // pending / approved / rejected
+      note: v.optional(v.string()), // reviewer note
+      createdAt: v.number(),
+      reviewedAt: v.optional(v.number()),
+      reviewerId: v.optional(v.id("users")),
+      publishedLoreId: v.optional(v.id("loreEntries")),
+    })
+      .index("by_status_created", ["status", "createdAt"])
+      .index("by_author", ["authorId"]),
+
     groups: defineTable({
       name: v.string(),
       slug: v.string(),

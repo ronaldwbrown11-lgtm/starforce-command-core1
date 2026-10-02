@@ -65,6 +65,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: Users,
     items: [
       { label: "Hub", labelKey: "nav.community", href: "/community", desc: "Central command", descKey: "desc.community" },
+      { label: "Creator Hub", labelKey: "nav.creatorHub", href: "/creator", desc: "Create, expand & collaborate", descKey: "desc.creatorHub" },
       { label: "Groups", labelKey: "nav.groups", href: "/groups", desc: "Fleets & ship formations", descKey: "desc.groups" },
       { label: "Forums", labelKey: "nav.forums", href: "/forums", desc: "Discussion threads", descKey: "desc.forums" },
       { label: "Contests", labelKey: "nav.contests", href: "/contests", desc: "Member lore contests", descKey: "desc.contests" },
@@ -735,6 +736,7 @@ function Footer() {
           <p className="text-uf-text uppercase tracking-[0.16em] text-xs mb-3">{t("group.community")}</p>
           <ul className="space-y-2">
             <li><Link to="/community">{t("nav.community")}</Link></li>
+            <li><Link to="/creator">{t("nav.creatorHub")}</Link></li>
             <li><Link to="/forums">{t("nav.forums")}</Link></li>
             <li><Link to="/groups">{t("nav.groups")}</Link></li>
             <li><Link to="/store">{t("nav.store")}</Link></li>
