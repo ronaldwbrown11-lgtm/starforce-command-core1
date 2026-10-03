@@ -48,6 +48,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Stories", labelKey: "nav.stories", href: "/stories", desc: "Fiction & narratives", descKey: "desc.stories" },
       { label: "Lore", labelKey: "nav.lore", href: "/lore", desc: "Universe canon", descKey: "desc.lore" },
+      { label: "Factions", labelKey: "nav.factions", href: "/factions", desc: "Canon faction registry", descKey: "desc.factions" },
       { label: "Lore Arcs", labelKey: "nav.arcs", href: "/arcs", desc: "Collaborative storylines", descKey: "desc.arcs" },
       { label: "Maps", labelKey: "nav.maps", href: "/maps", desc: "Sector charts", descKey: "desc.maps" },
       { label: "Star Atlas", labelKey: "nav.starAtlas", href: "/map", desc: "Interactive galaxy", descKey: "desc.starAtlas" },
@@ -722,6 +723,7 @@ function Footer() {
           <ul className="space-y-2">
             <li><Link to="/stories">{t("nav.stories")}</Link></li>
             <li><Link to="/lore">{t("nav.lore")}</Link></li>
+            <li><Link to="/factions">{t("nav.factions")}</Link></li>
             <li><Link to="/maps">{t("nav.maps")}</Link></li>
             <li><Link to="/map">{t("nav.starAtlas")}</Link></li>
             <li><Link to="/videos">{t("nav.videos")}</Link></li>

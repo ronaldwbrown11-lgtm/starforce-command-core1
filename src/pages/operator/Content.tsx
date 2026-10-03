@@ -21,8 +21,15 @@ import {
   X,
 } from "lucide-react";
 import { TIER_ORDER, tierLabel, tierPillVariant } from "@/lib/tiers";
+import { HUB_CARD_ICON_KEYS } from "@/lib/hubCards";
 
-type Tab = "lore" | "transmissions" | "resources" | "missions" | "proposals";
+type Tab =
+  | "lore"
+  | "transmissions"
+  | "resources"
+  | "missions"
+  | "proposals"
+  | "cards";
 
 const MISSION_STATUSES = ["active", "locked", "completed"] as const;
 const MISSION_STATUS_LABEL: Record<string, string> = {
@@ -70,6 +77,7 @@ export default function OperatorContent() {
     useState<null | any>(null);
   const [editingResource, setEditingResource] = useState<null | any>(null);
   const [editingMission, setEditingMission] = useState<null | any>(null);
+  const [editingHubCard, setEditingHubCard] = useState<null | any>(null);
 
   return (
     <OperatorShell>
@@ -122,6 +130,13 @@ export default function OperatorContent() {
           icon={<Lightbulb className="h-4 w-4" aria-hidden />}
           label="Proposals"
         />
+        <TabButton
+          tab="cards"
+          active={tab === "cards"}
+          onClick={() => setTab("cards")}
+          icon={<ListChecks className="h-4 w-4" aria-hidden />}
+          label="Hub cards"
+        />
       </div>
 
       {tab === "lore" ? (
@@ -132,6 +147,8 @@ export default function OperatorContent() {
         <MissionsPanel onEdit={setEditingMission} />
       ) : tab === "proposals" ? (
         <ProposalsPanel />
+      ) : tab === "cards" ? (
+        <HubCardsPanel onEdit={setEditingHubCard} />
       ) : (
         <ResourcesPanel onEdit={setEditingResource} />
       )}
@@ -158,6 +175,12 @@ export default function OperatorContent() {
         <MissionEditorModal
           initial={editingMission}
           onClose={() => setEditingMission(null)}
+        />
+      ) : null}
+      {editingHubCard ? (
+        <HubCardEditorModal
+          initial={editingHubCard}
+          onClose={() => setEditingHubCard(null)}
         />
       ) : null}
     </OperatorShell>
@@ -1593,5 +1616,246 @@ function SelectRow({
         ) : null}
       </div>
     </label>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Hub cards — the quick-link cards on /creator (The Forge of Canon)
+// -----------------------------------------------------------------------------
+
+const HUB_CARD_TAGS = ["", "Database", "Reference"] as const;
+
+function HubCardsPanel({ onEdit }: { onEdit: (e: any) => void }) {
+  const cards = useQuery(api.content.listHubCards, { all: true });
+  const archive = useMutation(api.admin.archiveHubCard);
+  const seed = useMutation(api.admin.seedHubCards);
+  const [seeding, setSeeding] = useState(false);
+
+  const restoreDefaults = async () => {
+    if (!window.confirm("Insert the default Creator Hub cards?")) return;
+    setSeeding(true);
+    try {
+      const res = await seed({});
+      toast.success(`Restored ${res.count} default cards.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Restore failed.");
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  return (
+    <section aria-labelledby="deskhubcards">
+      <header className="mb-3 flex items-end justify-between gap-3 flex-wrap">
+        <div>
+          <h2 id="deskhubcards" className="text-xl font-semibold">
+            Hub cards
+          </h2>
+          <p className="text-uf-muted text-xs mt-1 max-w-2xl">
+            Quick links in Creator Hub → Resources. Destinations are site paths,
+            e.g. <span className="font-mono">/lore/databases/lore-db-personnel-archive</span>.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <NeonButton
+            variant="ghost"
+            onClick={restoreDefaults}
+            loading={seeding}
+            disabled={seeding}
+          >
+            Restore defaults
+          </NeonButton>
+          <NeonButton variant="primary" onClick={() => onEdit({ id: undefined })}>
+            <Plus className="h-4 w-4" aria-hidden />
+            New card
+          </NeonButton>
+        </div>
+      </header>
+      <HoloCard>
+        {cards === undefined ? (
+          <div className="uf-skeleton" style={{ height: 120 }} />
+        ) : cards.length === 0 ? (
+          <p className="uf-empty">
+            No cards yet — restore the defaults or create one. Until then the
+            Creator Hub renders its built-in set.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2 list-none p-0 m-0">
+            {cards.map((c) => (
+              <li
+                key={c._id}
+                className="flex items-center justify-between gap-3 border border-[color:var(--uf-border)] rounded-md px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="text-base font-semibold truncate">{c.label}</p>
+                  <p className="text-uf-muted text-xs flex flex-wrap items-center gap-2 mt-1">
+                    <span className="font-mono truncate">{c.href}</span>
+                    {c.tag ? <StatusPill variant="gold">{c.tag}</StatusPill> : null}
+                    {!c.active ? (
+                      <StatusPill variant="warning">hidden</StatusPill>
+                    ) : null}
+                  </p>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <NeonButton variant="ghost" onClick={() => onEdit(c)}>
+                    <Pencil className="h-4 w-4" aria-hidden />
+                    Edit
+                  </NeonButton>
+                  <NeonButton
+                    variant="danger"
+                    aria-label={`Delete ${c.label}`}
+                    onClick={() => {
+                      if (window.confirm(`Delete card "${c.label}"?`)) {
+                        archive({ id: c._id })
+                          .then(() => toast.success("Deleted."))
+                          .catch(() => toast.error("Delete failed."));
+                      }
+                    }}
+                  >
+                    <Archive className="h-4 w-4" aria-hidden />
+                  </NeonButton>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </HoloCard>
+    </section>
+  );
+}
+
+function HubCardEditorModal({
+  initial,
+  onClose,
+}: {
+  initial: any;
+  onClose: () => void;
+}) {
+  const upsert = useMutation(api.admin.upsertHubCard);
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState({
+    id: initial?._id ?? initial?.id ?? undefined,
+    label: initial?.label ?? "",
+    description: initial?.description ?? "",
+    href: initial?.href ?? "",
+    icon: initial?.icon ?? "book",
+    tag: initial?.tag ?? "Reference",
+    order: initial?.order === undefined ? "" : String(initial.order),
+    active: initial?.active ?? true,
+  });
+  useEffect(() => {
+    setForm({
+      id: initial?._id ?? initial?.id ?? undefined,
+      label: initial?.label ?? "",
+      description: initial?.description ?? "",
+      href: initial?.href ?? "",
+      icon: initial?.icon ?? "book",
+      tag: initial?.tag ?? "Reference",
+      order: initial?.order === undefined ? "" : String(initial.order),
+      active: initial?.active ?? true,
+    });
+  }, [initial]);
+
+  async function save() {
+    if (!form.label.trim() || !form.href.trim()) {
+      toast.error("Label and destination required.");
+      return;
+    }
+    if (!form.href.trim().startsWith("/")) {
+      toast.error("Destination must be a site path starting with /. ");
+      return;
+    }
+    if (!window.confirm(form.id ? "Save this card?" : "Create this card?")) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await upsert({
+        id: form.id,
+        label: form.label,
+        description: form.description,
+        href: form.href,
+        icon: form.icon || undefined,
+        tag: form.tag || undefined,
+        order: form.order === "" ? undefined : Number(form.order),
+        active: form.active,
+      });
+      toast.success("Saved.");
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Save failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <ModalShell
+      title={form.id ? "Edit hub card" : "New hub card"}
+      onClose={onClose}
+    >
+      <div className="flex flex-col gap-3">
+        <FieldRow
+          label="Label"
+          value={form.label}
+          onChange={(v) => setForm((f) => ({ ...f, label: v }))}
+          maxLength={60}
+          placeholder="Personnel Archive"
+        />
+        <FieldRow
+          label="Description"
+          value={form.description}
+          onChange={(v) => setForm((f) => ({ ...f, description: v }))}
+          maxLength={320}
+          rows={3}
+        />
+        <FieldRow
+          label="Destination (site path)"
+          value={form.href}
+          onChange={(v) => setForm((f) => ({ ...f, href: v }))}
+          placeholder="/lore/databases/lore-db-personnel-archive"
+        />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <SelectRow
+            label="Icon"
+            value={form.icon}
+            options={["", ...HUB_CARD_ICON_KEYS]}
+            onChange={(v) => setForm((f) => ({ ...f, icon: v }))}
+          />
+          <SelectRow
+            label="Group"
+            value={form.tag}
+            options={[...HUB_CARD_TAGS]}
+            onChange={(v) => setForm((f) => ({ ...f, tag: v }))}
+          />
+          <FieldRow
+            label="Order (optional)"
+            value={form.order}
+            onChange={(v) => setForm((f) => ({ ...f, order: v }))}
+            type="number"
+            placeholder="0"
+          />
+        </div>
+        <SelectRow
+          label="Visibility"
+          value={form.active ? "visible" : "hidden"}
+          options={["visible", "hidden"]}
+          onChange={(v) => setForm((f) => ({ ...f, active: v === "visible" }))}
+        />
+      </div>
+      <div className="mt-5 flex justify-end gap-2">
+        <NeonButton variant="ghost" onClick={onClose} disabled={busy}>
+          Cancel
+        </NeonButton>
+        <NeonButton
+          variant="primary"
+          onClick={save}
+          loading={busy}
+          disabled={busy}
+        >
+          {form.id ? "Save changes" : "Create card"}
+        </NeonButton>
+      </div>
+    </ModalShell>
   );
 }

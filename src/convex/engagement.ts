@@ -159,13 +159,13 @@ export const firstWatchStatus = query({
         key: "lore",
         title: "Create your first entry",
         body: "A character, a planet, a species, a relic, a starship, an event — whatever inspires you. Your entry becomes part of the galaxy forever.",
-        cta: { label: "File your first entry", href: "/submit" },
+        cta: { label: "Open the Forge of Canon", href: "/creator" },
       },
       {
         key: "faction",
         title: "Choose your faction",
-        body: "Read the dossiers and pick the one that feels like home. Membership unlocks private channels, specialized missions, and cosmetic upgrades.",
-        cta: { label: "Read the faction dossiers", href: "/fleet-registry" },
+        body: "Read the dossiers and pick the one that feels like home — each faction keeps its wiki, roster, and channels in its group. Membership unlocks private channels, specialized missions, and cosmetic upgrades.",
+        cta: { label: "Browse the faction groups", href: "/groups?category=faction" },
       },
       {
         key: "artifact",

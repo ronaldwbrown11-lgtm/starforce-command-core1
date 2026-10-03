@@ -358,6 +358,31 @@ export const listResources = query({
   },
 });
 
+// Creator Hub command cards (/creator → Resources section). Public callers
+// get active cards only; operators asking with `all: true` get every row
+// (including inactive ones) so the Content Desk can manage them.
+export const listHubCards = query({
+  args: { all: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
+    const rows = await ctx.db.query("hubCards").collect();
+    const showAll = !!args.all && (await callerIsOperator(ctx));
+    return rows
+      .filter((r) => showAll || r.active)
+      .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label))
+      .map((r) => ({
+        _id: r._id,
+        label: r.label,
+        description: r.description,
+        href: r.href,
+        icon: r.icon,
+        tag: r.tag,
+        order: r.order,
+        active: r.active,
+        updatedAt: r.updatedAt,
+      }));
+  },
+});
+
 // Operational ordering: active ops first, then locked, then completed,
 // newest first within each bucket. Kept as a plain sort so the public
 // Missions page gets a stable, sensible order without extra indexes.

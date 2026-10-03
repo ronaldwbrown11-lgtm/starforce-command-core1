@@ -7,7 +7,7 @@ import {
   isPersonnelArchive,
 } from "@/components/widgets/PersonnelDossierBrowser";
 import { isArmoryArchive } from "@/components/widgets/ArmoryBrowser";
-import { ArrowLeft, Database, Ship } from "lucide-react";
+import { ArrowLeft, Database, PenLine, Ship } from "lucide-react";
 import { usePageMeta } from "@/hooks/use-page-meta";
 
 // Databases that live inside the main site rather than on a subdomain. These
@@ -116,7 +116,7 @@ export default function LoreDatabase() {
         }}
       />
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
-        <header className="flex flex-wrap items-center gap-2 mb-6">
+        <header className="flex flex-wrap items-center gap-2 mb-4">
           <StatusPill variant="info">Database</StatusPill>
           {isPersonnel ? <StatusPill variant="info">Personnel roster</StatusPill> : null}
           {isArmory ? <StatusPill variant="gold">Arsenal manifest</StatusPill> : null}
@@ -124,6 +124,20 @@ export default function LoreDatabase() {
             <StatusPill variant="warning">{item.classification}</StatusPill>
           ) : null}
         </header>
+
+        {/* Reference → creation: read the database, then draft from it. */}
+        <div className="mb-5 flex flex-wrap items-center gap-3">
+          <Link to="/creator">
+            <NeonButton variant="gold">
+              <PenLine className="h-4 w-4" aria-hidden />
+              Draft an entry from this database
+            </NeonButton>
+          </Link>
+          <p className="text-uf-muted text-xs max-w-md">
+            Use this registry as reference while you build characters, ships, and
+            events — filed entries clear operator approval before publication.
+          </p>
+        </div>
 
         {isPersonnel ? (
           <PersonnelDossierBrowser />

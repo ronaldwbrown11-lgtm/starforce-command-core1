@@ -1,6 +1,7 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { SiteShell, PageHero, HoloCard, StatusPill } from "@/components/uf";
 import { DocViewer } from "@/components/widgets/DocViewer";
 
@@ -9,7 +10,23 @@ export default function Resources() {
   const [type, setType] = useState("");
   const [search, setSearch] = useState("");
   const [reader, setReader] = useState<{ url: string; name: string } | null>(null);
+  const [searchParams] = useSearchParams();
   const items = useQuery(api.content.listResources, { type: type || undefined, limit: 60 });
+
+  // Deep link: /resources?open=<resourceId> opens that document in the
+  // on-page reader (used by the Creator Hub resource cards so files open in
+  // the reader instead of the raw Convex storage URL).
+  const openParam = searchParams.get("open");
+  useEffect(() => {
+    if (!openParam || !items) return;
+    const target = items.find((r) => r._id === openParam);
+    if (target?.fileUrl) {
+      setReader({
+        url: target.fileUrl,
+        name: target.fileMeta?.fileName ?? target.title,
+      });
+    }
+  }, [openParam, items]);
   const filtered = (items ?? []).filter((r) =>
     !search ||
     (r.title + " " + r.description).toLowerCase().includes(search.toLowerCase()),

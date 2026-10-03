@@ -31,6 +31,7 @@ import {
   PenLine,
   Pencil,
   Rocket,
+  Shield,
   Ship,
   Sparkles,
   Target,
@@ -39,6 +40,7 @@ import {
   Users,
 } from "lucide-react";
 import goldPlateUrl from "@/assets/gold-plate-texture.jpg";
+import { DEFAULT_HUB_CARDS } from "@/lib/hubCards";
 
 // =========================================================================
 // THE FORGE OF CANON — Creator Hub command deck.
@@ -84,6 +86,36 @@ const EXPAND_TYPES: CreateType[] = [
   { id: "mission_hook", label: "Mission Involving This Lore", hint: "An operation shaped by this entry.", icon: Target },
   { id: "character_connection", label: "Character Connection", hint: "Tie a person to this entry.", icon: User },
 ];
+
+// Quick-link cards in the Resources section — served by the operator-managed
+// hubCards table (Content Desk → Hub cards) with the built-in set as fallback.
+type HubCardRow = {
+  label: string;
+  description: string;
+  href: string;
+  icon?: string;
+  tag?: string;
+};
+
+/** lucide key → component for the `icon` field on each card. */
+const CARD_ICONS: Record<string, typeof User> = {
+  book: BookOpen,
+  user: User,
+  ship: Ship,
+  cpu: Cpu,
+  map: MapIcon,
+  globe: Globe,
+  hourglass: Hourglass,
+  pen: PenLine,
+  flag: Flag,
+  shield: Shield,
+  library: Library,
+  target: Target,
+  users: Users,
+  rocket: Rocket,
+  trophy: Trophy,
+  sparkles: Sparkles,
+};
 
 type ProposalForm = {
   kind: "create" | "expand";
@@ -251,6 +283,7 @@ export default function CreatorHub() {
   const contests = useQuery(api.contests.listContests, { limit: 6 });
   const arcs = useQuery(api.engagement.listArcs, {});
   const resources = useQuery(api.content.listResources, { limit: 12 });
+  const hubCards = useQuery(api.content.listHubCards, {});
   const leaderboard = useQuery(api.social.leaderboard, { limit: 5 });
   const spotlight = useQuery(api.social.memberSpotlight, {});
   const progress = useQuery(api.social.rankProgress, {});
@@ -282,6 +315,36 @@ export default function CreatorHub() {
     () => (contests ?? []).filter((c) => c.canEnter || c.status === "open"),
     [contests],
   );
+
+  // Resource cards: operator-managed set (Content Desk → Hub cards) with the
+  // built-in default set as fallback while the table is empty. Cards tagged
+  // "Database" render in their own row above the reference shelf.
+  const cardRows: HubCardRow[] =
+    hubCards === undefined || hubCards.length === 0
+      ? DEFAULT_HUB_CARDS
+      : hubCards;
+  const databaseCards = cardRows.filter(
+    (c) => (c.tag ?? "").toLowerCase() === "database",
+  );
+  const referenceCards = cardRows.filter(
+    (c) => (c.tag ?? "").toLowerCase() !== "database",
+  );
+
+  const renderCard = (c: HubCardRow, idx: number) => {
+    const Icon = CARD_ICONS[c.icon ?? ""] ?? BookOpen;
+    return (
+      <ScaleReveal key={`${c.href}::${c.label}`} staggerIndex={idx}>
+        <Link to={c.href} className="block h-full">
+          <HoloCard className="h-full hover:border-[color:var(--uf-gold)] transition-colors">
+            <GoldEdge />
+            <Icon className="h-5 w-5 text-uf-cyan" aria-hidden />
+            <h3 className="text-base font-semibold mt-2">{c.label}</h3>
+            <p className="text-uf-muted text-sm mt-1">{c.description}</p>
+          </HoloCard>
+        </Link>
+      </ScaleReveal>
+    );
+  };
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -787,33 +850,43 @@ export default function CreatorHub() {
             reference shelf issued to every operator in the fleet."
         />
 
-        <div className="uf-grid uf-grid--4 mb-8">
-          {[
-            { label: "Universe Bible", desc: "The operating canon, issued as documents.", href: "/lore", icon: BookOpen },
-            { label: "Sector Maps", desc: "Charts of every mapped region.", href: "/maps", icon: MapIcon },
-            { label: "Star Atlas", desc: "The interactive 3D galaxy.", href: "/map", icon: Globe },
-            { label: "Timeline", desc: "Campaign arcs in chronological order.", href: "/arcs", icon: Hourglass },
-            { label: "Character Sheets", desc: "Personnel dossiers and rosters.", href: "/lore?tab=entries", icon: User },
-            { label: "Ship Blueprints", desc: "Fleet registry and armament sheets.", href: "/fleet-registry", icon: Ship },
-            { label: "Style Guides", desc: "Submission orders and house style.", href: "/resources", icon: PenLine },
-            { label: "Faction Profiles", desc: "Powers, blocs, and command structures.", href: "/map", icon: Flag },
-          ].map((r, idx) => (
-            <ScaleReveal key={r.label} staggerIndex={idx}>
-              <Link to={r.href} className="block h-full">
-                <HoloCard className="h-full hover:border-[color:var(--uf-gold)] transition-colors">
-                  <GoldEdge />
-                  <r.icon className="h-5 w-5 text-uf-cyan" aria-hidden />
-                  <h3 className="text-base font-semibold mt-2">{r.label}</h3>
-                  <p className="text-uf-muted text-sm mt-1">{r.desc}</p>
-                </HoloCard>
-              </Link>
-            </ScaleReveal>
-          ))}
+        {/* The four databases — reference while drafting, all stylized pages */}
+        {databaseCards.length > 0 ? (
+          <div className="mb-8">
+            <header className="mb-4">
+              <span className="uf-eyebrow uf-eyebrow--gold">
+                The four databases
+              </span>
+              <h3 className="text-xl font-semibold mt-1">
+                Pull from the archive while you draft.
+              </h3>
+            </header>
+            <div className="uf-grid uf-grid--4">
+              {databaseCards.map((c, idx) => renderCard(c, idx))}
+            </div>
+          </div>
+        ) : null}
+
+        {/* Reference shelf — operator-editable cards */}
+        <div>
+          <header className="mb-4">
+            <span className="uf-eyebrow uf-eyebrow--gold">Reference shelf</span>
+            <h3 className="text-xl font-semibold mt-1">
+              Canon, charts, and standing orders.
+            </h3>
+          </header>
+          <div className="uf-grid uf-grid--4">
+            {referenceCards.map((c, idx) => renderCard(c, idx))}
+          </div>
         </div>
 
-        {/* Live downloadable resources */}
+        {/* Live resources — uploaded files open in the on-page reader
+            (/resources?open=<id>), external links keep their own target. */}
         <header className="mb-4">
           <span className="uf-eyebrow uf-eyebrow--gold">Field-issued downloads</span>
+          <p className="text-uf-muted text-xs mt-1">
+            Documents open in the reader right on the resources page.
+          </p>
         </header>
         {resources === undefined ? (
           <div className="uf-grid uf-grid--3">
@@ -825,22 +898,49 @@ export default function CreatorHub() {
           <div className="uf-empty">No resources issued yet.</div>
         ) : (
           <div className="uf-grid uf-grid--3">
-            {resources.map((r) => (
-              <a
-                key={r._id}
-                href={r.fileUrl ?? r.url ?? "/resources"}
-                target={r.fileUrl || r.url ? "_blank" : undefined}
-                rel="noreferrer"
-                className="block h-full"
-              >
+            {resources.map((r) => {
+              const card = (
                 <HoloCard className="h-full hover:border-[color:var(--uf-gold)] transition-colors">
                   <GoldEdge />
-                  <StatusPill variant="info">{r.resourceType ?? "guide"}</StatusPill>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusPill variant="info">{r.resourceType ?? "guide"}</StatusPill>
+                    {r.fileUrl ? (
+                      <StatusPill variant="gold">in-reader</StatusPill>
+                    ) : null}
+                  </div>
                   <h4 className="text-base font-semibold mt-2">{r.title}</h4>
                   <p className="text-uf-muted text-sm mt-1 line-clamp-2">{r.description}</p>
+                  {r.fileUrl ? (
+                    <p className="text-uf-gold text-xs mt-2">Open in the reader →</p>
+                  ) : null}
                 </HoloCard>
-              </a>
-            ))}
+              );
+              if (r.fileUrl) {
+                return (
+                  <Link key={r._id} to={`/resources?open=${r._id}`} className="block h-full">
+                    {card}
+                  </Link>
+                );
+              }
+              if (r.url) {
+                return (
+                  <a
+                    key={r._id}
+                    href={r.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block h-full"
+                  >
+                    {card}
+                  </a>
+                );
+              }
+              return (
+                <Link key={r._id} to="/resources" className="block h-full">
+                  {card}
+                </Link>
+              );
+            })}
           </div>
         )}
       </section>

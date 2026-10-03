@@ -20,6 +20,7 @@ const STEP_HINTS: Record<string, string> = {
   group: "Groups are where missions, threads, and real-time ops happen.",
   react: "Signal a story — reactions earn XP and feed the archives.",
   report: "Run an open operation and log what the fleet observed.",
+  create: "The Forge of Canon — file a character, ship, sector, or expansion.",
   badge: "Every contribution unlocks achievements. Bank your first one.",
 };
 
@@ -92,7 +93,7 @@ export function CadetQuestPanel({ forceShow = false }: { forceShow?: boolean }) 
               Your first mission directive
             </h2>
             <p className="text-uf-muted text-sm mt-1 max-w-[62ch]">
-              Six steps. Real actions, no busywork — each one unlocks the XP,
+              {status.total} steps. Real actions, no busywork — each one unlocks the XP,
               Star Credits, and vault systems you'll live in as a pilot.
               {status.completedCount > 0 && !status.allDone && (
                 <>

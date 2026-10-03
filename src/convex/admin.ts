@@ -5,6 +5,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { opRoleValidator, tierValidator } from "./schema";
 import { internal } from "./_generated/api";
+import { DEFAULT_HUB_CARDS } from "../lib/hubCards";
 
 // Same gate the rest of the operator surface uses; kept here so this file
 // exposes no inadvertent surface that callers could bypass. Exported so
@@ -389,6 +390,132 @@ export const upsertResource = mutation({
       createdAt: Date.now(),
     });
     return id;
+  },
+});
+
+// -----------------------------------------------------------------------------
+// Creator Hub card CRUD (the quick-link cards on /creator)
+// -----------------------------------------------------------------------------
+
+export const upsertHubCard = mutation({
+  args: {
+    id: v.optional(v.id("hubCards")),
+    label: v.string(),
+    description: v.string(),
+    href: v.string(),
+    icon: v.optional(v.string()),
+    tag: v.optional(v.string()),
+    order: v.optional(v.number()),
+    active: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+    ]);
+    const label = args.label.trim();
+    const href = args.href.trim();
+    if (!label) throw new Error("Label required.");
+    if (!href || !href.startsWith("/")) {
+      throw new Error("Destination must be a site path starting with /. ");
+    }
+    const now = Date.now();
+    const description = args.description.trim().slice(0, 320);
+    let id: string;
+    if (args.id) {
+      const existing = await ctx.db.get(args.id);
+      if (!existing) throw new Error("Not found.");
+      await ctx.db.patch(args.id, {
+        label,
+        description,
+        href,
+        icon: args.icon?.trim() || undefined,
+        tag: args.tag?.trim() || undefined,
+        order: args.order ?? existing.order,
+        active: args.active ?? existing.active,
+        updatedAt: now,
+      });
+      id = args.id;
+    } else {
+      const highest = await ctx.db.query("hubCards").order("desc").first();
+      id = await ctx.db.insert("hubCards", {
+        label,
+        description,
+        href,
+        icon: args.icon?.trim() || undefined,
+        tag: args.tag?.trim() || undefined,
+        order: args.order ?? (highest ? highest.order + 1 : 0),
+        active: args.active ?? true,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: args.id ? "hubcard.edit" : "hubcard.create",
+      target: `hubcard:${id}`,
+      createdAt: now,
+    });
+    return id;
+  },
+});
+
+export const archiveHubCard = mutation({
+  args: { id: v.id("hubCards") },
+  handler: async (ctx, args) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+    ]);
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error("Not found.");
+    await ctx.db.delete(args.id);
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "hubcard.archive",
+      target: `hubcard:${args.id}`,
+      createdAt: Date.now(),
+    });
+    return { ok: true };
+  },
+});
+
+// One-click starting set: pushes the built-in default cards into the table so
+// operators can edit, reorder, deactivate, or delete them from the desk.
+export const seedHubCards = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { me } = await requireOperatorCapability(ctx, [
+      "operator",
+      "senior_operator",
+    ]);
+    const existing = await ctx.db.query("hubCards").first();
+    if (existing) {
+      throw new Error(
+        "Cards already exist — edit or delete them instead of restoring defaults.",
+      );
+    }
+    const now = Date.now();
+    for (const [i, card] of DEFAULT_HUB_CARDS.entries()) {
+      await ctx.db.insert("hubCards", {
+        label: card.label,
+        description: card.description,
+        href: card.href,
+        icon: card.icon,
+        tag: card.tag,
+        order: i,
+        active: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "hubcard.seed",
+      target: "hubcards:defaults",
+      createdAt: now,
+    });
+    return { ok: true, count: DEFAULT_HUB_CARDS.length };
   },
 });
 

@@ -7,10 +7,11 @@ import { applyXpGain, grantCredits } from "./economy";
 //
 // A guided first-week mission that teaches new members the loop that keeps
 // the fleet alive: build a profile, assign a ship, join a group, react to a
-// story, file a field report, and earn a badge. Completion is *derived* from
-// the member's real activity (no fake checkboxes), so the panel updates
-// reactively the moment each step is genuinely done. Completing all six pays
-// a one-time XP + Star Credits bonus and a feed entry.
+// story, file a field report, draft a canon entry in the Forge of Canon, and
+// earn a badge. Completion is *derived* from the member's real activity (no
+// fake checkboxes), so the panel updates reactively the moment each step is
+// genuinely done. Completing all of them pays a one-time XP + Star Credits
+// bonus and a feed entry.
 // =========================================================================
 
 export const QUEST_REWARD = { xp: 150, credits: 25 } as const;
@@ -21,6 +22,8 @@ export const QUEST_STEPS = [
   { key: "group", label: "Join a fleet group", href: "/groups", cta: "Browse groups" },
   { key: "react", label: "React to a story", href: "/stories", cta: "Open stories" },
   { key: "report", label: "File a field report", href: "/missions", cta: "Pick a mission" },
+  // Creator track: the first doorway into /creator (The Forge of Canon).
+  { key: "create", label: "Draft your first canon entry", href: "/creator", cta: "Open the Forge" },
   { key: "badge", label: "Earn your first badge", href: "/activity", cta: "View your feed" },
 ] as const;
 
@@ -32,16 +35,26 @@ export const getQuestStatus = query({
     const user = await ctx.db.get(me);
     if (!user) return null;
 
-    const [memberships, reactions, reports] = await Promise.all([
-      ctx.db
-        .query("groupMembers")
-        .withIndex("by_user", (q) => q.eq("userId", me))
-        .collect(),
-      (await ctx.db.query("reactions").collect()).filter((r) => r.userId === me),
-      (await ctx.db.query("fleetReports").collect()).filter(
-        (r) => r.authorId === me,
-      ),
-    ]);
+    const [memberships, reactions, reports, proposals, loreByAuthor, storiesByAuthor] =
+      await Promise.all([
+        ctx.db
+          .query("groupMembers")
+          .withIndex("by_user", (q) => q.eq("userId", me))
+          .collect(),
+        (await ctx.db.query("reactions").collect()).filter((r) => r.userId === me),
+        (await ctx.db.query("fleetReports").collect()).filter(
+          (r) => r.authorId === me,
+        ),
+        ctx.db
+          .query("creatorProposals")
+          .withIndex("by_author", (q) => q.eq("authorId", me))
+          .collect(),
+        ctx.db
+          .query("loreEntries")
+          .withIndex("by_author", (q) => q.eq("authorId", me))
+          .collect(),
+        (await ctx.db.query("stories").collect()).filter((s) => s.authorId === me),
+      ]);
 
     const profileDone = !!(
       user.displayName &&
@@ -54,6 +67,11 @@ export const getQuestStatus = query({
       group: memberships.length > 0,
       react: reactions.length > 0,
       report: reports.length > 0,
+      // Any real creation counts — a filed Forge proposal, a lore entry, or a
+      // story. Review approval is deliberately NOT required so a member is
+      // never stuck waiting on the operator queue to finish induction.
+      create:
+        proposals.length > 0 || loreByAuthor.length > 0 || storiesByAuthor.length > 0,
       badge: (user.achievements ?? []).length > 0,
     };
 
@@ -88,16 +106,26 @@ export const claimQuestReward = mutation({
 
     // Inline re-check of the same rules getQuestStatus uses (a mutation
     // cannot call a query directly).
-    const [memberships, reactions, reports] = await Promise.all([
-      ctx.db
-        .query("groupMembers")
-        .withIndex("by_user", (q) => q.eq("userId", me))
-        .collect(),
-      (await ctx.db.query("reactions").collect()).filter((r) => r.userId === me),
-      (await ctx.db.query("fleetReports").collect()).filter(
-        (r) => r.authorId === me,
-      ),
-    ]);
+    const [memberships, reactions, reports, proposals, loreByAuthor, storiesByAuthor] =
+      await Promise.all([
+        ctx.db
+          .query("groupMembers")
+          .withIndex("by_user", (q) => q.eq("userId", me))
+          .collect(),
+        (await ctx.db.query("reactions").collect()).filter((r) => r.userId === me),
+        (await ctx.db.query("fleetReports").collect()).filter(
+          (r) => r.authorId === me,
+        ),
+        ctx.db
+          .query("creatorProposals")
+          .withIndex("by_author", (q) => q.eq("authorId", me))
+          .collect(),
+        ctx.db
+          .query("loreEntries")
+          .withIndex("by_author", (q) => q.eq("authorId", me))
+          .collect(),
+        (await ctx.db.query("stories").collect()).filter((s) => s.authorId === me),
+      ]);
     const allDone =
       !!user.displayName &&
       !!(user.bio || user.rank || user.fleet || user.avatarStorageId || user.flair) &&
@@ -105,6 +133,7 @@ export const claimQuestReward = mutation({
       memberships.length > 0 &&
       reactions.length > 0 &&
       reports.length > 0 &&
+      (proposals.length > 0 || loreByAuthor.length > 0 || storiesByAuthor.length > 0) &&
       (user.achievements ?? []).length > 0;
     if (!allDone) {
       throw new Error("Complete every induction step first.");

@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import type { Id } from "@/convex/_generated/dataModel";
 import { SiteShell, PageHero, HoloCard, StatusPill, NeonButton } from "@/components/uf";
 import { ScaleReveal } from "@/hooks/use-scroll-reveal";
@@ -10,8 +10,11 @@ import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import { usePageMeta } from "@/hooks/use-page-meta";
 export default function Groups() {
-  const [privacy, setPrivacy] = useState("");
-  const [cat, setCat] = useState("");
+  // Deep links: /groups?category=faction (First Watch "Choose your faction")
+  // and /groups?privacy=private open pre-filtered.
+  const [searchParams] = useSearchParams();
+  const [privacy, setPrivacy] = useState(searchParams.get("privacy") ?? "");
+  const [cat, setCat] = useState(searchParams.get("category") ?? "");
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");

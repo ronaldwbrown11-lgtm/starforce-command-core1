@@ -532,6 +532,22 @@ const schema = defineSchema(
       .index("by_status_created", ["status", "createdAt"])
       .index("by_author", ["authorId"]),
 
+    // Creator Hub command cards — the operator-editable quick links in the
+    // Resources section of /creator (The Forge of Canon). Operators add,
+    // edit, and delete cards from the Content Desk → Hub cards tab; the
+    // public list feeds CreatorHub's reference/database card grid.
+    hubCards: defineTable({
+      label: v.string(),
+      description: v.string(),
+      href: v.string(),
+      icon: v.optional(v.string()), // lucide key mapped in CreatorHub (default: book-open)
+      tag: v.optional(v.string()), // group eyebrow: "Database" | "Reference" | ""
+      order: v.number(),
+      active: v.boolean(),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }).index("by_order", ["order"]),
+
     groups: defineTable({
       name: v.string(),
       slug: v.string(),

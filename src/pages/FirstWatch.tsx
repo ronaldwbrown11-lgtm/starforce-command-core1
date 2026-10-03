@@ -48,13 +48,13 @@ const OBJECTIVES: Objective[] = [
     n: "03",
     title: "Create one entry",
     body: "A character, a planet, a species, a relic, a starship, an event — whatever inspires you. Lore creation is the heart of Star Force, and your entry becomes part of the galaxy forever.",
-    cta: { label: "File your first entry", href: "/submit" },
+    cta: { label: "Open the Forge of Canon", href: "/creator" },
   },
   {
     n: "04",
     title: "Choose your faction",
     body: "Read the dossiers and pick the one that feels like home. Star Force: explorers and defenders. G.I.A.: analysts and investigators. Scientific Corps: researchers. Frontier Specialists: scouts. Civilian Guilds: builders and diplomats. Membership unlocks private channels, specialized missions, and cosmetic upgrades.",
-    cta: { label: "Read the faction dossiers", href: "/fleet-registry" },
+    cta: { label: "Browse the faction groups", href: "/groups?category=faction" },
   },
   {
     n: "05",

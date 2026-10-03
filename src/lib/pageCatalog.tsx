@@ -26,6 +26,7 @@ import ToolsAssistant from "@/pages/ToolsAssistant";
 import EmbedStory from "@/pages/EmbedStory";
 import Community from "@/pages/Community";
 import CreatorHub from "@/pages/CreatorHub";
+import Factions from "@/pages/Factions";
 import Forums from "@/pages/Forums";
 import Resources from "@/pages/Resources";
 import Membership from "@/pages/Membership";
@@ -86,6 +87,7 @@ export const PUBLIC_ROUTES: PublicPageRoute[] = [
   { path: "/lore", label: "Lore", element: <Lore /> },
   { path: "/lore/:slug", label: "Lore entry", element: <LoreDetail />, appearance: false },
   { path: "/lore/databases/:slug", label: "Lore database", element: <LoreDatabase />, appearance: false },
+  { path: "/factions", label: "Faction Profiles", element: <Factions /> },
   { path: "/lore/submit", label: "Lore submission", element: <LoreSubmit />, appearance: false },
   { path: "/maps", label: "Maps", element: <Maps /> },
   { path: "/map", label: "Star Atlas", element: <StarAtlas /> },
