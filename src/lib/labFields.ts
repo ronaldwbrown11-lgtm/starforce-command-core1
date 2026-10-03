@@ -106,8 +106,8 @@ export const SPECIES_GROUPS: LabFieldGroup[] = [
   {
     title: "Images",
     fields: [
-      t("speciesPortrait", "Species portrait (URL)", "https://…"),
-      t("habitatImage", "Habitat image (URL)", "https://…"),
+      t("speciesPortrait", "Species portrait", "https://… or upload"),
+      t("habitatImage", "Habitat image", "https://… or upload"),
     ],
   },
 ];
@@ -162,8 +162,8 @@ export const TECHNOLOGY_GROUPS: LabFieldGroup[] = [
   {
     title: "Images",
     fields: [
-      t("blueprintImage", "Blueprint image (URL)", "https://…"),
-      t("devicePhoto", "Device photo (URL)", "https://…"),
+      t("blueprintImage", "Blueprint image", "https://… or upload"),
+      t("devicePhoto", "Device photo", "https://… or upload"),
     ],
   },
 ];

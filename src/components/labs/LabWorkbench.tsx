@@ -23,6 +23,7 @@ import {
   parseSeedFile,
   type LabFieldGroup,
 } from "@/lib/labFields";
+import { ImageUploadField } from "@/components/labs/ImageUploadField";
 
 // =========================================================================
 // LabWorkbench — the shared command deck behind the Biology Lab
@@ -389,7 +390,17 @@ export function LabWorkbench({
                   <h3 className="text-lg font-semibold">{g.title}</h3>
                   <div className="grid sm:grid-cols-2 gap-3 mt-3">
                     {g.fields.map((f) =>
-                      f.type === "textarea" ? (
+                      IMAGE_KEY.test(f.key) && f.type !== "textarea" ? (
+                        <div key={f.key} className="sm:col-span-2">
+                          <ImageUploadField
+                            label={f.label}
+                            value={values[f.key] ?? ""}
+                            onChange={(v) => set(f.key, v)}
+                            placeholder={f.placeholder}
+                            disabled={!isAuthenticated}
+                          />
+                        </div>
+                      ) : f.type === "textarea" ? (
                         <label
                           key={f.key}
                           className="text-xs uppercase tracking-[0.16em] text-uf-muted flex flex-col gap-1 sm:col-span-2"
@@ -516,14 +527,25 @@ export function LabWorkbench({
                             <dd className="text-sm text-uf-text min-w-0">
                               {IMAGE_KEY.test(f.key) &&
                               /^https?:\/\//i.test(String(r[f.key])) ? (
-                                <a
-                                  href={String(r[f.key])}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-uf-cyan underline"
-                                >
-                                  Open image ↗
-                                </a>
+                                <>
+                                  <img
+                                    src={String(r[f.key])}
+                                    alt=""
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = "none";
+                                    }}
+                                    className="mb-1 max-h-24 rounded border border-[color:var(--uf-border)] object-contain"
+                                  />
+                                  <a
+                                    href={String(r[f.key])}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-uf-cyan underline"
+                                  >
+                                    Open image ↗
+                                  </a>
+                                </>
                               ) : (
                                 <span className="whitespace-pre-wrap break-words">
                                   {String(r[f.key])}

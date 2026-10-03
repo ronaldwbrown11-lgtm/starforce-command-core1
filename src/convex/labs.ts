@@ -1,9 +1,10 @@
-import { mutation, query } from "./_generated/server";
+import { env, mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Id } from "./_generated/dataModel";
 import { requireOperatorCapability } from "./admin";
+import { COVER_MAX_BYTES, COVER_MIME_TYPES } from "./assets";
 import {
   SPECIES_GROUPS,
   SPECIES_NAME_KEY,
@@ -324,4 +325,69 @@ export const seedTechnology = mutation({
       args.rows,
       "technology.seed",
     ),
+});
+
+// ---------------------------------------------------------------------------
+// Image uploads — the lab upload widget.
+//
+// Flow (two-step, mirroring the assets.ts cover pipeline):
+//   1. generateImageUploadUrl  — mints a short-lived Convex upload URL.
+//   2. browser POSTs the file  — Convex stores it, returns a storageId.
+//   3. finalizeImageUpload     — validates size/MIME against the cover rules
+//      and returns the STABLE public URL
+//      ("${CONVEX_SITE_URL}/lab-image/<storageId>") that gets pinned into the
+//      row's image field. That URL is served forever by the HTTP route in
+//      http.ts, unlike ctx.storage.getUrl() which expires within the hour.
+//
+// Any signed-in member may upload (image fields belong to their own entry);
+// invalid files are deleted server-side before they can be referenced.
+// Fields stay plain URL strings, so CSV seeds and pasted URLs keep working.
+// ---------------------------------------------------------------------------
+
+export const generateImageUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { me } = await identity(ctx);
+    if (!me) throw new Error("Sign in to upload an image.");
+    const url = await ctx.storage.generateUploadUrl();
+    await audit(ctx, me, "labs.generate_image_url", "storage");
+    return url;
+  },
+});
+
+export const finalizeImageUpload = mutation({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const { me } = await identity(ctx);
+    if (!me) throw new Error("Sign in to upload an image.");
+    const file = await ctx.storage.getMetadata(args.storageId);
+    if (!file) throw new Error("Uploaded file not found — please try again.");
+    const size = file.size ?? 0;
+    const contentType = String(file.contentType ?? "");
+    const tooLarge = size > COVER_MAX_BYTES;
+    const wrongType = !COVER_MIME_TYPES.includes(
+      contentType as (typeof COVER_MIME_TYPES)[number],
+    );
+    if (tooLarge || wrongType) {
+      try {
+        await ctx.storage.delete(args.storageId);
+      } catch {
+        // Best effort — the file is never referenced either way.
+      }
+      throw new Error(
+        `Images only, up to ${COVER_MAX_BYTES / (1024 * 1024)} MB (${COVER_MIME_TYPES.join(
+          ", ",
+        )}).`,
+      );
+    }
+    await audit(ctx, me, "labs.image_upload", `storage:${args.storageId}`);
+    const siteUrl = String(env.CONVEX_SITE_URL ?? "").replace(/\/$/, "");
+    if (!siteUrl) throw new Error("Deployment URL unavailable — try again.");
+    return {
+      storageId: args.storageId,
+      url: `${siteUrl}/lab-image/${args.storageId}`,
+      byteSize: size,
+      contentType,
+    };
+  },
 });
