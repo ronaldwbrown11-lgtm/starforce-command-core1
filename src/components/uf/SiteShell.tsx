@@ -55,6 +55,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Transmissions", labelKey: "nav.videos", href: "/videos", desc: "Video & audio", descKey: "desc.videos" },
       { label: "Podcasts", labelKey: "nav.podcasts", href: "/videos?tab=audio", desc: "Listen to the fleet", descKey: "desc.podcasts" },
       { label: "Missions", labelKey: "nav.missions", href: "/missions", desc: "Active operations", descKey: "desc.missions" },
+      { label: "Image Library", labelKey: "nav.canonImages", href: "/canon-images", desc: "Canon artwork & storyboards", descKey: "desc.canonImages" },
       { label: "Awards & Honors", labelKey: "nav.awards", href: "/awards", desc: "Ribbons, medals & the Locker", descKey: "desc.awards" },
       { label: "Honors", labelKey: "nav.honor", href: "/honor", desc: "The Wall of Honor", descKey: "desc.honor" },
       { label: "Signal Vault", labelKey: "nav.vault", href: "/vault", desc: "ARG puzzles", descKey: "desc.vault" },

@@ -51,6 +51,15 @@ export default function CanonImages() {
     else next.delete("new");
     setParams(next, { replace: true });
   };
+  // PageHero renders its CTAs as router <Link>s, so the button must carry
+  // the ?new toggle itself — a bare "#upload" anchor never opened anything.
+  const uploaderHref = (() => {
+    const next = new URLSearchParams(params);
+    if (uploaderOpen) next.delete("new");
+    else next.set("new", "1");
+    const qs = next.toString();
+    return qs ? `/canon-images?${qs}` : "/canon-images";
+  })();
 
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({
@@ -109,7 +118,7 @@ export default function CanonImages() {
         lead="Approved concept art, portraits, environments, patches, and storyboards — every piece credited to its artist and badged with its canon status."
         primary={{
           label: uploaderOpen ? "Close uploader" : "Upload artwork",
-          href: "#upload",
+          href: uploaderHref,
           variant: "primary",
         }}
         secondary={{ label: "Storyboard builder", href: "/storyboards", variant: "ghost" }}

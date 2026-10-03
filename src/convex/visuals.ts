@@ -210,6 +210,7 @@ const ASSET_FILTER_ARGS = {
   folder: v.optional(v.string()),
   mine: v.optional(v.boolean()),
   all: v.optional(v.boolean()), // operators: include other members' rows
+  limit: v.optional(v.number()), // cap rows (featured widgets, previews)
 };
 
 type AssetFilters = {
@@ -225,6 +226,7 @@ type AssetFilters = {
   folder?: string;
   mine?: boolean;
   all?: boolean;
+  limit?: number;
 };
 
 async function filterAssets(
@@ -265,7 +267,7 @@ async function filterAssets(
           .some((s) => s.includes(q))),
   )
     .sort((a, b) => b.createdAt - a.createdAt)
-    .slice(0, 300);
+    .slice(0, Math.max(1, Math.min(args.limit ?? 300, 300)));
   const withUrls = await Promise.all(
     filtered.map(async (d) => ({ ...d, url: await url(ctx, d.storageId) })),
   );

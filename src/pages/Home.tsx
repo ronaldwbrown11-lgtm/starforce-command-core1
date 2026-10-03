@@ -9,6 +9,7 @@ import {
   Crown,
   Feather,
   Globe,
+  Images,
   Play,
   Radio,
   Sparkles,
@@ -202,6 +203,7 @@ export default function Home() {
   const stats = useQuery(api.content.getHomeStats);
   const featuredStories = useQuery(api.content.listFeaturedStories, { limit: 2 });
   const featuredLore = useQuery(api.content.listFeaturedLore, { limit: 3 });
+  const featuredArt = useQuery(api.visuals.listAssets, { limit: 4 });
   const videoLineup = useQuery(api.content.getFeaturedVideoLineup);
   const topCadets = useQuery(api.content.popularMembersList, { limit: 3 });
   const forumThreads = useQuery(api.groups.trendingForumThreads, { limit: 3 });
@@ -576,6 +578,53 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      {/* =========== FEATURED ARTWORK (Canon Image Library) ============ */}
+      {featuredArt !== undefined && featuredArt.length > 0 ? (
+        <section
+          className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12"
+          aria-labelledby="uf-featured-art-title"
+        >
+          <ScrollReveal>
+            <SectionHeader
+              eyebrow="Canon Image Library"
+              title="// Featured artwork."
+              icon={<Images className="h-4 w-4" />}
+              action={
+                <Link to="/canon-images" className="uf-btn uf-btn--ghost">
+                  <span>Open gallery</span>
+                  <ChevronRight className="h-4 w-4 ml-1 inline-block" />
+                </Link>
+              }
+            />
+          </ScrollReveal>
+          <h2 id="uf-featured-art-title" className="sr-only">
+            Featured artwork
+          </h2>
+          <div className="mt-6 grid gap-5 grid-cols-2 lg:grid-cols-4">
+            {featuredArt.slice(0, 4).map((a) => (
+              <Link key={a._id} to="/canon-images" className="group block">
+                <article className="rounded-md border border-[color:var(--uf-border)] overflow-hidden sf-glass">
+                  <div className="h-36 overflow-hidden">
+                    <img
+                      src={a.url ?? undefined}
+                      alt={a.title}
+                      loading="lazy"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  </div>
+                  <div className="p-3">
+                    <h3 className="text-sm font-semibold truncate">{a.title}</h3>
+                    <p className="text-xs text-uf-muted truncate mt-1">
+                      {a.attribution || "Fleet artist"}
+                    </p>
+                  </div>
+                </article>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* =========== FROM THE COMMUNITY ============ */}
       <section

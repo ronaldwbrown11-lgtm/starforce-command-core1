@@ -59,6 +59,10 @@ async function main() {
     () => stranger.query(api.visuals.reviewQueue, {}),
     "unauthenticated reviewQueue (operator gate)",
   );
+  // The home-page featured widget passes { limit } — arg must be accepted
+  // (Convex rejects unknown fields before the handler runs).
+  const limited = await stranger.query(api.visuals.listAssets, { limit: 4 });
+  assert(Array.isArray(limited) && limited.length <= 4, "limit arg ignored");
 
   const client = new ConvexHttpClient(CONVEX_URL);
   const auth = await client.action(api.auth.signIn, {
