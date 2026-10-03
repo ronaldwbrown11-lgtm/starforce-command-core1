@@ -391,3 +391,43 @@ export const finalizeImageUpload = mutation({
     };
   },
 });
+
+/**
+ * Best-effort cleanup for abandoned lab uploads (the widget calls this when
+ * an image the user uploaded this session is cleared, replaced, or the form
+ * resets). Deliberately non-throwing for the two expected outcomes:
+ *   - unauthenticated caller        → { removed: false }
+ *   - still referenced by any row   → { removed: false }
+ * so a post-submit reset (where the image IS now referenced) is a silent
+ * no-op instead of a failed mutation. Anything else (a real storage failure)
+ * still surfaces as an error.
+ */
+export const discardImage = mutation({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const { me } = await identity(ctx);
+    if (!me) return { removed: false };
+    const needle = String(args.storageId);
+    const inUse = async (table: "speciesDatabase" | "technologyDatabase") => {
+      const rows = (await ctx.db.query(table).collect()) as unknown as Row[];
+      return rows.some((d) =>
+        Object.values(d).some(
+          (value) => typeof value === "string" && value.includes(needle),
+        ),
+      );
+    };
+    if (
+      (await inUse("speciesDatabase")) ||
+      (await inUse("technologyDatabase"))
+    ) {
+      return { removed: false };
+    }
+    try {
+      await ctx.storage.delete(args.storageId);
+    } catch {
+      // Already gone — discarding is idempotent.
+    }
+    await audit(ctx, me, "labs.image_discard", `storage:${args.storageId}`);
+    return { removed: true };
+  },
+});

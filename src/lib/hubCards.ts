@@ -75,6 +75,22 @@ export const DEFAULT_HUB_CARDS: HubCardSeed[] = [
     icon: "shield",
     tag: "Database",
   },
+  {
+    label: "Species Database",
+    description:
+      "Biology Lab dossiers — physiology, culture, habitat, and canon notes for every species on file.",
+    href: "/biology-lab",
+    icon: "globe",
+    tag: "Database",
+  },
+  {
+    label: "Technology Database",
+    description:
+      "Research Lab records — specs, function, and field notes for every device in the canon.",
+    href: "/research-lab",
+    icon: "cpu",
+    tag: "Database",
+  },
   // ---- Reference shelf ---------------------------------------------------
   {
     label: "Universe Bible",

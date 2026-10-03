@@ -914,18 +914,22 @@ export default function CreatorHub() {
             reference shelf issued to every operator in the fleet."
         />
 
-        {/* The four databases — reference while drafting, all stylized pages */}
+        {/* The databases — reference while drafting, all stylized pages */}
         {databaseCards.length > 0 ? (
           <div className="mb-8">
             <header className="mb-4">
               <span className="uf-eyebrow uf-eyebrow--gold">
-                The four databases
+                The databases
               </span>
               <h3 className="text-xl font-semibold mt-1">
                 Pull from the archive while you draft.
               </h3>
             </header>
-            <div className="uf-grid uf-grid--4">
+            <div
+              className={
+                databaseCards.length > 4 ? "uf-grid uf-grid--3" : "uf-grid uf-grid--4"
+              }
+            >
               {databaseCards.map((c, idx) => renderCard(c, idx))}
             </div>
           </div>

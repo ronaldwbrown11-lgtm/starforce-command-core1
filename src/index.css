@@ -1230,3 +1230,183 @@
   outline: 2px solid #001018;
   outline-offset: 2px;
 }
+
+/* ===========================================================================
+   COMMAND-DECK COSMETIC LAYER — sci-fi military polish
+   Palette: neon blue #00C8FF · holo #4DE0FF · deep navy #020B1A · gold #E6A817
+   Strictly presentational: no layout, routing, or logic lives in this block.
+   Unlayered on purpose so it wins over Tailwind utilities of equal weight.
+   =========================================================================== */
+
+:root {
+  --sf-neon: #00c8ff;
+  --sf-holo: #4de0ff;
+  --sf-navy-deep: #020b1a;
+  --sf-gold-line: rgba(230, 168, 23, 0.4);
+}
+
+/* ---- Command-deck typography ------------------------------------------- */
+.sf-deck,
+.sf-head,
+.sf-label {
+  font-family: "Rajdhani", "Orbitron", system-ui, sans-serif;
+}
+.sf-head {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #eaf9ff;
+  text-shadow: 0 0 12px rgba(77, 224, 255, 0.28);
+}
+.sf-label {
+  color: var(--sf-neon);
+  text-shadow: 0 0 8px rgba(0, 200, 255, 0.35);
+  letter-spacing: 0.14em;
+  font-weight: 600;
+}
+
+/* ---- Glass-morphism panels with gold-lined edges ------------------------ */
+.sf-glass {
+  background: linear-gradient(
+    180deg,
+    rgba(16, 24, 39, 0.55),
+    rgba(2, 11, 26, 0.42)
+  );
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(230, 168, 23, 0.32);
+  box-shadow:
+    0 0 26px rgba(0, 200, 255, 0.1),
+    inset 0 0 30px rgba(0, 200, 255, 0.05);
+}
+.sf-glass-dark {
+  background: rgba(2, 11, 26, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(230, 168, 23, 0.32);
+}
+.sf-holo-glow {
+  box-shadow:
+    0 0 24px rgba(0, 200, 255, 0.12),
+    inset 0 0 30px rgba(0, 200, 255, 0.05);
+}
+
+/* ---- Inputs + incremental dropdowns ------------------------------------ */
+.sf-input,
+.sf-select {
+  font-family: "Rajdhani", "Orbitron", system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  color: var(--uf-text);
+  background: rgba(16, 24, 39, 0.55);
+  border: 1px solid var(--uf-border);
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+.sf-input:hover,
+.sf-select:hover {
+  border-color: rgba(0, 200, 255, 0.55);
+  box-shadow:
+    0 0 14px rgba(0, 200, 255, 0.3),
+    inset 0 0 12px rgba(0, 200, 255, 0.07);
+}
+.sf-input:focus,
+.sf-select:focus {
+  outline: none;
+  border-color: var(--sf-neon);
+  box-shadow: 0 0 16px rgba(0, 200, 255, 0.45);
+}
+.sf-select {
+  border-color: rgba(230, 168, 23, 0.5); /* gold-texture border */
+  appearance: auto; /* keep the native step controls usable */
+}
+.sf-select option {
+  background: #06101f;
+  color: var(--uf-text);
+}
+
+/* ---- Animations: soft pulse + gold shimmer ------------------------------ */
+.sf-pulse-soft {
+  animation: sf-pulse-soft 3.2s ease-in-out infinite;
+}
+@keyframes sf-pulse-soft {
+  0%,
+  100% {
+    opacity: 0.88;
+    text-shadow: 0 0 6px rgba(0, 200, 255, 0.2);
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 18px rgba(0, 200, 255, 0.55);
+  }
+}
+.sf-shimmer-gold {
+  animation: sf-shimmer-gold 2.6s ease-in-out infinite;
+}
+@keyframes sf-shimmer-gold {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.6) drop-shadow(0 0 6px rgba(243, 200, 73, 0.7));
+  }
+}
+
+/* ---- Global button hover glow (variant glows keep priority) ------------- */
+/* Reinforces the base .uf-btn:hover cyan glow with a gold edge; variant
+   rules (.uf-btn--gold:hover etc.) are more specific and still win. */
+.uf-btn:hover {
+  box-shadow:
+    0 0 16px rgba(0, 200, 255, 0.35),
+    0 0 6px rgba(230, 168, 23, 0.3);
+}
+
+/* ---- Menu: gold-underline hover, neon-blue active, holo icons ------------ */
+.sf-nav-item {
+  position: relative;
+  font-family: "Rajdhani", "Orbitron", system-ui, sans-serif;
+}
+.sf-nav-item::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 2px;
+  background: url("./assets/gold-plate-texture.jpg") center / cover;
+  box-shadow: 0 0 6px rgba(230, 168, 23, 0.55);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.25s ease;
+}
+.sf-nav-item:hover::after,
+.sf-nav-item.sf-nav-active::after {
+  transform: scaleX(1);
+}
+.sf-nav-item.sf-nav-active::after {
+  animation: sf-shimmer-gold 2.6s ease-in-out infinite;
+}
+.sf-nav-icon {
+  color: var(--sf-neon);
+  filter: drop-shadow(0 0 4px rgba(0, 200, 255, 0.65));
+  transition: filter 0.2s ease;
+}
+.group:hover .sf-nav-icon {
+  filter: drop-shadow(0 0 6px rgba(243, 200, 73, 0.85));
+  animation: sf-shimmer-gold 1.4s ease-in-out infinite;
+}
+.sf-menu-item {
+  font-family: "Rajdhani", "Orbitron", system-ui, sans-serif;
+  letter-spacing: 0.03em;
+}
+.sf-menu-item:hover {
+  box-shadow:
+    inset 0 0 16px rgba(0, 200, 255, 0.18),
+    0 0 10px rgba(0, 200, 255, 0.15);
+}
+.sf-menubar {
+  box-shadow:
+    0 1px 0 rgba(230, 168, 23, 0.42),
+    0 10px 30px rgba(0, 0, 0, 0.35);
+}

@@ -93,10 +93,10 @@ function GoldEdge() {
 
 function GoldDivider({ glyph = "◆" }: { glyph?: string }) {
   return (
-    <div className="my-6 flex items-center gap-3" aria-hidden>
+    <div className="my-10 flex items-center gap-3" aria-hidden>
       <span className="h-[2px] flex-1" style={GOLD_RULE} />
       <span
-        className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-sm border border-[color:var(--uf-gold)] px-1.5 text-[0.6rem] font-bold text-[#1A1300] animate-pulse"
+        className="sf-shimmer-gold sf-deck inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-sm border border-[color:var(--uf-gold)] px-1.5 text-[0.6rem] font-bold text-[#1A1300]"
         style={GOLD_PLATE}
       >
         {glyph}
@@ -113,6 +113,22 @@ function GoldDivider({ glyph = "◆" }: { glyph?: string }) {
 }
 
 const IMAGE_KEY = /(image|portrait|photo|blueprint)/i;
+
+// Height & weight render as incremental dropdowns — a UI-control swap only:
+// values still land in the averageHeight / averageMass string fields, so the
+// schema, sanitize allowlist, CSV seeding, and submission stay untouched.
+// Height: 4'0" – 10'0" in 1-inch steps. Weight: 80–800 lbs in 10-lb steps.
+const HEIGHT_OPTIONS: string[] = [];
+for (let inches = 48; inches <= 120; inches++) {
+  HEIGHT_OPTIONS.push(`${Math.floor(inches / 12)}'${inches % 12}"`);
+}
+const WEIGHT_OPTIONS: string[] = [];
+for (let lbs = 80; lbs <= 800; lbs += 10) WEIGHT_OPTIONS.push(`${lbs} lbs`);
+
+/** averageMass is presented as "weight" everywhere in the UI. */
+function fieldLabel(key: string, fallback: string) {
+  return key === "averageMass" ? "Average weight" : fallback;
+}
 
 export function LabWorkbench({
   eyebrow,
@@ -259,12 +275,14 @@ export function LabWorkbench({
       --------------------------------------------------------------- */}
       {isOperator ? (
         <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 pt-10">
-          <HoloCard className="relative">
+          <HoloCard className="relative sf-glass sf-holo-glow">
             <GoldEdge />
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
-                <span className="uf-eyebrow uf-eyebrow--gold">Seed bay</span>
-                <h2 className="text-xl font-semibold mt-1">
+                <span className="uf-eyebrow uf-eyebrow--gold sf-pulse-soft">
+                  Seed bay
+                </span>
+                <h2 className="sf-head text-xl font-semibold mt-1">
                   Upload a file and seed the database
                 </h2>
                 <p className="text-uf-muted text-sm mt-1 max-w-2xl">
@@ -355,8 +373,8 @@ export function LabWorkbench({
         id="lab-new"
       >
         <header className="mb-6">
-          <span className="uf-eyebrow uf-eyebrow--gold">Intake</span>
-          <h2 className="text-3xl font-semibold mt-2">
+          <span className="uf-eyebrow uf-eyebrow--gold sf-pulse-soft">Intake</span>
+          <h2 className="sf-head sf-pulse-soft text-3xl font-semibold mt-2">
             Record a new {nameLabel.toLowerCase()}.
           </h2>
           <span
@@ -372,7 +390,7 @@ export function LabWorkbench({
         </header>
 
         {!isAuthenticated ? (
-          <HoloCard>
+          <HoloCard className="sf-glass">
             <p className="text-uf-muted text-sm">
               Sign in to file an entry.{" "}
               <Link to="/auth?returnTo=/creator" className="text-uf-cyan">
@@ -382,42 +400,78 @@ export function LabWorkbench({
             </p>
           </HoloCard>
         ) : (
-          <form className="grid gap-0" onSubmit={submit}>
+          <form className="sf-glass grid gap-0 rounded-xl p-5 sm:p-6" onSubmit={submit}>
             {groups.map((g, gi) => (
               <div key={g.title}>
                 {gi > 0 ? <GoldDivider glyph={String(gi + 1).padStart(2, "0")} /> : null}
-                <div className={gi > 0 ? "mt-2" : ""}>
-                  <h3 className="text-lg font-semibold">{g.title}</h3>
-                  <div className="grid sm:grid-cols-2 gap-3 mt-3">
-                    {g.fields.map((f) =>
-                      IMAGE_KEY.test(f.key) && f.type !== "textarea" ? (
-                        <div key={f.key} className="sm:col-span-2">
-                          <ImageUploadField
-                            label={f.label}
-                            value={values[f.key] ?? ""}
-                            onChange={(v) => set(f.key, v)}
-                            placeholder={f.placeholder}
-                            disabled={!isAuthenticated}
-                          />
-                        </div>
-                      ) : f.type === "textarea" ? (
+                <div className={gi > 0 ? "mt-4" : ""}>
+                  <h3 className="sf-head text-lg font-semibold">{g.title}</h3>
+                  <div className="grid sm:grid-cols-2 gap-4 mt-4">
+                    {g.fields.map((f) => {
+                      // Incremental dropdowns for height & weight (UI only —
+                      // keys averageHeight / averageMass are unchanged).
+                      const isHeight = f.key === "averageHeight";
+                      const isWeight = f.key === "averageMass";
+                      if (isHeight || isWeight) {
+                        return (
+                          <label
+                            key={f.key}
+                            className="text-xs uppercase tracking-[0.16em] sf-label flex flex-col gap-1"
+                          >
+                            {fieldLabel(f.key, f.label)}
+                            <select
+                              value={values[f.key] ?? ""}
+                              onChange={(e) => set(f.key, e.target.value)}
+                              className="sf-select w-full rounded-md px-3 py-2 text-sm"
+                            >
+                              <option value="">
+                                {isHeight ? "Select height" : "Select weight"}
+                              </option>
+                              {(isHeight ? HEIGHT_OPTIONS : WEIGHT_OPTIONS).map(
+                                (opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ),
+                              )}
+                            </select>
+                          </label>
+                        );
+                      }
+                      if (IMAGE_KEY.test(f.key) && f.type !== "textarea") {
+                        return (
+                          <div key={f.key} className="sm:col-span-2">
+                            <ImageUploadField
+                              label={f.label}
+                              value={values[f.key] ?? ""}
+                              onChange={(v) => set(f.key, v)}
+                              placeholder={f.placeholder}
+                              disabled={!isAuthenticated}
+                            />
+                          </div>
+                        );
+                      }
+                      if (f.type === "textarea") {
+                        return (
+                          <label
+                            key={f.key}
+                            className="text-xs uppercase tracking-[0.16em] sf-label flex flex-col gap-1 sm:col-span-2"
+                          >
+                            {f.label}
+                            <textarea
+                              value={values[f.key] ?? ""}
+                              onChange={(e) => set(f.key, e.target.value)}
+                              rows={3}
+                              placeholder={f.placeholder}
+                              className="sf-input w-full rounded-md px-3 py-2 text-sm"
+                            />
+                          </label>
+                        );
+                      }
+                      return (
                         <label
                           key={f.key}
-                          className="text-xs uppercase tracking-[0.16em] text-uf-muted flex flex-col gap-1 sm:col-span-2"
-                        >
-                          {f.label}
-                          <textarea
-                            value={values[f.key] ?? ""}
-                            onChange={(e) => set(f.key, e.target.value)}
-                            rows={3}
-                            placeholder={f.placeholder}
-                            className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
-                          />
-                        </label>
-                      ) : (
-                        <label
-                          key={f.key}
-                          className="text-xs uppercase tracking-[0.16em] text-uf-muted flex flex-col gap-1"
+                          className="text-xs uppercase tracking-[0.16em] sf-label flex flex-col gap-1"
                         >
                           {f.label}
                           <input
@@ -425,16 +479,16 @@ export function LabWorkbench({
                             onChange={(e) => set(f.key, e.target.value)}
                             type={f.type === "number" ? "number" : "text"}
                             placeholder={f.placeholder}
-                            className="border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
+                            className="sf-input w-full rounded-md px-3 py-2 text-sm"
                           />
                         </label>
-                      ),
-                    )}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
             ))}
-            <div className="mt-6 flex gap-2">
+            <div className="mt-8 flex flex-wrap gap-3">
               <NeonButton
                 variant="gold"
                 type="submit"
@@ -457,12 +511,19 @@ export function LabWorkbench({
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 pt-0">
         <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <span className="uf-eyebrow uf-eyebrow--gold">On file</span>
-            <h2 className="text-2xl font-semibold mt-1">
+            <span className="uf-eyebrow uf-eyebrow--gold sf-pulse-soft">
+              On file
+            </span>
+            <h2 className="sf-head text-2xl font-semibold mt-1">
               {records === undefined
                 ? "Loading dossiers…"
                 : `${records.length} ${records.length === 1 ? "record" : "records"} on file`}
             </h2>
+            <span
+              aria-hidden
+              className="mt-3 block h-[3px] w-36 rounded-full"
+              style={GOLD_RULE}
+            />
           </div>
           <label className="flex items-center gap-2 border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]">
             <Search className="h-4 w-4 text-uf-muted" aria-hidden />
@@ -491,7 +552,7 @@ export function LabWorkbench({
           <div className="uf-grid uf-grid--3">
             {filtered.map((r, idx) => (
               <ScaleReveal key={r._id} staggerIndex={idx % 6}>
-                <HoloCard className="h-full">
+                <HoloCard className="h-full sf-holo-glow">
                   <GoldEdge />
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="text-lg font-semibold leading-tight">
@@ -521,8 +582,8 @@ export function LabWorkbench({
                             key={f.key}
                             className="grid sm:grid-cols-[150px_1fr] gap-2 border-b border-[color:var(--uf-border-subtle)] pb-2"
                           >
-                            <dt className="text-[11px] uppercase tracking-[0.14em] text-uf-muted">
-                              {f.label}
+                            <dt className="text-[11px] uppercase tracking-[0.14em] sf-label">
+                              {fieldLabel(f.key, f.label)}
                             </dt>
                             <dd className="text-sm text-uf-text min-w-0">
                               {IMAGE_KEY.test(f.key) &&

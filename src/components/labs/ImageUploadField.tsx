@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
@@ -15,6 +15,11 @@ import { ImagePlus, Loader2, X } from "lucide-react";
 //      returned stable /lab-image/<storageId> URL lands in the field.
 //   2. Paste any http(s) URL — the classic path, kept as a fallback so
 //      seeded rows and external canon art still work.
+//
+// Orphan control: every URL uploaded in this session is remembered, and if
+// the value later moves away from it (Clear button, paste-over, form reset)
+// we ask the server to discard it. discardImage refuses anything still
+// referenced by a row, so the post-submit reset is a safe no-op.
 //
 // The field value stays a plain URL string, so LabWorkbench's submit,
 // dossier rendering, and CSV seeding are all unchanged.
@@ -48,6 +53,29 @@ export function ImageUploadField({
 
   const generateUploadUrl = useMutation(api.labs.generateImageUploadUrl);
   const finalizeImageUpload = useMutation(api.labs.finalizeImageUpload);
+  const discardImage = useMutation(api.labs.discardImage);
+
+  // URLs this widget uploaded this session → their storage ids.
+  const uploadsRef = useRef<Map<string, string>>(new Map());
+  const valueRef = useRef(value);
+
+  // When the value moves off a URL we uploaded this session, discard it.
+  // Covers Clear, paste-over, replacement, the "Clear form" button, and the
+  // post-submit reset (where the server reports removed:false — referenced).
+  useEffect(() => {
+    const prev = valueRef.current;
+    valueRef.current = value;
+    if (!prev || prev === value) return;
+    const storageId = uploadsRef.current.get(prev);
+    if (!storageId) return;
+    uploadsRef.current.delete(prev);
+    // Expected outcomes (unauthenticated / still referenced) come back as
+    // { removed: false }; only genuine storage failures reject, and there is
+    // nothing actionable the form can do about those mid-edit.
+    void discardImage({ storageId: storageId as Id<"_storage"> }).catch(
+      () => undefined,
+    );
+  }, [value, discardImage]);
 
   const isHttp = /^https?:\/\//i.test(value);
   const showPreview = isHttp && value !== brokenSrc;
@@ -62,7 +90,7 @@ export function ImageUploadField({
     }
     if (!IMAGE_MIME_TYPES.includes(file.type)) {
       toast.error(
-        `Unsupported type (${file.type || "unknown"}). Use JPEG, PNG, or WebP.`,
+        `Unsupported type (${file.type || "unknown"}). Use JPEG, PNG, WebP, or AVIF.`,
       );
       return;
     }
@@ -79,6 +107,7 @@ export function ImageUploadField({
       const { url } = await finalizeImageUpload({
         storageId: storageId as Id<"_storage">,
       });
+      uploadsRef.current.set(url, storageId);
       setBrokenSrc(null);
       onChange(url);
       toast.success("Image uploaded and attached.");
@@ -91,9 +120,7 @@ export function ImageUploadField({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs uppercase tracking-[0.16em] text-uf-muted">
-        {label}
-      </span>
+      <span className="text-xs uppercase tracking-[0.16em] sf-label">{label}</span>
 
       <div className="flex items-stretch gap-2">
         <input
@@ -106,7 +133,7 @@ export function ImageUploadField({
           disabled={disabled}
           placeholder={placeholder ?? "https://… or upload a file"}
           aria-label={label}
-          className="flex-1 min-w-0 border border-[color:var(--uf-border)] rounded-md px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]"
+          className="sf-input flex-1 min-w-0 rounded-md px-3 py-2 text-sm"
         />
         {showPreview ? (
           <img
@@ -114,7 +141,7 @@ export function ImageUploadField({
             alt=""
             loading="lazy"
             onError={() => setBrokenSrc(value)}
-            className="h-10 w-10 shrink-0 rounded-md border border-[color:var(--uf-border)] object-cover"
+            className="h-10 w-10 shrink-0 rounded-md border border-[rgba(230,168,23,0.45)] object-cover"
           />
         ) : null}
       </div>
@@ -137,7 +164,7 @@ export function ImageUploadField({
           type="button"
           disabled={disabled || busy}
           onClick={() => fileRef.current?.click()}
-          className="uf-btn uf-btn--primary text-xs disabled:opacity-50"
+          className="uf-btn uf-btn--primary sf-deck text-xs disabled:opacity-50"
         >
           {busy ? (
             <>
@@ -155,19 +182,22 @@ export function ImageUploadField({
             type="button"
             onClick={() => {
               setBrokenSrc(null);
-              onChange("");
+              onChange(""); // effect discards a session upload from here
             }}
-            className="uf-btn uf-btn--ghost text-xs"
+            className="uf-btn uf-btn--ghost sf-deck text-xs"
           >
             <X className="h-4 w-4" aria-hidden /> Clear
           </button>
         ) : null}
-        <span className="text-uf-muted text-[11px] uppercase tracking-[0.14em]">
+        <span className="text-uf-muted sf-deck text-[11px] uppercase tracking-[0.14em]">
           JPEG · PNG · WebP · AVIF · ≤ 5 MB
         </span>
       </div>
 
-      <p className="text-uf-muted text-[11px]" role={busy ? "status" : undefined}>
+      <p
+        className="text-uf-muted text-[11px]"
+        role={busy ? "status" : undefined}
+      >
         {busy
           ? "Storing in the archive…"
           : "Upload a file, or paste an image URL."}

@@ -120,14 +120,14 @@ function MegaMenuDropdown({ group }: { group: NavGroup }) {
   const leave = () => { timeoutRef.current = setTimeout(() => setOpen(false), 150); };
 
   return (
-    <div className="relative" onMouseEnter={enter} onMouseLeave={leave}>
+    <div className="group relative" onMouseEnter={enter} onMouseLeave={leave}>
       <button
         type="button"
         className={cn(
-          "flex items-center gap-1.5 px-3 py-2 rounded-md text-sm tracking-[0.08em] uppercase font-medium transition-colors",
+          "sf-nav-item flex items-center gap-1.5 px-4 py-2.5 rounded-md text-sm tracking-[0.08em] uppercase font-medium transition-colors",
           "text-uf-text hover:text-uf-text cursor-pointer",
           isActive
-            ? "bg-[rgba(0,229,255,0.10)] shadow-[var(--uf-glow-cyan)]"
+            ? "bg-[rgba(0,229,255,0.10)] shadow-[var(--uf-glow-cyan)] sf-nav-active"
             : "hover:bg-[rgba(0,229,255,0.06)]",
         )}
         aria-expanded={open}
@@ -145,13 +145,22 @@ function MegaMenuDropdown({ group }: { group: NavGroup }) {
           onMouseLeave={leave}
         >
           <div
-            className="!rounded-xl p-4 min-w-[260px]"
+            className="sf-glass-dark !rounded-xl p-4 min-w-[260px]"
             role="menu"
-            style={{ background: "rgba(10, 15, 30, 0.95)", border: "1px solid rgba(0,229,255,0.2)", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}
+            style={{
+              background: "rgba(10, 15, 30, 0.82)",
+              border: "1px solid rgba(230,168,23,0.35)",
+              backdropFilter: "blur(14px)",
+              WebkitBackdropFilter: "blur(14px)",
+              boxShadow:
+                "0 8px 32px rgba(0,0,0,0.6), inset 0 0 24px rgba(0,200,255,0.06)",
+            }}
           >
-            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-cyan-800/40">
-              <Icon className="h-4 w-4 text-cyan-400" />
-              <span className="text-xs uppercase tracking-[0.16em] text-cyan-300 font-bold">{t(group.labelKey)}</span>
+            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-[rgba(230,168,23,0.3)]">
+              <Icon className="sf-nav-icon h-4 w-4" />
+              <span className="sf-deck text-xs uppercase tracking-[0.16em] text-cyan-300 font-bold">
+                {t(group.labelKey)}
+              </span>
             </div>
             <ul className="flex flex-col gap-0.5 list-none p-0 m-0">
               {group.items.map((item) => (
@@ -160,9 +169,9 @@ function MegaMenuDropdown({ group }: { group: NavGroup }) {
                     to={item.href}
                     onClick={() => setOpen(false)}
                     className={cn(
-                      "flex flex-col rounded-lg px-3 py-2 transition-colors",
+                      "sf-menu-item flex flex-col rounded-lg px-3 py-2 transition-colors",
                       pathname === item.href
-                        ? "bg-cyan-900/40 text-white"
+                        ? "bg-cyan-900/40 text-white sf-nav-active"
                         : "text-gray-100 hover:bg-cyan-900/30 hover:text-white",
                     )}
                     role="menuitem"
@@ -395,7 +404,7 @@ function Header() {
   return (
     <header
       role="banner"
-      className="sticky top-0 z-40 backdrop-blur-md border-b border-[color:var(--uf-border)]"
+      className="sf-menubar sticky top-0 z-40 backdrop-blur-md border-b border-[color:var(--uf-border)]"
       style={{ background: "linear-gradient(180deg, rgba(5,8,22,0.85), rgba(5,8,22,0.55))" }}
     >
       <div className="uf-container flex items-center gap-6 py-4">
@@ -409,17 +418,17 @@ function Header() {
           />
           <span className="hidden sm:inline">Star Force Base 1198</span>
         </Link>
-        <nav aria-label="Primary" className="hidden lg:flex items-center gap-1 ml-auto">
+        <nav aria-label="Primary" className="hidden lg:flex items-center gap-1.5 ml-auto">
           {NAV_GROUPS.map((group) => (
             <MegaMenuDropdown key={group.label} group={group} />
           ))}
           <Link
             to={AI_TOOL.href}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-2 rounded-md text-sm tracking-[0.08em] uppercase font-medium transition-colors",
+              "sf-nav-item flex items-center gap-1.5 px-4 py-2.5 rounded-md text-sm tracking-[0.08em] uppercase font-medium transition-colors",
               "text-uf-cyan hover:text-uf-cyan",
               pathname === AI_TOOL.href
-                ? "bg-[rgba(0,229,255,0.15)] shadow-[var(--uf-glow-cyan)]"
+                ? "bg-[rgba(0,229,255,0.15)] shadow-[var(--uf-glow-cyan)] sf-nav-active"
                 : "hover:bg-[rgba(0,229,255,0.08)]",
             )}
           >
@@ -538,21 +547,20 @@ function Header() {
           </button>
         </div>
       </div>
-      {open ? (
-        <aside
+      {open ? (        <aside
           id="uf-mobile-nav"
           role="dialog"
           aria-label="Mobile command nav"
-          className="lg:hidden border-t border-[color:var(--uf-border)] bg-[color:var(--uf-panel)] px-4 py-4"
+          className="sf-glass-dark lg:hidden border-t border-[color:var(--uf-border)] px-4 py-4"
         >
           <nav aria-label="Primary mobile" className="flex flex-col gap-3">
             {NAV_GROUPS.map((group) => {
               const Icon = group.icon;
               return (
-                <div key={group.label}>
+                <div key={group.label} className="group">
                   <div className="flex items-center gap-2 px-3 mb-1">
-                    <Icon className="h-3.5 w-3.5 text-uf-cyan" />
-                    <span className="text-[10px] uppercase tracking-[0.16em] text-cyan-300 font-semibold">{t(group.labelKey)}</span>
+                    <Icon className="sf-nav-icon h-3.5 w-3.5" />
+                    <span className="sf-deck text-[10px] uppercase tracking-[0.16em] text-cyan-300 font-semibold">{t(group.labelKey)}</span>
                   </div>
                   <div className="flex flex-col gap-0.5">
                     {group.items.map((item) => (
@@ -562,11 +570,12 @@ function Header() {
                         onClick={() => setOpen(false)}
                         className={({ isActive }) =>
                           cn(
-                            "px-3 py-2 rounded-md text-sm",
+                            "sf-nav-item px-3.5 py-2 rounded-md text-sm",
                             isActive
-                              ? "bg-[rgba(0,229,255,0.10)] text-uf-text"
+                              ? "bg-[rgba(0,229,255,0.10)] text-uf-text sf-nav-active"
                               : "text-uf-muted",
-                          )}
+                          )
+                        }
                       >
                         {t(item.labelKey)}
                       </NavLink>
