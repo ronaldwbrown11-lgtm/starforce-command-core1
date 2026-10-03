@@ -41,12 +41,15 @@ import {
   Ship,
   Sparkles,
   Target,
+  Trash2,
   Trophy,
   User,
   Users,
 } from "lucide-react";
 import goldPlateUrl from "@/assets/gold-plate-texture.jpg";
 import { DEFAULT_HUB_CARDS } from "@/lib/hubCards";
+import { VisualUploader } from "@/components/visuals/VisualUploader";
+import { CanonBadge } from "@/components/visuals/CanonBadge";
 
 // =========================================================================
 // THE FORGE OF CANON — Creator Hub command deck.
@@ -104,6 +107,61 @@ type HubCardRow = {
   icon?: string;
   tag?: string;
 };
+
+/** Visual Forge command cards (Task 8) — rendered in section 06. */
+const VISUAL_CARDS: HubCardRow[] = [
+  {
+    label: "Create Concept Art",
+    description: "Open the global uploader and file a concept piece for canon.",
+    href: "/canon-images?new=1&kind=concept",
+    icon: "pen",
+    tag: "Visual",
+  },
+  {
+    label: "Create Storyboard",
+    description:
+      "Compose a panel-by-panel sequence with captions and scene metadata.",
+    href: "/storyboards?new=1",
+    icon: "library",
+    tag: "Visual",
+  },
+  {
+    label: "Upload Visual Asset",
+    description:
+      "Any artwork into your tray — auto-resized, tagged, and attributed.",
+    href: "/canon-images?new=1&kind=other",
+    icon: "sparkles",
+    tag: "Visual",
+  },
+  {
+    label: "Submit Canon Image",
+    description: "Send a piece through the operator canon approval workflow.",
+    href: "/canon-images?new=1",
+    icon: "shield",
+    tag: "Visual",
+  },
+  {
+    label: "Build Gallery",
+    description: "Organize artwork into gallery folders and showcase a set.",
+    href: "/canon-images?new=1&kind=gallery",
+    icon: "book",
+    tag: "Visual",
+  },
+  {
+    label: "View Canon Image Library",
+    description: "The public visual canon — every approved piece, credited.",
+    href: "/canon-images",
+    icon: "flag",
+    tag: "Visual",
+  },
+  {
+    label: "View Artist Profiles",
+    description: "Portfolios, commissions, and canon contributions of the fleet.",
+    href: "/artists",
+    icon: "users",
+    tag: "Visual",
+  },
+];
 
 /** lucide key → component for the `icon` field on each card. */
 const CARD_ICONS: Record<string, typeof User> = {
@@ -295,6 +353,11 @@ export default function CreatorHub() {
   const leaderboard = useQuery(api.social.leaderboard, { limit: 5 });
   const spotlight = useQuery(api.social.memberSpotlight, {});
   const progress = useQuery(api.social.rankProgress, {});
+  const myVisuals = useQuery(
+    api.visuals.listAssets,
+    isAuthenticated ? { mine: true } : "skip",
+  );
+  const removeVisual = useMutation(api.visuals.removeAsset);
 
   const submit = useMutation(api.creatorHub.submitProposal);
   const [form, setForm] = useState<ProposalForm>(EMPTY_FORM);
@@ -1207,6 +1270,131 @@ export default function CreatorHub() {
               </p>
             ) : null}
           </HoloCard>
+        </div>
+      </section>
+
+      {/* ================================================================ */}
+      {/* 6 — VISUAL FORGE                                                 */}
+      {/* ================================================================ */}
+      <GoldDivider glyph="06" />
+      <section
+        className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12"
+        id="visual-forge"
+      >
+        <DeckHeader
+          index="06"
+          label="Visual Forge"
+          title="Draw the canon into sight."
+          lead="Concept art, storyboards, mission patches, and portraits —
+            upload through the global uploader, tag it to the canon, submit
+            for approval, and showcase it in your artist portfolio."
+        />
+
+        <div className="grid lg:grid-cols-2 gap-6 items-start">
+          {/* Upload panel + canon submission button + tagging system */}
+          <VisualUploader onUploaded={() => undefined} />
+
+          {/* Visual asset manager */}
+          <HoloCard className="sf-glass h-full">
+            <GoldEdge />
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Palette className="h-5 w-5 text-uf-cyan" aria-hidden />
+                <h3 className="text-lg font-semibold sf-head">
+                  Visual asset manager
+                </h3>
+              </div>
+              <Link to="/canon-images" className="text-uf-cyan text-sm">
+                Canon Image Library →
+              </Link>
+            </div>
+            {!isAuthenticated ? (
+              <p className="text-uf-muted text-sm mt-3">
+                Sign in to manage your visual assets.{" "}
+                <Link to="/auth?returnTo=/creator" className="text-uf-cyan">
+                  Open auth
+                </Link>
+                .
+              </p>
+            ) : myVisuals === undefined ? (
+              <div className="uf-skeleton mt-3" style={{ height: 120 }} />
+            ) : myVisuals.length === 0 ? (
+              <p className="text-uf-muted text-sm mt-3">
+                No visual assets yet — upload your first piece with the panel
+                on the left.
+              </p>
+            ) : (
+              <ul className="mt-3 flex flex-col gap-2 list-none p-0 m-0 max-h-72 overflow-y-auto">
+                {myVisuals.slice(0, 12).map((a) => (
+                  <li
+                    key={a._id}
+                    className="flex items-center gap-3 border border-[color:var(--uf-border)] rounded-md px-3 py-2"
+                  >
+                    {a.url ? (
+                      <img
+                        src={a.url}
+                        alt=""
+                        className="h-10 w-10 rounded object-cover border border-[rgba(230,168,23,0.4)]"
+                      />
+                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold truncate">{a.title}</p>
+                      <p className="text-uf-muted text-xs uppercase tracking-[0.12em]">
+                        {a.kind}
+                        {a.folder ? ` · ${a.folder}` : ""}
+                      </p>
+                    </div>
+                    <CanonBadge status={a.status} />
+                    <button
+                      type="button"
+                      aria-label={`Delete ${a.title}`}
+                      className="uf-btn uf-btn--ghost"
+                      onClick={() => {
+                        if (window.confirm(`Delete "${a.title}"?`)) {
+                          removeVisual({ id: a._id })
+                            .then(() => toast.success("Deleted."))
+                            .catch(() => toast.error("Delete failed."));
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link to="/storyboards?new=1">
+                <NeonButton variant="gold">
+                  <Library className="h-4 w-4 mr-1" aria-hidden />
+                  Storyboard builder
+                </NeonButton>
+              </Link>
+              <Link to={user?._id ? `/artists/${user._id}` : "/artists"}>
+                <NeonButton variant="ghost">
+                  <Users className="h-4 w-4 mr-1" aria-hidden />
+                  {user?._id ? "Your artist portfolio" : "Artist profiles"}
+                </NeonButton>
+              </Link>
+            </div>
+            {/* FUTURE FEATURE — DO NOT IMPLEMENT IN THIS BUILD:
+                collaborative galleries and shared asset workspaces. */}
+          </HoloCard>
+        </div>
+
+        {/* Visual creation cards */}
+        <div className="mt-10 sf-visual-cards">
+          <header className="mb-4">
+            <span className="uf-eyebrow uf-eyebrow--gold sf-pulse-soft">
+              Visual commands
+            </span>
+            <h3 className="sf-head text-xl font-semibold mt-1">
+              Every visual workflow, one deck.
+            </h3>
+          </header>
+          <div className="uf-grid uf-grid--4">
+            {VISUAL_CARDS.map((c, idx) => renderCard(c, idx))}
+          </div>
         </div>
       </section>
 

@@ -29,6 +29,10 @@ import CreatorHub from "@/pages/CreatorHub";
 import Factions from "@/pages/Factions";
 import BiologyLab from "@/pages/BiologyLab";
 import ResearchLab from "@/pages/ResearchLab";
+import CanonImages from "@/pages/CanonImages";
+import Storyboards from "@/pages/Storyboards";
+import ArtistProfile from "@/pages/ArtistProfile";
+import CanonReview from "@/pages/CanonReview";
 import Forums from "@/pages/Forums";
 import Resources from "@/pages/Resources";
 import Membership from "@/pages/Membership";
@@ -113,6 +117,13 @@ export const PUBLIC_ROUTES: PublicPageRoute[] = [
   { path: "/creator", label: "Creator Hub", element: <CreatorHub /> },
   { path: "/biology-lab", label: "Biology Lab", element: <BiologyLab /> },
   { path: "/research-lab", label: "Research Lab", element: <ResearchLab /> },
+
+  // ---- Visual creation system -------------------------------------------
+  { path: "/canon-images", label: "Canon Image Library", element: <CanonImages /> },
+  { path: "/storyboards", label: "Storyboards", element: <Storyboards /> },
+  { path: "/artists", label: "Fleet Artists", element: <ArtistProfile /> },
+  { path: "/artists/:id", label: "Artist profile", element: <ArtistProfile />, appearance: false },
+  { path: "/canon-review", label: "Canon review", element: <CanonReview />, appearance: false },
   { path: "/forums", label: "Forums", element: <Forums /> },
   { path: "/groups", label: "Groups", element: <Groups /> },
   { path: "/groups/:slug", label: "Group", element: <GroupDetail />, appearance: false },

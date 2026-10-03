@@ -24,6 +24,7 @@ import {
   type LabFieldGroup,
 } from "@/lib/labFields";
 import { ImageUploadField } from "@/components/labs/ImageUploadField";
+import { CanonBadge } from "@/components/visuals/CanonBadge";
 
 // =========================================================================
 // LabWorkbench — the shared command deck behind the Biology Lab
@@ -558,11 +559,10 @@ export function LabWorkbench({
                     <h3 className="text-lg font-semibold leading-tight">
                       {String(r[nameKey])}
                     </h3>
-                    {r.pending ? (
-                      <StatusPill variant="warning">pending</StatusPill>
-                    ) : (
-                      <StatusPill variant="gold">canon</StatusPill>
-                    )}
+                    {/* Canon badge from the visual approval workflow —
+                        species & technology viewers show it per the visual
+                        system spec. */}
+                    <CanonBadge status={r.pending ? "pending" : "approved"} />
                   </div>
                   {r.classification ? (
                     <p className="text-uf-muted text-sm mt-1">

@@ -1869,6 +1869,80 @@ const schema = defineSchema(
     })
       .index("by_user", ["userId"])
       .index("by_status", ["status"]),
+
+    // =========================================================================
+    // VISUAL CREATION SYSTEM — new tables for the visual canon pipeline only
+    // (Visual Forge · Canon Image Library · Storyboards · Artist profiles ·
+    //  canon approval workflow). Existing tables are untouched.
+    // =========================================================================
+
+    // A single uploaded visual asset (concept art, storyboard frame, portrait,
+    // environment, mission poster/patch, gallery piece…).
+    visualAssets: defineTable({
+      authorId: v.id("users"),
+      storageId: v.id("_storage"),
+      fileName: v.string(),
+      mimeType: v.string(),
+      byteSize: v.number(),
+      title: v.string(),
+      description: v.optional(v.string()),
+      // concept | storyboard | portrait | environment | poster | patch | gallery | other
+      kind: v.string(),
+      medium: v.optional(v.string()), // digital / ink / photo / 3d …
+      folder: v.optional(v.string()), // gallery folder organization
+      attribution: v.optional(v.string()), // public artist credit
+      // Cross-links into the rest of the canon (string tags — no foreign keys
+      // into species/technology/missions, whose schemas stay untouched).
+      species: v.optional(v.string()),
+      technology: v.optional(v.string()),
+      faction: v.optional(v.string()),
+      mission: v.optional(v.string()),
+      era: v.optional(v.string()),
+      // Canon approval workflow: pending → approved / rejected / needs_revision
+      status: v.string(),
+      reviewNote: v.optional(v.string()),
+      downloadAllowed: v.boolean(), // configurable download permission
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_status", ["status"])
+      .index("by_author", ["authorId"])
+      .index("by_kind", ["kind"]),
+
+    // Storyboard Builder documents — an ordered grid of panels.
+    storyboards: defineTable({
+      authorId: v.id("users"),
+      title: v.string(),
+      summary: v.optional(v.string()),
+      panels: v.array(
+        v.object({
+          imageId: v.optional(v.id("visualAssets")),
+          caption: v.optional(v.string()),
+          scene: v.optional(v.string()),
+        }),
+      ),
+      missionLink: v.optional(v.string()),
+      speciesLink: v.optional(v.string()),
+      characterLink: v.optional(v.string()),
+      published: v.boolean(), // exported to the Canon Image Library
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_author", ["authorId"])
+      .index("by_published", ["published"]),
+
+    // Artist Profiles — /artists/:id
+    artistProfiles: defineTable({
+      userId: v.id("users"),
+      displayName: v.string(),
+      bio: v.optional(v.string()),
+      mediums: v.optional(v.string()),
+      photoAssetId: v.optional(v.id("visualAssets")),
+      socialLinks: v.array(v.object({ label: v.string(), url: v.string() })),
+      commissionAvailable: v.boolean(),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }).index("by_user", ["userId"]),
   },
   {
     schemaValidation: false,

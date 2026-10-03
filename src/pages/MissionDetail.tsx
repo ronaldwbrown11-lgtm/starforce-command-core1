@@ -20,6 +20,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { SiteShell, PageHero, HoloCard, StatusPill } from "@/components/uf";
+import { MissionVisuals } from "@/components/visuals/MissionVisuals";
 import { ReactionBar } from "@/components/widgets/ReactionBar";
 import { useAuth } from "@/hooks/use-auth";
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -427,6 +428,11 @@ export default function MissionDetail() {
             </ul>
           )}
         </div>
+
+        {/* Mission artwork — poster / patch / storyboard frames, tagged to
+            this mission via the global visual uploader (missions schema
+            untouched). */}
+        <MissionVisuals missionKey={slug} missionTitle={mission.title} />
 
         <div className="mt-8">
           <Link to="/missions" className="uf-btn uf-btn--ghost">

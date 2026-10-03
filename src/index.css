@@ -1410,3 +1410,48 @@
     0 1px 0 rgba(230, 168, 23, 0.42),
     0 10px 30px rgba(0, 0, 0, 0.35);
 }
+
+/* ---- Visual creation system -------------------------------------------- */
+/* Panel fade-in for gallery grids, uploader cards, and review rows. */
+.sf-panel-in {
+  animation: sf-panel-in 0.45s ease-out both;
+}
+@keyframes sf-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Global uploader drop zone — gold dashed frame, neon-blue hot state. */
+.sf-dropzone {
+  border: 1px dashed rgba(230, 168, 23, 0.5);
+  background: rgba(2, 11, 26, 0.35);
+}
+.sf-dropzone:hover {
+  border-color: rgba(0, 200, 255, 0.6);
+  box-shadow: inset 0 0 18px rgba(0, 200, 255, 0.08);
+}
+.sf-dropzone--hot {
+  border-color: var(--sf-neon);
+  box-shadow:
+    0 0 18px rgba(0, 200, 255, 0.4),
+    inset 0 0 22px rgba(0, 200, 255, 0.12);
+}
+
+/* Visual Forge cards — neon-blue hover glow + holographic shimmer. */
+.sf-visual-cards a {
+  transition:
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+.sf-visual-cards a:hover {
+  box-shadow:
+    0 0 20px rgba(0, 200, 255, 0.35),
+    0 0 8px rgba(230, 168, 23, 0.4);
+  animation: sf-shimmer-gold 1.6s ease-in-out infinite;
+}
