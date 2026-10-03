@@ -84,24 +84,32 @@ export default function Lore() {
       />
 
       <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
-        <div
-          className="flex gap-2 mb-8 flex-wrap"
-          role="tablist"
-          aria-label="Lore library sections"
-        >
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.id}
-              onClick={() => setTab(t.id)}
-              className={`uf-btn ${tab === t.id ? "uf-btn--primary" : ""}`}
-            >
-              <t.icon className="h-4 w-4" aria-hidden />
-              {t.label}
-            </button>
-          ))}
+        <div className="mb-8 flex flex-wrap items-center gap-2">
+          <div
+            className="flex gap-2 flex-wrap"
+            role="tablist"
+            aria-label="Lore library sections"
+          >
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.id}
+                onClick={() => setTab(t.id)}
+                className={`uf-btn ${tab === t.id ? "uf-btn--primary" : ""}`}
+              >
+                <t.icon className="h-4 w-4" aria-hidden />
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {/* Stage 1: every lore surface points back at the Forge. */}
+          <Link to="/creator" className="ml-auto">
+            <NeonButton variant="ghost" className="uf-btn--goldline">
+              <PenLine className="h-4 w-4" aria-hidden /> Forge of Canon
+            </NeonButton>
+          </Link>
         </div>
 
 
@@ -414,35 +422,52 @@ function EntriesGrid({
           </div>
         </div>
       </div>
-      <header className="mb-6">
-        <span className="uf-eyebrow">Archive</span>
-        <h2 className="text-2xl font-semibold mt-2">
-          {entries === undefined ? "Loading archive…" : `${entries.length} entries match.`}
-        </h2>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <span className="uf-eyebrow">Archive</span>
+          <h2 className="text-2xl font-semibold mt-2">
+            {entries === undefined ? "Loading archive…" : `${entries.length} entries match.`}
+          </h2>
+        </div>
+        {/* Stage 1: browse → create. Deep-links into the Hub composer. */}
+        <Link to="/creator?create=character">
+          <NeonButton variant="gold">
+            <PenLine className="h-4 w-4" aria-hidden /> Forge a new entry
+          </NeonButton>
+        </Link>
       </header>
       {entries && entries.length === 0 ? (
         <div className="uf-empty">No archives match. Adjust filters.</div>
       ) : (
         <div className="uf-grid uf-grid--3">
           {entries?.map((entry, idx) => (
-            <Link key={entry._id} to={`/lore/${entry.slug}`} className="block">
-              <ScaleReveal staggerIndex={idx}>
-                <HoloCard>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {entry.faction ? <StatusPill variant="info">{entry.faction}</StatusPill> : null}
-                    {entry.sector ? <StatusPill variant="violet">{entry.sector}</StatusPill> : null}
-                    {entry.classification ? (
-                      <StatusPill variant="warning">{entry.classification}</StatusPill>
-                    ) : null}
-                    {entry.entryType ? (
-                      <StatusPill variant="default">{entry.entryType}</StatusPill>
-                    ) : null}
-                  </div>
-                  <h3 className="text-xl font-semibold">{entry.title}</h3>
-                  <p className="text-uf-muted text-sm mt-2">{entry.excerpt}</p>
-                </HoloCard>
-              </ScaleReveal>
-            </Link>
+            <ScaleReveal key={entry._id} staggerIndex={idx}>
+              <div className="h-full">
+                <Link to={`/lore/${entry.slug}`} className="block">
+                  <HoloCard className="h-full">
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {entry.faction ? <StatusPill variant="info">{entry.faction}</StatusPill> : null}
+                      {entry.sector ? <StatusPill variant="violet">{entry.sector}</StatusPill> : null}
+                      {entry.classification ? (
+                        <StatusPill variant="warning">{entry.classification}</StatusPill>
+                      ) : null}
+                      {entry.entryType ? (
+                        <StatusPill variant="default">{entry.entryType}</StatusPill>
+                      ) : null}
+                    </div>
+                    <h3 className="text-xl font-semibold">{entry.title}</h3>
+                    <p className="text-uf-muted text-sm mt-2">{entry.excerpt}</p>
+                  </HoloCard>
+                </Link>
+                <div className="mt-2 flex justify-end">
+                  <Link to={`/creator?expand=${entry._id}`}>
+                    <NeonButton variant="ghost" className="uf-btn--sm">
+                      <PenLine className="h-3.5 w-3.5" aria-hidden /> Expand this
+                    </NeonButton>
+                  </Link>
+                </div>
+              </div>
+            </ScaleReveal>
           ))}
           {entries === undefined &&
             [0, 1, 2, 3, 4, 5].map((i) => (

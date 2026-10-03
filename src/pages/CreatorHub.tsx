@@ -1,6 +1,12 @@
-import { useMemo, useState, type CSSProperties, type FormEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from "react";
 import { useMutation, useQuery } from "convex/react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
@@ -292,6 +298,7 @@ export default function CreatorHub() {
   const [form, setForm] = useState<ProposalForm>(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
   const [activePanel, setActivePanel] = useState<"none" | "create" | "expand">("none");
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const openCreate = (entryType: string) => {
     setForm({ ...EMPTY_FORM, kind: "create", entryType });
@@ -301,6 +308,43 @@ export default function CreatorHub() {
     setForm({ ...EMPTY_FORM, kind: "expand", entryType, parentLoreId });
     setActivePanel("expand");
   };
+
+  // Deep links from the rest of the site — the Stage 1 browser/Atlas CTAs:
+  //   /creator?create=<entryType>&sector=…&faction=…  → new-entry composer
+  //   /creator?expand=<loreId>                        → expansion composer
+  // Params are cleared (replace) once the panel is open so a refresh doesn't
+  // reopen it, and the deck scrolls to the matching station.
+  useEffect(() => {
+    if (activePanel !== "none") return;
+    const createType = searchParams.get("create");
+    const expandId = searchParams.get("expand");
+    if (!createType && !expandId) return;
+    if (createType) {
+      setForm({
+        ...EMPTY_FORM,
+        kind: "create",
+        entryType: createType,
+        sector: searchParams.get("sector") ?? "",
+        faction: searchParams.get("faction") ?? "",
+      });
+      setActivePanel("create");
+    } else if (expandId) {
+      setForm({
+        ...EMPTY_FORM,
+        kind: "expand",
+        entryType: "background",
+        parentLoreId: expandId as Id<"loreEntries">,
+      });
+      setActivePanel("expand");
+    }
+    setSearchParams({}, { replace: true });
+    const targetId = createType ? "create" : "expand";
+    window.setTimeout(() => {
+      document
+        .getElementById(targetId)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 140);
+  }, [searchParams, activePanel, setSearchParams]);
 
   const pendingProposals = useMemo(
     () => (proposals ?? []).filter((p) => p.status === "pending"),

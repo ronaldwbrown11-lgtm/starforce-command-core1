@@ -1,4 +1,4 @@
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -15,7 +15,14 @@ import {
   PersonnelDossierBrowser,
   isPersonnelArchive,
 } from "@/components/widgets/PersonnelDossierBrowser";
-import { BookOpenText, Database, Download, FileText, ImageIcon } from "lucide-react";
+import {
+  BookOpenText,
+  Database,
+  Download,
+  FileText,
+  ImageIcon,
+  PenLine,
+} from "lucide-react";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { ShareButtons } from "@/components/ShareButtons";
 import { CodexSaveButton } from "@/components/widgets/CodexPanel";
@@ -114,6 +121,13 @@ export default function LoreDetail() {
               slug={entry.slug}
               isAuthenticated={isAuthenticated}
             />
+            {/* Stage 1: every lore detail can be reinforced from here —
+                deep-links into the Creator Hub expansion composer. */}
+            <Link to={`/creator?expand=${entry._id}`}>
+              <NeonButton variant="violet">
+                <PenLine className="h-4 w-4" aria-hidden /> Expand this entry
+              </NeonButton>
+            </Link>
           </div>
           <ShareButtons title={entry.title} path={`/lore/${entry.slug}`} description={entry.excerpt ?? undefined} />
         </div>

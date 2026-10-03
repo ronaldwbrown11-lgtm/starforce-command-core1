@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { ChevronRight, CornerLeftUp, Pencil, Check, X } from "lucide-react";
 import { ATLAS_COLORS } from "./types";
 import type { AtlasLevel, AtlasSnapshot, AtlasQuadrant, AtlasSector, AtlasSystem } from "./types";
@@ -163,6 +164,12 @@ export default function AtlasHUD(props: {
 
   const hoverSystem = props.snapshot?.systems.find((s) => s.key === hoverInfo?.key);
   const infoSystem = level === "system" ? focusSystem : hoverSystem;
+  // Sector the info panel's object belongs to — powers the context CTAs
+  // (draft lore for this system / browse that sector's archive).
+  const infoSectorName = infoSystem?.sectorKey
+    ? snapshot?.sectors.find((s) => s.key === infoSystem.sectorKey)?.name ??
+      infoSystem.sectorKey
+    : sectorName;
   const sectorSystems = useMemo(
     () => (snapshot && sectorKey ? snapshot.systems.filter((s) => s.sectorKey === sectorKey) : []),
     [snapshot, sectorKey],
@@ -305,6 +312,24 @@ export default function AtlasHUD(props: {
             >
               <Pencil className="h-3 w-3 inline mr-1 -mt-0.5" aria-hidden /> Edit this object
             </button>
+            {/* Stage 1: Atlas → creation. Draft lore for this system (sector
+                prefilled) or read what the archive already holds. */}
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Link
+                to={`/creator?create=sector${infoSectorName ? `&sector=${encodeURIComponent(infoSectorName)}` : ""}`}
+                className="text-[11px] rounded border border-[rgba(230,168,23,0.75)] px-2 py-1 text-uf-gold hover:bg-[rgba(230,168,23,0.10)] transition-colors"
+              >
+                Draft lore for this system
+              </Link>
+              {infoSectorName ? (
+                <Link
+                  to={`/lore?sector=${encodeURIComponent(infoSectorName)}`}
+                  className="text-[11px] rounded border border-[color:var(--uf-border)] px-2 py-1 text-uf-cyan hover:border-[rgba(0,229,255,0.5)] transition-colors"
+                >
+                  Browse sector lore
+                </Link>
+              ) : null}
+            </div>
           </HudPanel>
         ) : null}
       </div>
