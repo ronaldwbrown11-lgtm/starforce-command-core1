@@ -70,14 +70,16 @@ type CreateType = {
   label: string;
   hint: string;
   icon: typeof User;
+  /** When set, the card opens this page instead of the proposal composer. */
+  href?: string;
 };
 
 const CREATE_TYPES: CreateType[] = [
   { id: "character", label: "Add Character", hint: "Personnel file: a pilot, officer, or entity of record.", icon: User },
   { id: "starship", label: "Add Starship", hint: "Hull record: a class or named vessel in the registry.", icon: Rocket },
   { id: "sector", label: "Add Sector", hint: "A region of charted space under fleet watch.", icon: Globe },
-  { id: "species", label: "Add Species", hint: "A people or biological lineage on file.", icon: Dna },
-  { id: "technology", label: "Add Technology", hint: "A device, system, or innovation fielded by the fleet.", icon: Cpu },
+  { id: "species", label: "Add Species", hint: "Species database — open the Biology Lab.", icon: Dna, href: "/biology-lab" },
+  { id: "technology", label: "Add Technology", hint: "Technology database — open the Research Lab.", icon: Cpu, href: "/research-lab" },
   { id: "faction", label: "Add Faction", hint: "A power, bloc, or command structure.", icon: Flag },
   { id: "event", label: "Add Event", hint: "A battle, disaster, or turning point in the record.", icon: Calendar },
   { id: "timeline", label: "Timeline Entry", hint: "A dated marker on the historical record.", icon: Hourglass },
@@ -538,24 +540,42 @@ export default function CreatorHub() {
             and Star Credits."
         />
         <div className="uf-grid uf-grid--4">
-          {CREATE_TYPES.map((t, idx) => (
-            <ScaleReveal key={t.id} staggerIndex={idx}>
-              <button
-                type="button"
-                onClick={() => openCreate(t.id)}
-                className="w-full text-left uf-card p-5 h-full hover:border-[color:var(--uf-gold)] transition-colors cursor-pointer"
-                aria-label={t.label}
-              >
+          {CREATE_TYPES.map((t, idx) => {
+            const inner = (
+              <>
                 <GoldEdge />
                 <t.icon className="h-6 w-6 text-uf-cyan" aria-hidden />
                 <h3 className="text-lg font-semibold mt-3">{t.label}</h3>
                 <p className="text-uf-muted text-sm mt-1">{t.hint}</p>
                 <span className="text-uf-gold text-xs mt-3 inline-flex items-center gap-1">
-                  <PenLine className="h-3.5 w-3.5" aria-hidden /> Draft entry
+                  <PenLine className="h-3.5 w-3.5" aria-hidden />
+                  {t.href ? "Open the lab" : "Draft entry"}
                 </span>
-              </button>
-            </ScaleReveal>
-          ))}
+              </>
+            );
+            const cls =
+              "block w-full text-left uf-card p-5 h-full hover:border-[color:var(--uf-gold)] transition-colors";
+            // Species + Technology run their own databases — those cards link
+            // straight to the lab pages instead of the proposal composer.
+            return (
+              <ScaleReveal key={t.id} staggerIndex={idx}>
+                {t.href ? (
+                  <Link to={t.href} className={cls} aria-label={t.label}>
+                    {inner}
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => openCreate(t.id)}
+                    className={`${cls} cursor-pointer`}
+                    aria-label={t.label}
+                  >
+                    {inner}
+                  </button>
+                )}
+              </ScaleReveal>
+            );
+          })}
         </div>
 
         {/* Quick links into the other creation flows */}

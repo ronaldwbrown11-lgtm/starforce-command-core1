@@ -532,6 +532,90 @@ const schema = defineSchema(
       .index("by_status_created", ["status", "createdAt"])
       .index("by_author", ["authorId"]),
 
+    // ---- Creator labs -----------------------------------------------------
+    // Species (Biology Lab /biology-lab) and Technology (Research Lab
+    // /research-lab) databases behind the Creator Hub's "Add Species" /
+    // "Add Technology" cards. Member submissions enter as "pending" and
+    // publish on operator approval; operator submissions and file seeds are
+    // approved immediately. Field sets mirror src/lib/labFields.ts.
+    speciesDatabase: defineTable({
+      speciesName: v.string(),
+      scientificName: v.optional(v.string()),
+      classification: v.optional(v.string()),
+      originWorld: v.optional(v.string()),
+      originSector: v.optional(v.string()),
+      discoveryDate: v.optional(v.string()),
+      discoveredBy: v.optional(v.string()),
+      physiologySummary: v.optional(v.string()),
+      averageHeight: v.optional(v.string()),
+      averageMass: v.optional(v.string()),
+      lifespan: v.optional(v.string()),
+      biologicalComposition: v.optional(v.string()),
+      reproductionMethod: v.optional(v.string()),
+      geneticTraits: v.optional(v.string()),
+      uniqueFeatures: v.optional(v.string()),
+      weaknesses: v.optional(v.string()),
+      threatLevel: v.optional(v.number()),
+      cultureSummary: v.optional(v.string()),
+      socialStructure: v.optional(v.string()),
+      communicationMethod: v.optional(v.string()),
+      religionBeliefs: v.optional(v.string()),
+      governmentType: v.optional(v.string()),
+      technologicalLevel: v.optional(v.string()),
+      knownConflicts: v.optional(v.string()),
+      alliances: v.optional(v.string()),
+      hostilityIndex: v.optional(v.number()),
+      primaryHabitat: v.optional(v.string()),
+      environmentalRequirements: v.optional(v.string()),
+      climatePreference: v.optional(v.string()),
+      atmosphericRequirements: v.optional(v.string()),
+      migrationPatterns: v.optional(v.string()),
+      territorialRange: v.optional(v.string()),
+      canonNotes: v.optional(v.string()),
+      speciesPortrait: v.optional(v.string()),
+      habitatImage: v.optional(v.string()),
+      status: v.string(), // pending | approved
+      authorId: v.optional(v.id("users")),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_status", ["status"])
+      .index("by_name", ["speciesName"]),
+
+    technologyDatabase: defineTable({
+      techName: v.string(),
+      classification: v.optional(v.string()),
+      manufacturerFaction: v.optional(v.string()),
+      firstAppearance: v.optional(v.string()),
+      developmentDate: v.optional(v.string()),
+      developedBy: v.optional(v.string()),
+      technicalSummary: v.optional(v.string()),
+      powerSource: v.optional(v.string()),
+      materialComposition: v.optional(v.string()),
+      operatingRange: v.optional(v.string()),
+      efficiencyRating: v.optional(v.string()),
+      stabilityRating: v.optional(v.string()),
+      knownLimitations: v.optional(v.string()),
+      requiredConditions: v.optional(v.string()),
+      safetyLevel: v.optional(v.number()),
+      primaryFunction: v.optional(v.string()),
+      secondaryFunctions: v.optional(v.string()),
+      tacticalApplications: v.optional(v.string()),
+      civilianApplications: v.optional(v.string()),
+      knownFailures: v.optional(v.string()),
+      knownUpgrades: v.optional(v.string()),
+      compatibility: v.optional(v.string()),
+      canonNotes: v.optional(v.string()),
+      blueprintImage: v.optional(v.string()),
+      devicePhoto: v.optional(v.string()),
+      status: v.string(), // pending | approved
+      authorId: v.optional(v.id("users")),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_status", ["status"])
+      .index("by_name", ["techName"]),
+
     // Creator Hub command cards — the operator-editable quick links in the
     // Resources section of /creator (The Forge of Canon). Operators add,
     // edit, and delete cards from the Content Desk → Hub cards tab; the

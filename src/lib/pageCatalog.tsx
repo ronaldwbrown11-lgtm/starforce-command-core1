@@ -27,6 +27,8 @@ import EmbedStory from "@/pages/EmbedStory";
 import Community from "@/pages/Community";
 import CreatorHub from "@/pages/CreatorHub";
 import Factions from "@/pages/Factions";
+import BiologyLab from "@/pages/BiologyLab";
+import ResearchLab from "@/pages/ResearchLab";
 import Forums from "@/pages/Forums";
 import Resources from "@/pages/Resources";
 import Membership from "@/pages/Membership";
@@ -109,6 +111,8 @@ export const PUBLIC_ROUTES: PublicPageRoute[] = [
   // ---- Community ---------------------------------------------------------
   { path: "/community", label: "Community", element: <Community /> },
   { path: "/creator", label: "Creator Hub", element: <CreatorHub /> },
+  { path: "/biology-lab", label: "Biology Lab", element: <BiologyLab /> },
+  { path: "/research-lab", label: "Research Lab", element: <ResearchLab /> },
   { path: "/forums", label: "Forums", element: <Forums /> },
   { path: "/groups", label: "Groups", element: <Groups /> },
   { path: "/groups/:slug", label: "Group", element: <GroupDetail />, appearance: false },

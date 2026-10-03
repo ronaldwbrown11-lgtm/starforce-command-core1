@@ -49,6 +49,7 @@ import type * as groupSpace from "../groupSpace.js";
 import type * as groups from "../groups.js";
 import type * as honors from "../honors.js";
 import type * as http from "../http.js";
+import type * as labs from "../labs.js";
 import type * as loreLibrary from "../loreLibrary.js";
 import type * as messages from "../messages.js";
 import type * as missions from "../missions.js";
@@ -133,6 +134,7 @@ declare const fullApi: ApiFromModules<{
   groups: typeof groups;
   honors: typeof honors;
   http: typeof http;
+  labs: typeof labs;
   loreLibrary: typeof loreLibrary;
   messages: typeof messages;
   missions: typeof missions;
