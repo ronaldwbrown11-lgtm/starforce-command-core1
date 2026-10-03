@@ -472,6 +472,21 @@ function EditorCard(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [systemKey, level, editing, focusSystem?.key, focusSector?.key, focusQuadrant?.key]);
 
+  // NOTE: this memo must stay ABOVE the `if (!editing)` early return below —
+  // hooks after an early return mount conditionally and crash React the
+  // moment the editor opens ("Rendered more hooks than during the previous
+  // render"), which is what broke the Chart / edit the atlas button.
+  const sectorGates = useMemo(() => {
+    if (!snapshot) return [];
+    return snapshot.gates.filter((g) =>
+      gateLevel === "galaxy"
+        ? g.level === "galaxy"
+        : gateLevel === "quadrant"
+          ? g.level === "quadrant"
+          : g.level === "sector" && g.sectorKey === sectorKey,
+    );
+  }, [snapshot, gateLevel, sectorKey]);
+
   const inputCls =
     "w-full rounded-md border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.6)] px-2.5 py-1.5 text-sm text-uf-text focus:border-[rgba(0,229,255,0.5)] focus:outline-none";
 
@@ -612,16 +627,6 @@ function EditorCard(props: {
   const pending = props.submissions.filter((s) => s.status === "proposed");
   const allSectors = snapshot?.sectors ?? [];
   const allSystems = snapshot?.systems ?? [];
-  const sectorGates = useMemo(() => {
-    if (!snapshot) return [];
-    return snapshot.gates.filter((g) =>
-      gateLevel === "galaxy"
-        ? g.level === "galaxy"
-        : gateLevel === "quadrant"
-          ? g.level === "quadrant"
-          : g.level === "sector" && g.sectorKey === sectorKey,
-    );
-  }, [snapshot, gateLevel, sectorKey]);
 
   return (
     <HudPanel className="p-3">

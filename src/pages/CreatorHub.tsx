@@ -54,15 +54,16 @@ import { CanonBadge } from "@/components/visuals/CanonBadge";
 // =========================================================================
 // THE FORGE OF CANON — Creator Hub command deck.
 //
-// Five battle stations, all wired to real product surfaces:
+// Six battle stations, all wired to real product surfaces:
 //   1. Create      — draft a NEW canon entry (character, starship, sector,
 //                    species, technology, faction, event, timeline)
 //   2. Expand      — reinforce an EXISTING lore entry
 //                    (background, history, culture, visual, event, mission,
 //                    character connection)
-//   3. Operations  — report to a unit, squad, forum, contest, or arc
+//   3. Visual Forge — upload artwork, storyboards, and canon submissions
 //   4. Resources   — bibles, maps, guides, blueprints, faction profiles
 //   5. Recognition — commendation, standings, rank, credits, badges
+//   6. Operations  — report to a unit, squad, forum, contest, or arc
 //
 // Proposals flow to the operator Content Desk → Proposals tab, where an
 // approval publishes to the lore archive and rewards the author.
@@ -108,7 +109,7 @@ type HubCardRow = {
   tag?: string;
 };
 
-/** Visual Forge command cards (Task 8) — rendered in section 06. */
+/** Visual Forge command cards (Task 8) — rendered in section 03. */
 const VISUAL_CARDS: HubCardRow[] = [
   {
     label: "Create Concept Art",
@@ -783,183 +784,126 @@ export default function CreatorHub() {
       <GoldDivider glyph="03" />
 
       {/* ================================================================ */}
-      {/* 3 — OPERATIONS (strictly military)                                */}
+      {/* 3 — VISUAL FORGE                                                 */}
       {/* ================================================================ */}
-      <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12" id="collaborate">
+      <section
+        className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12"
+        id="visual-forge"
+      >
         <DeckHeader
           index="03"
-          label="Operations"
-          title="Report to your assigned unit."
-          lead="Join a tactical creation squad, coordinate with division leads, and
-            deploy your expertise to active operations. Every command surface in
-            the fleet is one click from here."
+          label="Visual Forge"
+          title="Draw the canon into sight."
+          lead="Concept art, storyboards, mission patches, and portraits —
+            upload through the global uploader, tag it to the canon, submit
+            for approval, and showcase it in your artist portfolio."
         />
 
-        <div className="uf-grid uf-grid--3">
-          {/* Units (faction / sector / ship squads) */}
-          <ScaleReveal staggerIndex={0}>
-            <HoloCard className="h-full">
-              <GoldEdge />
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-uf-cyan" aria-hidden />
-                <h3 className="text-lg font-semibold">Tactical Squads</h3>
-              </div>
-              <p className="text-uf-muted text-sm mt-2">
-                Faction, sector, and starship units. Report to your assigned squad
-                to pool lore, art, and missions with its members.
-              </p>
-              <p className="text-uf-muted text-xs mt-3">
-                {groups === undefined
-                  ? "Loading…"
-                  : `${groups.length} unit${groups.length === 1 ? "" : "s"} active`}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Link to="/groups">
-                  <NeonButton variant="primary">Join a squad</NeonButton>
-                </Link>
-                <Link to="/groups">
-                  <NeonButton variant="ghost">Raise a unit</NeonButton>
-                </Link>
-              </div>
-            </HoloCard>
-          </ScaleReveal>
+        <div className="grid lg:grid-cols-2 gap-6 items-start">
+          {/* Upload panel + canon submission button + tagging system */}
+          <VisualUploader onUploaded={() => undefined} />
 
-          {/* Ops net */}
-          <ScaleReveal staggerIndex={1}>
-            <HoloCard className="h-full">
-              <GoldEdge />
+          {/* Visual asset manager */}
+          <HoloCard className="sf-glass h-full">
+            <GoldEdge />
+            <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-uf-cyan" aria-hidden />
-                <h3 className="text-lg font-semibold">Operations Net</h3>
+                <Palette className="h-5 w-5 text-uf-cyan" aria-hidden />
+                <h3 className="text-lg font-semibold sf-head">
+                  Visual asset manager
+                </h3>
               </div>
-              <p className="text-uf-muted text-sm mt-2">
-                Open a transmission, offer your skills, or request a collaborator
-                for your next operation.
+              <Link to="/canon-images" className="text-uf-cyan text-sm">
+                Canon Image Library →
+              </Link>
+            </div>
+            {!isAuthenticated ? (
+              <p className="text-uf-muted text-sm mt-3">
+                Sign in to manage your visual assets.{" "}
+                <Link to="/auth?returnTo=/creator" className="text-uf-cyan">
+                  Open auth
+                </Link>
+                .
               </p>
-              <ul className="mt-3 flex flex-col gap-1 list-none p-0 m-0">
-                {forums === undefined ? (
-                  <li className="uf-skeleton" style={{ height: 20 }} />
-                ) : forums.length === 0 ? (
-                  <li className="text-uf-muted text-sm">
-                    Net silent — open the first transmission.
+            ) : myVisuals === undefined ? (
+              <div className="uf-skeleton mt-3" style={{ height: 120 }} />
+            ) : myVisuals.length === 0 ? (
+              <p className="text-uf-muted text-sm mt-3">
+                No visual assets yet — upload your first piece with the panel
+                on the left.
+              </p>
+            ) : (
+              <ul className="mt-3 flex flex-col gap-2 list-none p-0 m-0 max-h-72 overflow-y-auto">
+                {myVisuals.slice(0, 12).map((a) => (
+                  <li
+                    key={a._id}
+                    className="flex items-center gap-3 border border-[color:var(--uf-border)] rounded-md px-3 py-2"
+                  >
+                    {a.url ? (
+                      <img
+                        src={a.url}
+                        alt=""
+                        className="h-10 w-10 rounded object-cover border border-[rgba(230,168,23,0.4)]"
+                      />
+                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold truncate">{a.title}</p>
+                      <p className="text-uf-muted text-xs uppercase tracking-[0.12em]">
+                        {a.kind}
+                        {a.folder ? ` · ${a.folder}` : ""}
+                      </p>
+                    </div>
+                    <CanonBadge status={a.status} />
+                    <button
+                      type="button"
+                      aria-label={`Delete ${a.title}`}
+                      className="uf-btn uf-btn--ghost"
+                      onClick={() => {
+                        if (window.confirm(`Delete "${a.title}"?`)) {
+                          removeVisual({ id: a._id })
+                            .then(() => toast.success("Deleted."))
+                            .catch(() => toast.error("Delete failed."));
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden />
+                    </button>
                   </li>
-                ) : (
-                  forums.map((t) => (
-                    <li key={t._id} className="text-sm truncate">
-                      <Link to="/forums" className="text-uf-muted hover:text-uf-cyan">
-                        {t.title}
-                      </Link>
-                    </li>
-                  ))
-                )}
+                ))}
               </ul>
-              <div className="mt-3">
-                <Link to="/forums">
-                  <NeonButton variant="primary">Open the net</NeonButton>
-                </Link>
-              </div>
-            </HoloCard>
-          </ScaleReveal>
+            )}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link to="/storyboards?new=1">
+                <NeonButton variant="gold">
+                  <Library className="h-4 w-4 mr-1" aria-hidden />
+                  Storyboard builder
+                </NeonButton>
+              </Link>
+              <Link to={user?._id ? `/artists/${user._id}` : "/artists"}>
+                <NeonButton variant="ghost">
+                  <Users className="h-4 w-4 mr-1" aria-hidden />
+                  {user?._id ? "Your artist portfolio" : "Artist profiles"}
+                </NeonButton>
+              </Link>
+            </div>
+            {/* FUTURE FEATURE — DO NOT IMPLEMENT IN THIS BUILD:
+                collaborative galleries and shared asset workspaces. */}
+          </HoloCard>
+        </div>
 
-          {/* Contests */}
-          <ScaleReveal staggerIndex={2}>
-            <HoloCard className="h-full">
-              <GoldEdge />
-              <div className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-uf-gold" aria-hidden />
-                <h3 className="text-lg font-semibold">Command Contests</h3>
-              </div>
-              <p className="text-uf-muted text-sm mt-2">
-                Themed canon trials judged by the operator staff. Deploy a story,
-                a design, or a lore piece.
-              </p>
-              <ul className="mt-3 flex flex-col gap-1 list-none p-0 m-0">
-                {contests === undefined ? (
-                  <li className="uf-skeleton" style={{ height: 20 }} />
-                ) : openContests.length === 0 ? (
-                  <li className="text-uf-muted text-sm">
-                    No engagements open right now.
-                  </li>
-                ) : (
-                  openContests.slice(0, 3).map((c) => (
-                    <li key={c._id} className="text-sm truncate">
-                      <Link to={`/contests/${c.slug}`} className="text-uf-muted hover:text-uf-cyan">
-                        {c.title}
-                      </Link>
-                    </li>
-                  ))
-                )}
-              </ul>
-              <div className="mt-3">
-                <Link to="/contests">
-                  <NeonButton variant="primary">See open engagements</NeonButton>
-                </Link>
-              </div>
-            </HoloCard>
-          </ScaleReveal>
-
-          {/* Campaign arcs (story arc units) */}
-          <ScaleReveal staggerIndex={3}>
-            <HoloCard className="h-full">
-              <GoldEdge />
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-uf-violet" aria-hidden />
-                <h3 className="text-lg font-semibold">Campaign Arcs</h3>
-              </div>
-              <p className="text-uf-muted text-sm mt-2">
-                Coordinated storylines under a single command. Contribute a chapter
-                to an open arc and your writing joins the canon in sequence.
-              </p>
-              <p className="text-uf-muted text-xs mt-3">
-                {arcs === undefined ? "Loading…" : `${arcs.length} arc${arcs.length === 1 ? "" : "s"} running`}
-              </p>
-              <div className="mt-3">
-                <Link to="/arcs">
-                  <NeonButton variant="violet">Join a campaign</NeonButton>
-                </Link>
-              </div>
-            </HoloCard>
-          </ScaleReveal>
-
-          {/* Direct comms */}
-          <ScaleReveal staggerIndex={4}>
-            <HoloCard className="h-full">
-              <GoldEdge />
-              <div className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-uf-green" aria-hidden />
-                <h3 className="text-lg font-semibold">Direct Comms</h3>
-              </div>
-              <p className="text-uf-muted text-sm mt-2">
-                Found an operator whose work fits yours? Open a direct line and
-                offer to build the next piece together.
-              </p>
-              <div className="mt-3">
-                <Link to="/messages">
-                  <NeonButton variant="ghost">Open comms</NeonButton>
-                </Link>
-              </div>
-            </HoloCard>
-          </ScaleReveal>
-
-          {/* Personnel roster */}
-          <ScaleReveal staggerIndex={5}>
-            <HoloCard className="h-full">
-              <GoldEdge />
-              <div className="flex items-center gap-2">
-                <User className="h-5 w-5 text-uf-cyan" aria-hidden />
-                <h3 className="text-lg font-semibold">Personnel Roster</h3>
-              </div>
-              <p className="text-uf-muted text-sm mt-2">
-                Browse the roster by rank, faction, and contribution to find
-                operators with the right skills for your operation.
-              </p>
-              <div className="mt-3">
-                <Link to="/members">
-                  <NeonButton variant="ghost">Open the roster</NeonButton>
-                </Link>
-              </div>
-            </HoloCard>
-          </ScaleReveal>
+        {/* Visual creation cards */}
+        <div className="mt-10 sf-visual-cards">
+          <header className="mb-4">
+            <span className="uf-eyebrow uf-eyebrow--gold sf-pulse-soft">
+              Visual commands
+            </span>
+            <h3 className="sf-head text-xl font-semibold mt-1">
+              Every visual workflow, one deck.
+            </h3>
+          </header>
+          <div className="uf-grid uf-grid--4">
+            {VISUAL_CARDS.map((c, idx) => renderCard(c, idx))}
+          </div>
         </div>
       </section>
 
@@ -1274,127 +1218,184 @@ export default function CreatorHub() {
       </section>
 
       {/* ================================================================ */}
-      {/* 6 — VISUAL FORGE                                                 */}
+      {/* 6 — OPERATIONS (strictly military)                                */}
       {/* ================================================================ */}
       <GoldDivider glyph="06" />
-      <section
-        className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12"
-        id="visual-forge"
-      >
+      <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12" id="collaborate">
         <DeckHeader
           index="06"
-          label="Visual Forge"
-          title="Draw the canon into sight."
-          lead="Concept art, storyboards, mission patches, and portraits —
-            upload through the global uploader, tag it to the canon, submit
-            for approval, and showcase it in your artist portfolio."
+          label="Operations"
+          title="Report to your assigned unit."
+          lead="Join a tactical creation squad, coordinate with division leads, and
+            deploy your expertise to active operations. Every command surface in
+            the fleet is one click from here."
         />
 
-        <div className="grid lg:grid-cols-2 gap-6 items-start">
-          {/* Upload panel + canon submission button + tagging system */}
-          <VisualUploader onUploaded={() => undefined} />
-
-          {/* Visual asset manager */}
-          <HoloCard className="sf-glass h-full">
-            <GoldEdge />
-            <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="uf-grid uf-grid--3">
+          {/* Units (faction / sector / ship squads) */}
+          <ScaleReveal staggerIndex={0}>
+            <HoloCard className="h-full">
+              <GoldEdge />
               <div className="flex items-center gap-2">
-                <Palette className="h-5 w-5 text-uf-cyan" aria-hidden />
-                <h3 className="text-lg font-semibold sf-head">
-                  Visual asset manager
-                </h3>
+                <Users className="h-5 w-5 text-uf-cyan" aria-hidden />
+                <h3 className="text-lg font-semibold">Tactical Squads</h3>
               </div>
-              <Link to="/canon-images" className="text-uf-cyan text-sm">
-                Canon Image Library →
-              </Link>
-            </div>
-            {!isAuthenticated ? (
-              <p className="text-uf-muted text-sm mt-3">
-                Sign in to manage your visual assets.{" "}
-                <Link to="/auth?returnTo=/creator" className="text-uf-cyan">
-                  Open auth
+              <p className="text-uf-muted text-sm mt-2">
+                Faction, sector, and starship units. Report to your assigned squad
+                to pool lore, art, and missions with its members.
+              </p>
+              <p className="text-uf-muted text-xs mt-3">
+                {groups === undefined
+                  ? "Loading…"
+                  : `${groups.length} unit${groups.length === 1 ? "" : "s"} active`}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link to="/groups">
+                  <NeonButton variant="primary">Join a squad</NeonButton>
                 </Link>
-                .
-              </p>
-            ) : myVisuals === undefined ? (
-              <div className="uf-skeleton mt-3" style={{ height: 120 }} />
-            ) : myVisuals.length === 0 ? (
-              <p className="text-uf-muted text-sm mt-3">
-                No visual assets yet — upload your first piece with the panel
-                on the left.
-              </p>
-            ) : (
-              <ul className="mt-3 flex flex-col gap-2 list-none p-0 m-0 max-h-72 overflow-y-auto">
-                {myVisuals.slice(0, 12).map((a) => (
-                  <li
-                    key={a._id}
-                    className="flex items-center gap-3 border border-[color:var(--uf-border)] rounded-md px-3 py-2"
-                  >
-                    {a.url ? (
-                      <img
-                        src={a.url}
-                        alt=""
-                        className="h-10 w-10 rounded object-cover border border-[rgba(230,168,23,0.4)]"
-                      />
-                    ) : null}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold truncate">{a.title}</p>
-                      <p className="text-uf-muted text-xs uppercase tracking-[0.12em]">
-                        {a.kind}
-                        {a.folder ? ` · ${a.folder}` : ""}
-                      </p>
-                    </div>
-                    <CanonBadge status={a.status} />
-                    <button
-                      type="button"
-                      aria-label={`Delete ${a.title}`}
-                      className="uf-btn uf-btn--ghost"
-                      onClick={() => {
-                        if (window.confirm(`Delete "${a.title}"?`)) {
-                          removeVisual({ id: a._id })
-                            .then(() => toast.success("Deleted."))
-                            .catch(() => toast.error("Delete failed."));
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link to="/storyboards?new=1">
-                <NeonButton variant="gold">
-                  <Library className="h-4 w-4 mr-1" aria-hidden />
-                  Storyboard builder
-                </NeonButton>
-              </Link>
-              <Link to={user?._id ? `/artists/${user._id}` : "/artists"}>
-                <NeonButton variant="ghost">
-                  <Users className="h-4 w-4 mr-1" aria-hidden />
-                  {user?._id ? "Your artist portfolio" : "Artist profiles"}
-                </NeonButton>
-              </Link>
-            </div>
-            {/* FUTURE FEATURE — DO NOT IMPLEMENT IN THIS BUILD:
-                collaborative galleries and shared asset workspaces. */}
-          </HoloCard>
-        </div>
+                <Link to="/groups">
+                  <NeonButton variant="ghost">Raise a unit</NeonButton>
+                </Link>
+              </div>
+            </HoloCard>
+          </ScaleReveal>
 
-        {/* Visual creation cards */}
-        <div className="mt-10 sf-visual-cards">
-          <header className="mb-4">
-            <span className="uf-eyebrow uf-eyebrow--gold sf-pulse-soft">
-              Visual commands
-            </span>
-            <h3 className="sf-head text-xl font-semibold mt-1">
-              Every visual workflow, one deck.
-            </h3>
-          </header>
-          <div className="uf-grid uf-grid--4">
-            {VISUAL_CARDS.map((c, idx) => renderCard(c, idx))}
-          </div>
+          {/* Ops net */}
+          <ScaleReveal staggerIndex={1}>
+            <HoloCard className="h-full">
+              <GoldEdge />
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-uf-cyan" aria-hidden />
+                <h3 className="text-lg font-semibold">Operations Net</h3>
+              </div>
+              <p className="text-uf-muted text-sm mt-2">
+                Open a transmission, offer your skills, or request a collaborator
+                for your next operation.
+              </p>
+              <ul className="mt-3 flex flex-col gap-1 list-none p-0 m-0">
+                {forums === undefined ? (
+                  <li className="uf-skeleton" style={{ height: 20 }} />
+                ) : forums.length === 0 ? (
+                  <li className="text-uf-muted text-sm">
+                    Net silent — open the first transmission.
+                  </li>
+                ) : (
+                  forums.map((t) => (
+                    <li key={t._id} className="text-sm truncate">
+                      <Link to="/forums" className="text-uf-muted hover:text-uf-cyan">
+                        {t.title}
+                      </Link>
+                    </li>
+                  ))
+                )}
+              </ul>
+              <div className="mt-3">
+                <Link to="/forums">
+                  <NeonButton variant="primary">Open the net</NeonButton>
+                </Link>
+              </div>
+            </HoloCard>
+          </ScaleReveal>
+
+          {/* Contests */}
+          <ScaleReveal staggerIndex={2}>
+            <HoloCard className="h-full">
+              <GoldEdge />
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-uf-gold" aria-hidden />
+                <h3 className="text-lg font-semibold">Command Contests</h3>
+              </div>
+              <p className="text-uf-muted text-sm mt-2">
+                Themed canon trials judged by the operator staff. Deploy a story,
+                a design, or a lore piece.
+              </p>
+              <ul className="mt-3 flex flex-col gap-1 list-none p-0 m-0">
+                {contests === undefined ? (
+                  <li className="uf-skeleton" style={{ height: 20 }} />
+                ) : openContests.length === 0 ? (
+                  <li className="text-uf-muted text-sm">
+                    No engagements open right now.
+                  </li>
+                ) : (
+                  openContests.slice(0, 3).map((c) => (
+                    <li key={c._id} className="text-sm truncate">
+                      <Link to={`/contests/${c.slug}`} className="text-uf-muted hover:text-uf-cyan">
+                        {c.title}
+                      </Link>
+                    </li>
+                  ))
+                )}
+              </ul>
+              <div className="mt-3">
+                <Link to="/contests">
+                  <NeonButton variant="primary">See open engagements</NeonButton>
+                </Link>
+              </div>
+            </HoloCard>
+          </ScaleReveal>
+
+          {/* Campaign arcs (story arc units) */}
+          <ScaleReveal staggerIndex={3}>
+            <HoloCard className="h-full">
+              <GoldEdge />
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-uf-violet" aria-hidden />
+                <h3 className="text-lg font-semibold">Campaign Arcs</h3>
+              </div>
+              <p className="text-uf-muted text-sm mt-2">
+                Coordinated storylines under a single command. Contribute a chapter
+                to an open arc and your writing joins the canon in sequence.
+              </p>
+              <p className="text-uf-muted text-xs mt-3">
+                {arcs === undefined ? "Loading…" : `${arcs.length} arc${arcs.length === 1 ? "" : "s"} running`}
+              </p>
+              <div className="mt-3">
+                <Link to="/arcs">
+                  <NeonButton variant="violet">Join a campaign</NeonButton>
+                </Link>
+              </div>
+            </HoloCard>
+          </ScaleReveal>
+
+          {/* Direct comms */}
+          <ScaleReveal staggerIndex={4}>
+            <HoloCard className="h-full">
+              <GoldEdge />
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-uf-green" aria-hidden />
+                <h3 className="text-lg font-semibold">Direct Comms</h3>
+              </div>
+              <p className="text-uf-muted text-sm mt-2">
+                Found an operator whose work fits yours? Open a direct line and
+                offer to build the next piece together.
+              </p>
+              <div className="mt-3">
+                <Link to="/messages">
+                  <NeonButton variant="ghost">Open comms</NeonButton>
+                </Link>
+              </div>
+            </HoloCard>
+          </ScaleReveal>
+
+          {/* Personnel roster */}
+          <ScaleReveal staggerIndex={5}>
+            <HoloCard className="h-full">
+              <GoldEdge />
+              <div className="flex items-center gap-2">
+                <User className="h-5 w-5 text-uf-cyan" aria-hidden />
+                <h3 className="text-lg font-semibold">Personnel Roster</h3>
+              </div>
+              <p className="text-uf-muted text-sm mt-2">
+                Browse the roster by rank, faction, and contribution to find
+                operators with the right skills for your operation.
+              </p>
+              <div className="mt-3">
+                <Link to="/members">
+                  <NeonButton variant="ghost">Open the roster</NeonButton>
+                </Link>
+              </div>
+            </HoloCard>
+          </ScaleReveal>
         </div>
       </section>
 
