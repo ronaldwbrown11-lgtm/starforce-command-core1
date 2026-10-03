@@ -89,8 +89,53 @@ async function main() {
     era: "Probe Era",
     downloadAllowed: true,
   });
+  if (created.ok !== true) {
+    throw new Error(`ASSERTION FAILED: createAsset rejected: ${created.error}`);
+  }
   assert(created.status === "pending", `status: ${created.status}`);
   console.log("  ✓ asset created, status:", created.status);
+
+  // 2b. Membership tier gate — free tier caps files at 5 MB. Rejections
+  // RETURN { ok: false } (a thrown mutation would roll back the blob
+  // delete), and the blob must actually be gone afterwards.
+  const bigUrl = await client.mutation(api.visuals.generateUploadUrl, {});
+  const bigPost = await fetch(bigUrl, {
+    method: "POST",
+    headers: { "Content-Type": "image/png" },
+    body: new Uint8Array(6 * 1024 * 1024),
+  });
+  assert(bigPost.ok, `over-limit storage POST failed: ${bigPost.status}`);
+  const { storageId: bigId } = (await bigPost.json()) as { storageId: string };
+  const rejected = await client.mutation(api.visuals.createAsset, {
+    storageId: bigId as Id<"_storage">,
+    title: "Over-limit probe",
+    kind: "concept",
+  });
+  if (rejected.ok !== false) {
+    throw new Error("ASSERTION FAILED: over-limit createAsset was accepted");
+  }
+  if (!rejected.error.includes("max 5 MB per file")) {
+    throw new Error(
+      `ASSERTION FAILED: free-tier per-file cap not enforced: ${rejected.error}`,
+    );
+  }
+  let retryMsg = "";
+  try {
+    await client.mutation(api.visuals.createAsset, {
+      storageId: bigId as Id<"_storage">,
+      title: "Over-limit probe retry",
+      kind: "concept",
+    });
+  } catch (e) {
+    retryMsg = String((e as Error).message);
+  }
+  assert(
+    retryMsg.includes("Uploaded file not found"),
+    `rejected blob was not deleted: ${retryMsg}`,
+  );
+  console.log(
+    "  ✓ membership tier gate: 6 MB rejected for free tier, blob cleaned up",
+  );
 
   // 3. Visibility rules.
   const publicList = await stranger.query(api.visuals.listAssets, {

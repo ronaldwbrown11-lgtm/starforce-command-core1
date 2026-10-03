@@ -81,6 +81,7 @@ import type * as stripeCatalog from "../stripeCatalog.js";
 import type * as stripeWebhook from "../stripeWebhook.js";
 import type * as support from "../support.js";
 import type * as tiers from "../tiers.js";
+import type * as uploadBudget from "../uploadBudget.js";
 import type * as usage from "../usage.js";
 import type * as users from "../users.js";
 import type * as vessels from "../vessels.js";
@@ -167,6 +168,7 @@ declare const fullApi: ApiFromModules<{
   stripeWebhook: typeof stripeWebhook;
   support: typeof support;
   tiers: typeof tiers;
+  uploadBudget: typeof uploadBudget;
   usage: typeof usage;
   users: typeof users;
   vessels: typeof vessels;

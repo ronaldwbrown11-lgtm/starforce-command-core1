@@ -4,7 +4,8 @@ import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Id } from "./_generated/dataModel";
 import { requireOperatorCapability } from "./admin";
-import { COVER_MAX_BYTES, COVER_MIME_TYPES } from "./assets";
+import { COVER_MIME_TYPES } from "./assets";
+import { enforceUploadBudget } from "./uploadBudget";
 import {
   SPECIES_GROUPS,
   SPECIES_NAME_KEY,
@@ -333,8 +334,8 @@ export const seedTechnology = mutation({
 // Flow (two-step, mirroring the assets.ts cover pipeline):
 //   1. generateImageUploadUrl  — mints a short-lived Convex upload URL.
 //   2. browser POSTs the file  — Convex stores it, returns a storageId.
-//   3. finalizeImageUpload     — validates size/MIME against the cover rules
-//      and returns the STABLE public URL
+//   3. finalizeImageUpload     — validates MIME + the member's tier upload
+//      limits (see uploadBudget.ts) and returns the STABLE public URL
 //      ("${CONVEX_SITE_URL}/lab-image/<storageId>") that gets pinned into the
 //      row's image field. That URL is served forever by the HTTP route in
 //      http.ts, unlike ctx.storage.getUrl() which expires within the hour.
@@ -364,26 +365,45 @@ export const finalizeImageUpload = mutation({
     if (!file) throw new Error("Uploaded file not found — please try again.");
     const size = file.size ?? 0;
     const contentType = String(file.contentType ?? "");
-    const tooLarge = size > COVER_MAX_BYTES;
     const wrongType = !COVER_MIME_TYPES.includes(
       contentType as (typeof COVER_MIME_TYPES)[number],
     );
-    if (tooLarge || wrongType) {
+    // Rejection paths RETURN { ok: false } instead of throwing: a thrown
+    // mutation rolls back its own writes, which would resurrect the blob we
+    // just deleted. Returning commits the delete and lets the client toast
+    // the error message.
+    if (wrongType) {
       try {
         await ctx.storage.delete(args.storageId);
       } catch {
         // Best effort — the file is never referenced either way.
       }
-      throw new Error(
-        `Images only, up to ${COVER_MAX_BYTES / (1024 * 1024)} MB (${COVER_MIME_TYPES.join(
-          ", ",
-        )}).`,
-      );
+      return {
+        ok: false as const,
+        error: `Images only (${COVER_MIME_TYPES.join(", ")}).`,
+      };
+    }
+    // Membership-tier limits (per-file maxUploadMb; visual quota counts the
+    // member's tracked storage — see uploadBudget.ts). The blob is removed
+    // so nothing dangles unreferenced.
+    try {
+      await enforceUploadBudget(ctx, me, size);
+    } catch (err) {
+      try {
+        await ctx.storage.delete(args.storageId);
+      } catch {
+        // Best effort — the file is never referenced either way.
+      }
+      return {
+        ok: false as const,
+        error: err instanceof Error ? err.message : "Upload rejected.",
+      };
     }
     await audit(ctx, me, "labs.image_upload", `storage:${args.storageId}`);
     const siteUrl = String(env.CONVEX_SITE_URL ?? "").replace(/\/$/, "");
     if (!siteUrl) throw new Error("Deployment URL unavailable — try again.");
     return {
+      ok: true as const,
       storageId: args.storageId,
       url: `${siteUrl}/lab-image/${args.storageId}`,
       byteSize: size,

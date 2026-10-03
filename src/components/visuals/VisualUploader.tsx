@@ -6,9 +6,9 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useAuth } from "@/hooks/use-auth";
 import {
   ACCEPTED_IMAGE_TYPES,
-  IMAGE_MAX_BYTES,
   formatBytes,
   optimizeImage,
+  tierMaxUploadBytes,
   type OptimizedImage,
 } from "@/lib/imageTools";
 import { ImagePlus, Loader2, Sparkles, X } from "lucide-react";
@@ -63,7 +63,7 @@ export function VisualUploader({
   submitLabel,
   className = "",
 }: VisualUploaderProps) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [staged, setStaged] = useState<Staged | null>(null);
   const [drag, setDrag] = useState(false);
@@ -89,8 +89,12 @@ export function VisualUploader({
       );
       return;
     }
-    if (file.size > IMAGE_MAX_BYTES) {
-      toast.error(`Image is ${formatBytes(file.size)} — max is 5 MB.`);
+    // Membership-tier cap (free = 5 MB, cadet+ = more; server re-checks).
+    const maxBytes = tierMaxUploadBytes(user);
+    if (file.size > maxBytes) {
+      toast.error(
+        `Image is ${formatBytes(file.size)} — max is ${formatBytes(maxBytes)} for your tier.`,
+      );
       return;
     }
     try {
@@ -139,6 +143,7 @@ export function VisualUploader({
         era: meta.era,
         downloadAllowed,
       });
+      if (!result.ok) throw new Error(result.error);
       toast.success(
         result.status === "approved"
           ? "Published to the canon."

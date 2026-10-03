@@ -4,7 +4,8 @@ import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Id } from "./_generated/dataModel";
 import { requireOperatorCapability } from "./admin";
-import { COVER_MAX_BYTES, COVER_MIME_TYPES } from "./assets";
+import { COVER_MIME_TYPES } from "./assets";
+import { enforceUploadBudget } from "./uploadBudget";
 
 // =========================================================================
 // Visuals — the backend for the visual creation subsystem:
@@ -116,22 +117,52 @@ export const createAsset = mutation({
     if (!me) throw new Error("Sign in to upload artwork.");
     const meta = await ctx.storage.getMetadata(args.storageId);
     if (!meta) throw new Error("Uploaded file not found — please try again.");
-    const tooLarge = meta.size > COVER_MAX_BYTES;
     const wrongType = !COVER_MIME_TYPES.includes(
       meta.contentType as (typeof COVER_MIME_TYPES)[number],
     );
-    if (tooLarge || wrongType) {
+    // Rejection paths RETURN { ok: false } instead of throwing: a thrown
+    // mutation rolls back its own writes, which would resurrect the blob we
+    // just deleted. Returning commits the delete and lets the client toast
+    // the error message.
+    if (wrongType) {
       try {
         await ctx.storage.delete(args.storageId);
       } catch {
         // Best effort — the file is never referenced either way.
       }
-      throw new Error(
-        `Images only, up to ${COVER_MAX_BYTES / (1024 * 1024)} MB (JPEG, PNG, WebP, AVIF).`,
-      );
+      return {
+        ok: false as const,
+        error: "Images only (JPEG, PNG, WebP, AVIF).",
+      };
+    }
+    // Membership-tier limits (per-file maxUploadMb + storageGb quota) —
+    // see uploadBudget.ts. The blob is removed when the member is over
+    // their limits so nothing dangles unreferenced.
+    try {
+      await enforceUploadBudget(ctx, me, meta.size);
+    } catch (err) {
+      try {
+        await ctx.storage.delete(args.storageId);
+      } catch {
+        // Best effort — the file is never referenced either way.
+      }
+      return {
+        ok: false as const,
+        error: err instanceof Error ? err.message : "Upload rejected.",
+      };
     }
     const title = str(args.title, 120);
-    if (!title) throw new Error("A title is required for every artwork.");
+    if (!title) {
+      try {
+        await ctx.storage.delete(args.storageId);
+      } catch {
+        // Best effort — the file is never referenced either way.
+      }
+      return {
+        ok: false as const,
+        error: "A title is required for every artwork.",
+      };
+    }
     const now = Date.now();
     const status = isOperator ? "approved" : "pending";
     const id = await ctx.db.insert("visualAssets", {

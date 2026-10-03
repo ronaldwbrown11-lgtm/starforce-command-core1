@@ -4,6 +4,8 @@
 // (canvas), no Convex imports, so any uploader component can use it.
 // =========================================================================
 
+import { TIERS, type TierId } from "./tiers";
+
 export const ACCEPTED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
@@ -12,6 +14,31 @@ export const ACCEPTED_IMAGE_TYPES = [
 ];
 
 export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
+/** The subset of a user doc the tier upload gate needs. */
+type TierUser = {
+  tier?: string;
+  unlimitedUsage?: boolean;
+  opRole?: string;
+  role?: string;
+};
+
+/**
+ * Per-file upload cap for the member's membership tier, in bytes — the
+ * client-side twin of enforceUploadBudget() in src/convex/uploadBudget.ts
+ * (free = 5 MB, cadet = 50 MB, …; operators and unlimitedUsage owners are
+ * uncapped). Signed-out visitors get the free-tier cap.
+ */
+export function tierMaxUploadBytes(user: TierUser | null | undefined): number {
+  if (!user) return TIERS.free.maxUploadMb * 1024 * 1024;
+  if (user.unlimitedUsage === true || user.opRole || user.role === "admin") {
+    return Infinity;
+  }
+  const tierId = (
+    TIERS[(user.tier ?? "free") as TierId] ? (user.tier ?? "free") : "free"
+  ) as TierId;
+  return TIERS[tierId].maxUploadMb * 1024 * 1024;
+}
 
 export type OptimizedImage = {
   /** The (possibly re-encoded) image to upload. */

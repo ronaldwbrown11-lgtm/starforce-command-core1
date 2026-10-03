@@ -3,6 +3,8 @@ import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useAuth } from "@/hooks/use-auth";
+import { formatBytes, tierMaxUploadBytes } from "@/lib/imageTools";
 import { ImagePlus, Loader2, X } from "lucide-react";
 
 // =========================================================================
@@ -25,9 +27,10 @@ import { ImagePlus, Loader2, X } from "lucide-react";
 // dossier rendering, and CSV seeding are all unchanged.
 // =========================================================================
 
-// Keep in sync with COVER_MAX_BYTES / COVER_MIME_TYPES in src/convex/assets.ts
-// (duplicated here so this component stays a pure frontend import).
-const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+// Keep in sync with COVER_MIME_TYPES in src/convex/assets.ts (duplicated
+// here so this component stays a pure frontend import). The per-file size
+// cap follows the member's tier — see tierMaxUploadBytes / the server's
+// enforceUploadBudget.
 const IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 
 type ImageUploadFieldProps = {
@@ -51,6 +54,7 @@ export function ImageUploadField({
   // Tracks a URL whose preview failed to load so we don't show a broken img.
   const [brokenSrc, setBrokenSrc] = useState<string | null>(null);
 
+  const { user } = useAuth();
   const generateUploadUrl = useMutation(api.labs.generateImageUploadUrl);
   const finalizeImageUpload = useMutation(api.labs.finalizeImageUpload);
   const discardImage = useMutation(api.labs.discardImage);
@@ -82,9 +86,11 @@ export function ImageUploadField({
 
   async function handleFile(file: File) {
     if (disabled || busy) return;
-    if (file.size > IMAGE_MAX_BYTES) {
+    // Membership-tier cap (free = 5 MB, cadet+ = more; server re-checks).
+    const maxBytes = tierMaxUploadBytes(user);
+    if (file.size > maxBytes) {
       toast.error(
-        `Image is ${(file.size / (1024 * 1024)).toFixed(1)} MB — max is 5 MB.`,
+        `Image is ${formatBytes(file.size)} — max is ${formatBytes(maxBytes)} for your tier.`,
       );
       return;
     }
@@ -104,9 +110,11 @@ export function ImageUploadField({
       });
       if (!res.ok) throw new Error(`Upload failed (${res.status}).`);
       const { storageId } = (await res.json()) as { storageId: string };
-      const { url } = await finalizeImageUpload({
+      const fin = await finalizeImageUpload({
         storageId: storageId as Id<"_storage">,
       });
+      if (!fin.ok) throw new Error(fin.error);
+      const url = fin.url;
       uploadsRef.current.set(url, storageId);
       setBrokenSrc(null);
       onChange(url);
