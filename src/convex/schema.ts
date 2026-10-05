@@ -140,6 +140,12 @@ const schema = defineSchema(
       shipCompletedMissions: v.optional(v.array(v.string())),
       // First-run pilot orientation (rank / fleet / starter mission picker)
       onboarded: v.optional(v.boolean()),
+      // Ultra Force atlas seed tombstones — one-time flags so the shared
+      // Star Atlas starter map / star lore / sector reference stars are only
+      // seeded once (mirrors the transferred Ultra Force schema).
+      mapSeeded: v.optional(v.boolean()),
+      starsSeeded: v.optional(v.boolean()),
+      sectorStarsSeeded: v.optional(v.boolean()),
       // Per-tier usage counters
       monthlyAiUsed: v.optional(v.number()),
       storageUsedGb: v.optional(v.number()),
@@ -1942,6 +1948,126 @@ const schema = defineSchema(
       commissionAvailable: v.boolean(),
       createdAt: v.number(),
       updatedAt: v.number(),
+    }).index("by_user", ["userId"]),
+
+    // ---------------------------------------------------------------------
+    // Star Atlas (transferred from the Ultra Force project) — the native
+    // galaxy view on /map. Data imported from ultra-force-db.zip; rows are
+    // owned by the operator account but READS ARE SHARED (the whole fleet
+    // sees one canon atlas), writes are operator-gated in the functions.
+    // ---------------------------------------------------------------------
+
+    starLore: defineTable({
+      userId: v.id("users"),
+      starId: v.string(),
+      name: v.string(),
+      defaultName: v.string(),
+      posX: v.number(),
+      posY: v.number(),
+      posZ: v.number(),
+      color: v.string(),
+      size: v.number(),
+      temperature: v.number(),
+      magnitude: v.number(),
+      loreNotes: v.optional(v.string()),
+      isCustom: v.optional(v.boolean()),
+      category: v.optional(
+        v.union(
+          v.literal("hero"),
+          v.literal("villain"),
+          v.literal("neutral"),
+          v.literal("ancient"),
+          v.literal("guardian"),
+          v.literal("mystery"),
+          v.literal("none"),
+        ),
+      ),
+    })
+      .index("by_user", ["userId"])
+      .index("by_user_star", ["userId", "starId"]),
+
+    // Warp lanes between atlas endpoints. Namespaced `galaxyLanes`: the
+    // `warpLanes` name belongs to the live sector-map subsystem and
+    // `atlasLanes` to the retired atlas3d backend. The transferred Ultra
+    // Force table was empty (0 rows), so nothing needed migrating under any
+    // old name.
+    galaxyLanes: defineTable({
+      userId: v.id("users"),
+      name: v.string(),
+      color: v.string(),
+      // Endpoints are plain strings so warp gates can connect every level of
+      // the map: quadrant / sector / star system doc ids, or stars (catalog
+      // ids `hyg-*` and saved lore star ids).
+      fromId: v.string(),
+      toId: v.string(),
+      // When set, `color` overrides the automatic level-based lane color.
+      customColor: v.optional(v.boolean()),
+    }).index("by_user", ["userId"]),
+
+    // Galactic atlas hierarchy: quadrant -> sector -> star system
+    quadrants: defineTable({
+      userId: v.id("users"),
+      name: v.string(),
+      description: v.optional(v.string()),
+      color: v.string(),
+      order: v.number(),
+    }).index("by_user", ["userId"]),
+
+    sectors: defineTable({
+      userId: v.id("users"),
+      quadrantId: v.id("quadrants"),
+      name: v.string(),
+      description: v.optional(v.string()),
+      color: v.string(),
+      order: v.number(),
+      // Optional explicit map position (galaxy-local units) — set when the
+      // entity is created by clicking a spot on the map.
+      posX: v.optional(v.number()),
+      posY: v.optional(v.number()),
+      posZ: v.optional(v.number()),
+    })
+      .index("by_user", ["userId"])
+      .index("by_quadrant", ["userId", "quadrantId"]),
+
+    starSystems: defineTable({
+      userId: v.id("users"),
+      sectorId: v.id("sectors"),
+      name: v.string(),
+      description: v.optional(v.string()),
+      color: v.string(),
+      order: v.number(),
+      // Optional explicit map position — e.g. Sagittarius A* Throne sits at
+      // the exact galactic center [0, 0, 0].
+      posX: v.optional(v.number()),
+      posY: v.optional(v.number()),
+      posZ: v.optional(v.number()),
+      // Set when the system was seeded for a star in the star lore list.
+      starId: v.optional(v.string()),
+    })
+      .index("by_user", ["userId"])
+      .index("by_sector", ["userId", "sectorId"]),
+
+    // Warp gate nodes — namespaced `galaxyGates` (`warpGates` powers
+    // SectorClaims / operator Sector Map; `atlasGates` belongs to the
+    // retired atlas3d backend).
+    galaxyGates: defineTable({
+      userId: v.id("users"),
+      name: v.string(),
+      description: v.optional(v.string()),
+      color: v.string(),
+      level: v.union(
+        v.literal("galaxy"), // quadrant hub — exactly one per quadrant
+        v.literal("quadrant"),
+        v.literal("sector"),
+        v.literal("system"),
+      ),
+      quadrantId: v.optional(v.id("quadrants")),
+      sectorId: v.optional(v.id("sectors")),
+      systemId: v.optional(v.id("starSystems")),
+      posX: v.number(),
+      posY: v.number(),
+      posZ: v.number(),
+      order: v.number(),
     }).index("by_user", ["userId"]),
   },
   {

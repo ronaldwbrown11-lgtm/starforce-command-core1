@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireOperatorCapability } from "./admin";
@@ -923,10 +923,7 @@ const LANE_SEED = [
   },
 ];
 
-export const seedAtlas = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const { me } = await requireOperatorCapability(ctx, ATLAS_CAPS);
+async function runSeed(ctx: MutationCtx) {
     let added = 0;
     let repaired = 0;
 
@@ -1076,6 +1073,14 @@ export const seedAtlas = mutation({
       }
     }
 
+    return { added, repaired };
+}
+
+export const seedAtlas = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { me } = await requireOperatorCapability(ctx, ATLAS_CAPS);
+    const { added, repaired } = await runSeed(ctx);
     await ctx.db.insert("auditLog", {
       actorId: me,
       action: "atlas3d.seed",
@@ -1084,6 +1089,22 @@ export const seedAtlas = mutation({
       createdAt: Date.now(),
     });
     return { ok: true, added, repaired };
+  },
+});
+
+// Public bootstrap — lets any visitor bring the canon chart online when the
+// atlas is completely uncharted, with no operator session. It ONLY runs when
+// there is nothing to seed, so it can never overwrite operator edits.
+export const ensureAtlasSeeded = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const anyQuadrant = await ctx.db.query("atlasQuadrants").first();
+    const anySystem = await ctx.db.query("atlasSystems").first();
+    if (anyQuadrant || anySystem) {
+      return { ok: true, seeded: false, added: 0, repaired: 0 };
+    }
+    const { added, repaired } = await runSeed(ctx);
+    return { ok: true, seeded: true, added, repaired };
   },
 });
 

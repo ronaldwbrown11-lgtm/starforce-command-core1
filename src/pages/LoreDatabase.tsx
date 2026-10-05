@@ -20,7 +20,7 @@ const BUILT_IN_DATABASES: Record<
     label: "Sector Atlas",
     href: "/map",
     description:
-      "Sector charts live in the Star Atlas application. Open the interactive map to browse charted space.",
+      "Sector charts are built into the site's Star Atlas. Open the interactive 3D map to browse charted space.",
   },
   "lore-db-signal-intel": {
     label: "Signal Vault",

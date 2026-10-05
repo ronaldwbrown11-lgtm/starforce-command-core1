@@ -115,7 +115,7 @@ export const DEFAULT_HUB_CARDS: HubCardSeed[] = [
   },
   {
     label: "Star Atlas",
-    description: "The interactive galaxy map.",
+    description: "The interactive 3D galaxy.",
     href: "/map",
     icon: "globe",
     tag: "Reference",

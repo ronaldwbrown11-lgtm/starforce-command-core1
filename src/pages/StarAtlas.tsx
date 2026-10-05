@@ -1,21 +1,33 @@
-import { useState } from "react";
-import { ExternalLink } from "lucide-react";
-import { SiteShell, PageHero, GlassPanel, StatusPill } from "@/components/uf";
+import { Suspense, lazy } from "react";
+import { SiteShell, PageHero, GlassPanel } from "@/components/uf";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { useFactionCanonSync } from "@/hooks/use-faction-canon-sync";
+import { SectorClaims } from "@/components/widgets/SectorClaims";
 
-// The Star Atlas is a dedicated application served from its own host
-// (staratlas.freebuff.app). It supersedes the in-house 3D/2D atlas that used
-// to live on this route — that chart never held up, so the main site now
-// embeds the standalone app instead of re-implementing cartography.
-const STAR_ATLAS_URL = "https://staratlas.freebuff.app/dashboard";
+// =========================================================================
+// Star Atlas — the NATIVE galaxy view, transferred from the Ultra Force
+// project (source + data imported from ultra-force-app-source and
+// ultra-force-db). Quadrants, sectors, star systems, star lore and warp
+// lanes render in a real-time 3D galaxy, straight from this project's own
+// Convex deployment — no iframe, no external host.
+//
+// Reads are shared (every visitor sees the canon chart); writes are
+// operator-gated server-side and hidden read-only for everyone else.
+// The route, <title>, meta description and nav links are unchanged from
+// the embed version so the URL keeps its SEO.
+// =========================================================================
+
+// three.js-based galaxy view — code-split so the landing page stays light.
+const AtlasViewport = lazy(() => import("@/components/galaxy/AtlasViewport"));
 
 export default function StarAtlas() {
-  const [loaded, setLoaded] = useState(false);
+  // One-shot public bootstrap: heals pre-canon faction rows on first visit.
+  useFactionCanonSync();
 
   usePageMeta({
     title: "Star Atlas — Star Force Base 1198",
     description:
-      "The Star Atlas — an interactive galaxy map of the Orion Triangle. Survey systems, trace lanes, and chart the frontier in the dedicated atlas application.",
+      "Interactive 3D galaxy map of the Orion Triangle. Chart new systems, propose discoveries, and stake sector claims — open to every visitor.",
   });
 
   return (
@@ -24,11 +36,6 @@ export default function StarAtlas() {
         eyebrow="Star Atlas"
         title="Chart the Orion Triangle."
         lead="The galaxy is only as known as the fleet makes it. Survey an empty region, propose a system, and put your name on a star the Bridge canonizes for everyone."
-        secondary={{
-          label: "Open in a new tab",
-          href: STAR_ATLAS_URL,
-          variant: "ghost",
-        }}
       />
 
       <section className="uf-section max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10">
@@ -41,20 +48,10 @@ export default function StarAtlas() {
             <span className="absolute bottom-2 right-2 h-5 w-5 border-b-2 border-r-2 border-[rgba(0,229,255,0.55)]" />
           </div>
 
-          <div className="relative flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.65)]">
-            <span className="uf-eyebrow mr-auto">Star atlas // live cartography</span>
-            <StatusPill variant={loaded ? "success" : "info"}>
-              {loaded ? "Link established" : "Establishing link…"}
-            </StatusPill>
-            <span className="hidden md:inline font-mono text-[11px] text-uf-muted">
-              src: staratlas.freebuff.app
-            </span>
-          </div>
-
-          <div className="relative">
-            {!loaded && (
+          <Suspense
+            fallback={
               <div
-                className="flex flex-col items-center justify-center gap-3 min-h-[78vh] bg-[rgba(5,8,22,0.85)]"
+                className="flex flex-col items-center justify-center gap-3 h-[78vh] min-h-[540px] bg-[rgba(5,8,22,0.85)]"
                 role="status"
                 aria-live="polite"
               >
@@ -63,36 +60,24 @@ export default function StarAtlas() {
                   aria-hidden
                 />
                 <p className="text-uf-muted text-sm font-mono">
-                  Contacting the star atlas…
+                  Plotting the galaxy…
                 </p>
               </div>
-            )}
-            <iframe
-              title="Star Atlas — interactive galaxy map"
-              src={STAR_ATLAS_URL}
-              onLoad={() => setLoaded(true)}
-              className="block w-full border-0 min-h-[78vh] bg-[#050816]"
-              loading="eager"
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
-          </div>
+            }
+          >
+            <AtlasViewport className="h-[78vh] min-h-[540px]" />
+          </Suspense>
 
           <div className="relative flex flex-wrap items-center gap-2 px-4 py-2.5 border-t border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.65)]">
             <p className="text-xs text-uf-muted mr-auto">
-              The atlas runs as a standalone application. Charted systems and
-              proposals are maintained there.
+              Open to every visitor — the chart renders for signed-out readers.
+              Fleet operators maintain the canon.
             </p>
-            <a
-              href={STAR_ATLAS_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.16em] text-uf-cyan hover:text-uf-text focus-visible:outline-2 focus-visible:outline-[color:var(--uf-cyan)] rounded"
-            >
-              Open the atlas <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-            </a>
           </div>
         </GlassPanel>
       </section>
+
+      <SectorClaims returnTo="/map" />
     </SiteShell>
   );
 }

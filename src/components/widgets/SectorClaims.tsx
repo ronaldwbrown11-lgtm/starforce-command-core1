@@ -20,7 +20,7 @@ import { Flag, Users } from "lucide-react";
  * Backend note: `discoveries.claimSector` files its activity-feed entry at
  * `/maps`, so this component is the canonical home for the feature.
  */
-export function SectorClaims() {
+export function SectorClaims({ returnTo = "/maps" }: { returnTo?: string } = {}) {
   const { isAuthenticated } = useAuth();
   const sectors = useQuery(api.content.sectors);
   const claims = useQuery(api.discoveries.listSectorClaims);
@@ -182,7 +182,7 @@ export function SectorClaims() {
           ) : (
             <p className="text-uf-muted text-sm mt-3">
               Sign in to stake a claim for your faction.{" "}
-              <Link to="/auth?returnTo=/maps" className="text-uf-cyan underline">
+              <Link to={`/auth?returnTo=${encodeURIComponent(returnTo)}`} className="text-uf-cyan underline">
                 Sign in
               </Link>
             </p>
