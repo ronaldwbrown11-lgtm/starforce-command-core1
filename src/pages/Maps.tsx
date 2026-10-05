@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import { ImageIcon, Loader2, Map as MapIcon, Upload, X } from "lucide-react";
+import { SectorClaims } from "@/components/widgets/SectorClaims";
 
 import { usePageMeta } from "@/hooks/use-page-meta";
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -31,15 +32,15 @@ export default function Maps() {
   const [lightbox, setLightbox] = useState<{ title: string; url: string } | null>(null);
 
   const approved = useMemo(() => (maps ?? []).filter((m) => m.status === "approved"), [maps]);
-  usePageMeta({ title: "Cartography Deck — Star Force Base 1198", description: "Interactive galaxy maps, sector charts, and community cartography tools.", noindex: false });
+  usePageMeta({ title: "Cartography Deck — Star Force Base 1198", description: "Interactive galaxy maps, sector charts, faction sector claims, and community cartography tools.", noindex: false });
 
 
   return (
     <SiteShell>
       <PageHero
         eyebrow="Cartography"
-        title="Lore maps."
-        lead="Survey the charts that frame Sector 1198 — submitted by the fleet, vetted by the bridge, and archived for every navigator. Upload your own map and it joins the queue."
+        title="Lore maps & sector claims."
+        lead="Survey the charts that frame Sector 1198 — submitted by the fleet, vetted by the bridge, and archived for every navigator. Upload your own map, then stake your faction's claim on the sectors of the frontier."
         primary={{ label: "Browse the archive", href: "/lore", variant: "ghost" }}
       />
 
@@ -115,6 +116,8 @@ export default function Maps() {
           </ul>
         )}
       </section>
+
+      <SectorClaims />
 
       {lightbox ? (
         <Lightbox
