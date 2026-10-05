@@ -1,273 +1,98 @@
-import { SiteShell, PageHero, HoloCard } from "@/components/uf";
-import { DiscoveryMap } from "@/components/widgets/DiscoveryMap";
-import { useAuth } from "@/hooks/use-auth";
+import { useState } from "react";
+import { ExternalLink } from "lucide-react";
+import { SiteShell, PageHero, GlassPanel, StatusPill } from "@/components/uf";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { Link } from "react-router";
-import { lazy, Suspense, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { useFactionCanonSync } from "@/hooks/use-faction-canon-sync";
-import type { Id } from "@/convex/_generated/dataModel";
-import { toast } from "sonner";
-import { Compass, Crosshair, Flag, Route, Users } from "lucide-react";
-// PERF-CRITICAL: three.js + @react-three/fiber ship their own ~1.4MB of JS
-// and a second React reconciler. The rest of the app uses eager imports, so a
-// static import here would put all of it into the main bundle — paid by every
-// page boot on the site, while the 3D view only ever renders on /map. Lazy
-// loading confines that cost to the Atlas page (and the 3D view itself).
-const Atlas3D = lazy(() => import("@/components/atlas3d/Atlas3D"));
-const AtlasSubmissions = lazy(() => import("@/components/atlas3d/AtlasSubmissions"));
+
+// The Star Atlas is a dedicated application served from its own host
+// (staratlas.freebuff.app). It supersedes the in-house 3D/2D atlas that used
+// to live on this route — that chart never held up, so the main site now
+// embeds the standalone app instead of re-implementing cartography.
+const STAR_ATLAS_URL = "https://staratlas.freebuff.app/dashboard";
 
 export default function StarAtlas() {
-  const { isAuthenticated } = useAuth();
-  const sectors = useQuery(api.content.sectors);
-  const claims = useQuery(api.discoveries.listSectorClaims);
-  const claimSector = useMutation(api.discoveries.claimSector);
-  const factions = useQuery(api.factions.listAll);
-  // One-shot public bootstrap: heals pre-canon faction rows on first visit.
-  // syncEpoch remounts the registry markup below so queries re-run healed.
-  const { syncEpoch } = useFactionCanonSync();
-  const myMemberships = useQuery(api.groups.myGroupMemberships);
-  const allGroups = useQuery(api.groups.listGroups, {});
-  const [viewMode, setViewMode] = useState<"flat" | "3d">("3d");
-  const [claimSectorName, setClaimSectorName] = useState("");
-  const [claimFaction, setClaimFaction] = useState<string>("");
-  const [claimGroupId, setClaimGroupId] = useState("");
-  const [claiming, setClaiming] = useState(false);
-
-  // Groups the signed-in member belongs to, for group-owned claims.
-  const memberGroupIds = new Set(
-    (myMemberships ?? []).map((m) => m.groupId as string),
-  );
-  const claimableGroups =
-    allGroups === undefined
-      ? []
-      : allGroups.filter((g) => memberGroupIds.has(g._id as string));
+  const [loaded, setLoaded] = useState(false);
 
   usePageMeta({
     title: "Star Atlas — Star Force Base 1198",
-    description: "Interactive galaxy map of the Orion Triangle. Chart new systems, propose discoveries, and build the fleet's knowledge of the frontier.",
+    description:
+      "The Star Atlas — an interactive galaxy map of the Orion Triangle. Survey systems, trace lanes, and chart the frontier in the dedicated atlas application.",
   });
-
-  const submitClaim = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!claimSectorName || !claimFaction) {
-      toast.info("Pick a sector and a faction to stake the claim.");
-      return;
-    }
-    setClaiming(true);
-    try {
-      const res = await claimSector({
-        sector: claimSectorName,
-        faction: claimFaction,
-        groupId: claimGroupId ? (claimGroupId as Id<"groups">) : undefined,
-      });
-      const holder = res.groupName ?? claimFaction;
-      toast.success(
-        res.replaced
-          ? `${holder} seized ${claimSectorName} from the previous holder.`
-          : `${holder} now holds ${claimSectorName}.`,
-      );
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Claim failed.");
-    } finally {
-      setClaiming(false);
-    }
-  };
 
   return (
     <SiteShell>
-      <div key={syncEpoch}>
       <PageHero
         eyebrow="Star Atlas"
         title="Chart the Orion Triangle."
         lead="The galaxy is only as known as the fleet makes it. Survey an empty region, propose a system, and put your name on a star the Bridge canonizes for everyone."
-        primary={
-          isAuthenticated
-            ? { label: "Chart a system", href: "/map", variant: "primary" }
-            : { label: "Sign in to chart", href: "/auth?returnTo=/map", variant: "primary" }
-        }
-        secondary={{ label: "Survey operations", href: "/missions", variant: "ghost" }}
+        secondary={{
+          label: "Open in a new tab",
+          href: STAR_ATLAS_URL,
+          variant: "ghost",
+        }}
       />
 
-      {/* Wide-format section — the atlas gets more horizontal room than the
-          standard content column so charted space and the surrounding galaxy
-          are both visible at once. The 3D atlas replaces the flat SVG map
-          (toggle available for the classic view). */}
       <section className="uf-section max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="inline-flex rounded-md border border-[color:var(--uf-border)] overflow-hidden">
-            {(["3d", "flat"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setViewMode(m)}
-                className={`px-3 py-1.5 text-xs uppercase tracking-[0.14em] cursor-pointer transition-colors ${
-                  viewMode === m
-                    ? "bg-[rgba(0,229,255,0.14)] text-uf-cyan"
-                    : "text-uf-muted hover:text-uf-text"
-                }`}
-              >
-                {m === "3d" ? "3D Milky Way" : "Classic chart"}
-              </button>
-            ))}
+        <GlassPanel accent="cyan" className="rounded-xl overflow-hidden p-0">
+          {/* Console chrome — decorative brackets */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">
+            <span className="absolute top-2 left-2 h-5 w-5 border-t-2 border-l-2 border-[rgba(0,229,255,0.55)]" />
+            <span className="absolute top-2 right-2 h-5 w-5 border-t-2 border-r-2 border-[rgba(0,229,255,0.55)]" />
+            <span className="absolute bottom-2 left-2 h-5 w-5 border-b-2 border-l-2 border-[rgba(0,229,255,0.55)]" />
+            <span className="absolute bottom-2 right-2 h-5 w-5 border-b-2 border-r-2 border-[rgba(0,229,255,0.55)]" />
           </div>
-          <span className="text-uf-muted text-xs hidden sm:inline">
-            {viewMode === "3d"
-              ? "Click a quadrant → sector → system · G/Q/S/Y hotkeys · Esc drills up"
-              : "The fleet's two-dimensional survey chart"}
-          </span>
-        </div>
-        {viewMode === "3d" ? (
-          <Suspense fallback={<div className="uf-skeleton" style={{ height: 680 }} />}> 
-            <Atlas3D />
-            <AtlasSubmissions />
-          </Suspense>
-        ) : (
-          <DiscoveryMap height={680} />
-        )}
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
-          <HoloCard>
-            <Crosshair className="h-5 w-5 text-uf-cyan" aria-hidden />
-            <h3 className="text-base mt-2">Click to survey</h3>
-            <p className="text-uf-muted text-sm mt-1">
-              Any empty region of the chart can become a system. Click it, name it, and file your survey.
-            </p>
-          </HoloCard>
-          <HoloCard>
-            <Compass className="h-5 w-5 text-uf-violet" aria-hidden />
-            <h3 className="text-base mt-2">The Bridge decides</h3>
-            <p className="text-uf-muted text-sm mt-1">
-              Operators review every proposal against canon. Approvals are charted publicly and earn +25 XP.
-            </p>
-          </HoloCard>
-          <HoloCard>
-            <Route className="h-5 w-5 text-uf-gold" aria-hidden />
-            <h3 className="text-base mt-2">Tie it to an operation</h3>
-            <p className="text-uf-muted text-sm mt-1">
-              Attach your survey to an open mapping mission — the discovery counts toward the operation.
-            </p>
-            <Link to="/missions" className="text-uf-cyan text-sm mt-2 inline-block">
-              Open the mission board →
-            </Link>
-          </HoloCard>
-        </div>
-      </section>
-
-      <section className="uf-section max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-12">
-        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-          <HoloCard>
-            <span className="uf-eyebrow flex items-center gap-1.5">
-              <Flag className="h-3.5 w-3.5" aria-hidden /> Sector claims
+          <div className="relative flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.65)]">
+            <span className="uf-eyebrow mr-auto">Star atlas // live cartography</span>
+            <StatusPill variant={loaded ? "success" : "info"}>
+              {loaded ? "Link established" : "Establishing link…"}
+            </StatusPill>
+            <span className="hidden md:inline font-mono text-[11px] text-uf-muted">
+              src: staratlas.freebuff.app
             </span>
-            <h2 className="text-xl mt-1">Who holds the frontier?</h2>
-            <p className="text-uf-muted text-sm mt-1 max-w-[60ch]">
-              Factions stake public claims on charted sectors — personally or
-              on behalf of a fleet group you belong to. The latest claimant
-              holds the sector until another faction seizes it.
-            </p>
-            {claims === undefined ? (
-              <div className="uf-skeleton" style={{ height: 120 }} />
-            ) : claims.length === 0 ? (
-              <div className="uf-empty">No sector claims yet — plant the first flag.</div>
-            ) : (
-              <ul className="mt-4 flex flex-col gap-2 list-none p-0 m-0">
-                {claims.map((c) => (
-                  <li
-                    key={c.sector}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[color:var(--uf-border)] bg-[rgba(16,24,39,0.35)] px-3 py-2"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Flag className="h-4 w-4 text-uf-gold shrink-0" aria-hidden />
-                      <span className="text-sm font-semibold truncate">{c.sector}</span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-uf-cyan">{c.faction}</p>
-                      {c.groupName ? (
-                        <p className="text-[11px] text-uf-violet inline-flex items-center gap-1">
-                          <Users className="h-3 w-3" aria-hidden /> {c.groupName}
-                        </p>
-                      ) : (
-                        <p className="text-[11px] text-uf-muted">
-                          by {c.claimant?.displayName ?? "unknown"}
-                        </p>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </HoloCard>
+          </div>
 
-          <HoloCard>
-            <span className="uf-eyebrow">Stake a claim</span>
-            {isAuthenticated ? (
-              <form onSubmit={submitClaim} className="mt-3 flex flex-col gap-3">
-                <label className="flex flex-col gap-1 text-sm">
-                  <span className="text-uf-muted">Sector</span>
-                  <select
-                    value={claimSectorName}
-                    onChange={(e) => setClaimSectorName(e.target.value)}
-                    className="rounded-md border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.6)] px-3 py-2 text-sm text-uf-text focus:border-[rgba(0,229,255,0.5)] focus:outline-none"
-                  >
-                    <option value="">Pick a sector…</option>
-                    {(sectors ?? []).map((s) => (
-                      <option key={s._id} value={s.name}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1 text-sm">
-                  <span className="text-uf-muted">Faction</span>
-                  <select
-                    value={claimFaction}
-                    onChange={(e) => setClaimFaction(e.target.value)}
-                    className="rounded-md border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.6)] px-3 py-2 text-sm text-uf-text focus:border-[rgba(0,229,255,0.5)] focus:outline-none"
-                  >
-                    <option value="">Pick your faction…</option>
-                    {(factions?.items ?? []).map((f) => (
-                      <option key={f.slug} value={f.name}>
-                        {f.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1 text-sm">
-                  <span className="text-uf-muted">Claim for</span>
-                  <select
-                    value={claimGroupId}
-                    onChange={(e) => setClaimGroupId(e.target.value)}
-                    className="rounded-md border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.6)] px-3 py-2 text-sm text-uf-text focus:border-[rgba(0,229,255,0.5)] focus:outline-none"
-                  >
-                    <option value="">Personal claim</option>
-                    {claimableGroups.map((g) => (
-                      <option key={g._id} value={g._id}>
-                        Group: {g.name}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="text-uf-muted text-[11px] mt-1">
-                    Claiming for a group stamps the group name on the sector.
-                  </span>
-                </label>
-                <button type="submit" disabled={claiming} className="uf-btn uf-btn--primary">
-                  {claiming ? "Planting flag…" : "Claim this sector"}
-                </button>
-              </form>
-            ) : (
-              <p className="text-uf-muted text-sm mt-3">
-                Sign in to stake a claim for your faction.{" "}
-                <Link to="/auth?returnTo=/maps" className="text-uf-cyan underline">
-                  Sign in
-                </Link>
-              </p>
+          <div className="relative">
+            {!loaded && (
+              <div
+                className="flex flex-col items-center justify-center gap-3 min-h-[78vh] bg-[rgba(5,8,22,0.85)]"
+                role="status"
+                aria-live="polite"
+              >
+                <div
+                  className="h-8 w-8 rounded-full border-2 border-[color:var(--uf-border)] border-t-[color:var(--uf-cyan)] animate-spin"
+                  aria-hidden
+                />
+                <p className="text-uf-muted text-sm font-mono">
+                  Contacting the star atlas…
+                </p>
+              </div>
             )}
-          </HoloCard>
-        </div>
+            <iframe
+              title="Star Atlas — interactive galaxy map"
+              src={STAR_ATLAS_URL}
+              onLoad={() => setLoaded(true)}
+              className="block w-full border-0 min-h-[78vh] bg-[#050816]"
+              loading="eager"
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          </div>
+
+          <div className="relative flex flex-wrap items-center gap-2 px-4 py-2.5 border-t border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.65)]">
+            <p className="text-xs text-uf-muted mr-auto">
+              The atlas runs as a standalone application. Charted systems and
+              proposals are maintained there.
+            </p>
+            <a
+              href={STAR_ATLAS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.16em] text-uf-cyan hover:text-uf-text focus-visible:outline-2 focus-visible:outline-[color:var(--uf-cyan)] rounded"
+            >
+              Open the atlas <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+            </a>
+          </div>
+        </GlassPanel>
       </section>
-      </div>
     </SiteShell>
   );
 }
