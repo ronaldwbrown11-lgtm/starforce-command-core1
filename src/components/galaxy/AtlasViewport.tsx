@@ -15,10 +15,10 @@ import type { MapEntityDraft, MapEntityKind } from "./MapEntityDialog";
 import type { StarData, StarCategory } from "./galaxyData";
 
 // ---------------------------------------------------------------------------
-// AtlasViewport — the transferred Ultra Force galaxy view, wired into this
-// site's shared canon atlas.
+// AtlasViewport — the native 3D galaxy view, wired into this site's shared
+// canon atlas.
 //
-// Adaptations from the original Ultra Force Dashboard:
+// Atlas behavior:
 //   - Reads are SHARED: one canon atlas for every visitor (signed-out too).
 //   - Writes are operator-gated server-side; for everyone else the viewport
 //     renders read-only (creation tools and save buttons hidden).

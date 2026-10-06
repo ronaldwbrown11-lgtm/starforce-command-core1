@@ -1070,7 +1070,7 @@ export function GalaxyCanvas({
       {selectedStar && !showDialog && <div className="absolute left-4 top-4 z-20 max-w-[min(280px,calc(100%-8rem))] rounded-xl border border-amber-300/30 bg-slate-950/90 p-4 text-white">
         <p className="text-xs text-amber-200">{selectedStar.designation ?? (selectedStar.isReal ? "Real reference star" : "Lore star")}</p>
         <h2 className="mt-1 font-semibold">{getStarName(selectedStar)}</h2>
-        <p className="mt-1 text-xs text-slate-400">{Math.round(selectedStar.temperature).toLocaleString()} K · {selectedStar.isReal ? `${selectedStar.distancePc?.toFixed(2)} pc from Sol` : "Ultra Force location"}</p>
+        <p className="mt-1 text-xs text-slate-400">{Math.round(selectedStar.temperature).toLocaleString()} K · {selectedStar.isReal ? `${selectedStar.distancePc?.toFixed(2)} pc from Sol` : "Canon atlas coordinates"}</p>
         <p className="mt-2 line-clamp-3 text-xs text-slate-300">{loreNotes[selectedStar.id] || "No lore yet. Turn this star into part of your universe."}</p>
         {!readOnly && <button onClick={() => setShowDialog(true)} className="mt-3 text-xs text-amber-200 underline">Edit star lore</button>}
         <button onClick={() => { setSelectedStar(null); focusGalaxy(); }} className="ml-3 mt-3 text-xs text-slate-400 underline">Back to galaxy</button>

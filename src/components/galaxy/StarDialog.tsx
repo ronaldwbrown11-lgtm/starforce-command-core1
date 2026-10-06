@@ -44,7 +44,7 @@ export function StarDialog({ star, currentName, currentNotes, currentCategory, i
     <Dialog open={isOpen} onOpenChange={open => { if (!open && !busy) onClose(); }}>
       <DialogContent className="dark max-h-[90vh] overflow-y-auto border-white/15 bg-slate-950 text-white">
         <DialogHeader><DialogTitle>{isNew ? "Add a lore star" : "Edit star lore"}</DialogTitle>
-          <DialogDescription className="text-slate-400">{star.isReal ? `${star.defaultName} · ${star.source} · ${star.distancePc?.toFixed(2)} pc from Sol. Catalog position preserved; displayed radius exaggerated.` : "Place your fictional star in the Ultra Force galaxy. Coordinates use galactic map units."}</DialogDescription>
+          <DialogDescription className="text-slate-400">{star.isReal ? `${star.defaultName} · ${star.source} · ${star.distancePc?.toFixed(2)} pc from Sol. Catalog position preserved; displayed radius exaggerated.` : "Place your fictional star in the shared canon galaxy. Coordinates use galactic map units."}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <label className="block text-xs">Star name<input aria-label="Star name" required maxLength={120} value={name} onChange={e => setName(e.target.value)} className={`${inputClass} mt-1`} /></label>

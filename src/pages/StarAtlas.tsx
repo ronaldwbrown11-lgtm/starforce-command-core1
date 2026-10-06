@@ -5,11 +5,9 @@ import { useFactionCanonSync } from "@/hooks/use-faction-canon-sync";
 import { SectorClaims } from "@/components/widgets/SectorClaims";
 
 // =========================================================================
-// Star Atlas — the NATIVE galaxy view, transferred from the Ultra Force
-// project (source + data imported from ultra-force-app-source and
-// ultra-force-db). Quadrants, sectors, star systems, star lore and warp
-// lanes render in a real-time 3D galaxy, straight from this project's own
-// Convex deployment — no iframe, no external host.
+// Star Atlas — the native galaxy view. Quadrants, sectors, star systems,
+// star lore and warp lanes render in a real-time 3D galaxy, straight from
+// this project's own Convex deployment — no iframe, no external host.
 //
 // Reads are shared (every visitor sees the canon chart); writes are
 // operator-gated server-side and hidden read-only for everyone else.
@@ -35,7 +33,12 @@ export default function StarAtlas() {
       <PageHero
         eyebrow="Star Atlas"
         title="Chart the Orion Triangle."
-        lead="The galaxy is only as known as the fleet makes it. Survey an empty region, propose a system, and put your name on a star the Bridge canonizes for everyone."
+        lead="The galaxy is only as known as the fleet makes it. Explore the shared canon atlas without signing in, then sign in only when you're ready to stake a faction claim."
+        secondary={{
+          label: "Claim a sector",
+          href: "#sector-claims",
+          variant: "primary",
+        }}
       />
 
       <section className="uf-section max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10">

@@ -112,9 +112,15 @@ export const voteDiscovery = mutation({
 export const listSectorClaims = query({
   args: {},
   handler: async (ctx) => {
-    const rows = await ctx.db.query("sectorClaims").collect();
+    const [rows, atlasSectors] = await Promise.all([
+      ctx.db.query("sectorClaims").collect(),
+      ctx.db.query("sectors").collect(),
+    ]);
+    const atlasSectorNames = new Set(atlasSectors.map((s) => s.name));
     return Promise.all(
-      rows.map(async (r) => {
+      rows
+        .filter((r) => atlasSectorNames.has(r.sector))
+        .map(async (r) => {
         const claimant = r.claimedBy ? await ctx.db.get(r.claimedBy) : null;
         return {
           sector: r.sector,
@@ -129,7 +135,7 @@ export const listSectorClaims = query({
               }
             : null,
         };
-      }),
+        }),
     );
   },
 });
@@ -152,6 +158,13 @@ export const claimSector = mutation({
     const faction = args.faction.trim().slice(0, 60);
     if (!sector) throw new Error("Pick a sector to claim.");
     if (!faction) throw new Error("Pick the faction making the claim.");
+    // Only allow claims against a real sector in the native Star Atlas; the
+    // legacy sectorMap/archive is a separate feature and is not claimable here.
+    const atlasSector = await ctx.db
+      .query("sectors")
+      .filter((q) => q.eq(q.field("name"), sector))
+      .first();
+    if (!atlasSector) throw new Error("That sector is not on the Star Atlas.");
 
     // Group ownership: when claiming for a group, the claimant must be a
     // member of that group, and the group name is stamped on the claim.
@@ -193,7 +206,7 @@ export const claimSector = mutation({
         verb: "claimed",
         targetType: "sector",
         targetId: sector,
-        url: "/maps",
+        url: "/map",
         summary: `${holderLabel} claimed ${sector}`, // trusted display labels
         createdAt: now,
       });

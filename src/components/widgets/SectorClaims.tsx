@@ -11,18 +11,20 @@ import { Flag, Users } from "lucide-react";
 /**
  * Sector claims — the faction territory layer of the cartography deck.
  *
- * Originally lived on the in-house Star Atlas page. When that 3D chart was
- * retired in favour of the standalone atlas app, the territory mechanic was
- * preserved here so members can still stake a public claim on a charted
- * sector, personally or on behalf of a fleet group. Claims are faction-level:
- * a later claim by a different faction seizes the sector from its holder.
+ * Embedded on the native Star Atlas page and also available on /maps. Claims
+ * apply to the imported atlas sectors, personally or on behalf of a fleet
+ * group. Viewing the chart and current holders is public; submitting a claim
+ * requires sign-in. Claims are faction-level: a later faction can seize a
+ * sector from its previous holder.
  *
- * Backend note: `discoveries.claimSector` files its activity-feed entry at
- * `/maps`, so this component is the canonical home for the feature.
+ * Backend note: `discoveries.claimSector` records the action in the activity
+ * feed and validates that the requested name belongs to the native atlas.
  */
 export function SectorClaims({ returnTo = "/maps" }: { returnTo?: string } = {}) {
   const { isAuthenticated } = useAuth();
-  const sectors = useQuery(api.content.sectors);
+  // Claims must target the sectors visible on the native Star Atlas, not the
+  // separate legacy lore-map archive.
+  const atlas = useQuery(api.galaxyMap.list);
   const claims = useQuery(api.discoveries.listSectorClaims);
   const claimSector = useMutation(api.discoveries.claimSector);
   const factions = useQuery(api.factions.listAll);
@@ -70,7 +72,7 @@ export function SectorClaims({ returnTo = "/maps" }: { returnTo?: string } = {})
   };
 
   return (
-    <section className="uf-section max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12">
+    <section id="sector-claims" className="uf-section max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12">
       <header className="mb-4">
         <span className="uf-eyebrow flex items-center gap-1.5">
           <Flag className="h-3.5 w-3.5" aria-hidden /> Sector claims
@@ -134,9 +136,15 @@ export function SectorClaims({ returnTo = "/maps" }: { returnTo?: string } = {})
                   onChange={(e) => setClaimSectorName(e.target.value)}
                   className="rounded-md border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.6)] px-3 py-2 text-sm text-uf-text focus:border-[rgba(0,229,255,0.5)] focus:outline-none"
                 >
-                  <option value="">Pick a sector…</option>
-                  {(sectors ?? []).map((s) => (
-                    <option key={s._id} value={s.name}>
+                  <option value="">
+                    {atlas === undefined
+                      ? "Loading atlas sectors…"
+                      : atlas.sectors.length === 0
+                        ? "No sectors on the atlas"
+                        : "Pick an atlas sector…"}
+                  </option>
+                  {atlas?.sectors.map((s) => (
+                    <option key={s.id} value={s.name}>
                       {s.name}
                     </option>
                   ))}
@@ -175,7 +183,11 @@ export function SectorClaims({ returnTo = "/maps" }: { returnTo?: string } = {})
                   Claiming for a group stamps the group name on the sector.
                 </span>
               </label>
-              <button type="submit" disabled={claiming} className="uf-btn uf-btn--primary">
+              <button
+                type="submit"
+                disabled={claiming || atlas === undefined || atlas.sectors.length === 0}
+                className="uf-btn uf-btn--primary"
+              >
                 {claiming ? "Planting flag…" : "Claim this sector"}
               </button>
             </form>
@@ -183,7 +195,7 @@ export function SectorClaims({ returnTo = "/maps" }: { returnTo?: string } = {})
             <p className="text-uf-muted text-sm mt-3">
               Sign in to stake a claim for your faction.{" "}
               <Link to={`/auth?returnTo=${encodeURIComponent(returnTo)}`} className="text-uf-cyan underline">
-                Sign in
+                Sign in to place your claim
               </Link>
             </p>
           )}
