@@ -57,7 +57,7 @@ export default function StarAtlas() {
           <Suspense
             fallback={
               <div
-                className="flex flex-col items-center justify-center gap-3 h-[78vh] min-h-[540px] bg-[rgba(5,8,22,0.85)]"
+                className="flex flex-col items-center justify-center gap-3 h-[90vh] min-h-[720px] bg-[rgba(5,8,22,0.85)]"
                 role="status"
                 aria-live="polite"
               >
@@ -72,7 +72,7 @@ export default function StarAtlas() {
             }
           >
             <AtlasViewport
-              className="h-[78vh] min-h-[540px]"
+              className="h-[90vh] min-h-[720px]"
               builderPlacementMode={builderPlacementMode}
               builderPreview={builderPreview}
               onBuilderPlace={(position, sectorId) => {

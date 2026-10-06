@@ -52,7 +52,7 @@ export function AtlasControlsBar() {
 
   return (
     <div className="shrink-0 border-t border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.65)]">
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-4 px-4 py-3.5">
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-3 px-4 py-3">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
