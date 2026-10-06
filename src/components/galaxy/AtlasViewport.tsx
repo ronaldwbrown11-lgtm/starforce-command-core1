@@ -4,6 +4,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAuth } from "@/hooks/use-auth";
 import { GalaxyCanvas, type MapEntityCrud } from "./GalaxyCanvas";
+import { AtlasControlsBar } from "./AtlasControlsBar";
 import type { SavedWarpLane, WarpCrud } from "./WarpLaneEditor";
 import type {
   MapQuadrant,
@@ -390,6 +391,9 @@ export default function AtlasViewport({
           onCancelBuilderPlacement={onCancelBuilderPlacement}
         />
       </div>
+
+      {/* Keyboard + mouse legend — rendered UNDER the 3D window, not over it. */}
+      <AtlasControlsBar />
     </div>
   );
 }
