@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -42,6 +50,12 @@ type AtlasPreview = {
   color: string;
 } | null;
 
+// Map window stretch limits. The default size is responsive (h-[90vh] plus the
+// page's min-h floor); dragging the bottom edge pins an explicit pixel height.
+const ATLAS_MIN_H = 480;
+const ATLAS_STEP_H = 48;
+const ATLAS_HEIGHT_KEY = "sf-atlas-window-height";
+
 type AtlasViewportProps = {
   className?: string;
   builderPlacementMode?: boolean;
@@ -65,6 +79,112 @@ export default function AtlasViewport({
     !!user &&
     (user.role === "admin" ||
       ATLAS_EDIT_CAPS.includes(String(user.opRole ?? "")));
+
+  // ---- Map window height ---------------------------------------------------
+  // The window is responsive by default (h-[90vh] + a min-h floor from the
+  // page), and its bottom edge is draggable so it can be stretched as far as
+  // the screen allows. A dragged height is remembered per browser; resetting
+  // (double-click) returns the window to its responsive size.
+  const [customHeight, setCustomHeight] = useState<number | null>(null);
+  const [stretching, setStretching] = useState(false);
+  const frameRef = useRef<HTMLDivElement>(null);
+
+  const applyHeight = useCallback((px: number) => {
+    // Never taller than the screen minus a little chrome, never a sliver.
+    const max = Math.max(ATLAS_MIN_H, window.innerHeight - 96);
+    const next = Math.min(Math.max(Math.round(px), ATLAS_MIN_H), max);
+    setCustomHeight(next);
+    try {
+      window.localStorage.setItem(ATLAS_HEIGHT_KEY, String(next));
+    } catch {
+      /* storage unavailable — the height still applies for this visit */
+    }
+  }, []);
+
+  const currentHeight = useCallback(
+    () =>
+      customHeight ??
+      Math.round(frameRef.current?.getBoundingClientRect().height ?? ATLAS_MIN_H),
+    [customHeight],
+  );
+
+  // Restore a previously dragged height.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(ATLAS_HEIGHT_KEY);
+      const n = raw ? Number.parseInt(raw, 10) : Number.NaN;
+      if (Number.isFinite(n) && n >= ATLAS_MIN_H) setCustomHeight(n);
+    } catch {
+      /* stay responsive */
+    }
+  }, []);
+
+  // Keep a dragged height inside the window when the browser is resized.
+  useEffect(() => {
+    if (customHeight === null) return;
+    const onResize = () => applyHeight(customHeight);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [customHeight, applyHeight]);
+
+  const resetHeight = useCallback(() => {
+    setCustomHeight(null);
+    try {
+      window.localStorage.removeItem(ATLAS_HEIGHT_KEY);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const onHandlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const el = e.currentTarget;
+    const frame = frameRef.current;
+    if (!frame) return;
+    const startY = e.clientY;
+    const startH = currentHeight();
+    const maxH = Math.max(ATLAS_MIN_H, window.innerHeight - 96);
+    let latest = startH;
+    let moved = false;
+    setStretching(true);
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      /* capture is a nicety, not a requirement */
+    }
+    // Resize the frame straight on the DOM node while the pointer moves. This
+    // deliberately avoids React state: the enclosing tree holds the whole 3D
+    // scene, and a state update per pointermove would re-render it on every
+    // drag frame. The canvas still resizes live (ResizeObserver), and the
+    // height is committed + persisted once, on release.
+    const onMove = (ev: PointerEvent) => {
+      const dy = ev.clientY - startY;
+      if (!moved && Math.abs(dy) < 3) return; // a click must not pin the window
+      moved = true;
+      latest = Math.min(Math.max(Math.round(startH + dy), ATLAS_MIN_H), maxH);
+      frame.style.height = `${latest}px`;
+      frame.style.minHeight = `${latest}px`;
+    };
+    const onDone = () => {
+      el.removeEventListener("pointermove", onMove);
+      el.removeEventListener("pointerup", onDone);
+      el.removeEventListener("pointercancel", onDone);
+      setStretching(false);
+      if (moved) applyHeight(latest);
+    };
+    el.addEventListener("pointermove", onMove);
+    el.addEventListener("pointerup", onDone);
+    el.addEventListener("pointercancel", onDone);
+  };
+
+  // Keyboard equivalent: focus the handle, then ArrowDown stretches the map
+  // and ArrowUp pulls the bottom edge back up.
+  const onHandleKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    e.preventDefault();
+    applyHeight(currentHeight() + (e.key === "ArrowDown" ? ATLAS_STEP_H : -ATLAS_STEP_H));
+  };
 
   // ---- Star lore ----------------------------------------------------------
   const savedLore = useQuery(api.starLore.list);
@@ -346,7 +466,15 @@ export default function AtlasViewport({
   }, [savedStars, builderPreview]);
 
   return (
-    <div className={`flex flex-col ${className}`}>
+    <div
+      ref={frameRef}
+      className={`flex flex-col ${className}`}
+      style={
+        customHeight === null
+          ? undefined
+          : { height: customHeight, minHeight: customHeight }
+      }
+    >
       {/* Console strip — live atlas stats */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 border-b border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.65)]">
         <span className="uf-eyebrow mr-auto">Star Atlas // galactic atlas</span>
@@ -389,6 +517,36 @@ export default function AtlasViewport({
           builderPlacementMode={builderPlacementMode}
           onBuilderPlace={onBuilderPlace}
           onCancelBuilderPlacement={onCancelBuilderPlacement}
+        />
+      </div>
+
+      {/* Stretch handle — drag the bottom edge down for a taller map window. */}
+      <div
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="Stretch the map window"
+        aria-valuemin={ATLAS_MIN_H}
+        aria-valuemax={Math.max(ATLAS_MIN_H, window.innerHeight - 96)}
+        aria-valuenow={customHeight ?? undefined}
+        tabIndex={0}
+        title="Drag down to stretch the map window · double-click to reset"
+        onPointerDown={onHandlePointerDown}
+        onKeyDown={onHandleKeyDown}
+        onDoubleClick={resetHeight}
+        className={`group flex h-4 shrink-0 cursor-ns-resize touch-none select-none items-center justify-center gap-2 border-t border-[color:var(--uf-border)] outline-none transition-colors hover:bg-[rgba(0,229,255,0.10)] focus-visible:bg-[rgba(0,229,255,0.10)] ${
+          stretching ? "bg-[rgba(0,229,255,0.14)]" : "bg-[rgba(5,8,22,0.65)]"
+        }`}
+      >
+        <span
+          aria-hidden
+          className="h-1 w-10 rounded-full bg-white/25 transition-colors group-hover:bg-[rgba(0,229,255,0.8)] group-focus-visible:bg-[rgba(0,229,255,0.8)]"
+        />
+        <span className="text-[10px] uppercase tracking-[0.14em] text-white/40 transition-colors group-hover:text-uf-cyan group-focus-visible:text-uf-cyan">
+          drag to stretch
+        </span>
+        <span
+          aria-hidden
+          className="h-1 w-10 rounded-full bg-white/25 transition-colors group-hover:bg-[rgba(0,229,255,0.8)] group-focus-visible:bg-[rgba(0,229,255,0.8)]"
         />
       </div>
 
