@@ -6,15 +6,19 @@ import { anchorShiftForCursor } from "./placement";
 // ---------------------------------------------------------------------------
 // CameraRig — all camera motion in one place:
 //  • scroll wheel + pinch-to-zoom (manual, works in iframes)
+//  • Shift+scroll slides the map up / down
 //  • right-drag up/down zoom (mouse movement)
-//  • ↑ / ↓ arrow-key continuous zoom
-//  • +/− button zoom via apiRef
+//  • ↑↓←→ (or W/A/S/D) slide the map up / down / left / right
+//  • + / − key and button zoom via apiRef
 //  • animated fly-to for star / quadrant / sector selection
 // ---------------------------------------------------------------------------
 
 export interface CameraApi {
   zoomIn: () => void;
   zoomOut: () => void;
+  /** Slide the map view up / down (on-screen ▲▼ buttons). */
+  panUp: () => void;
+  panDown: () => void;
   flyTo: (target: THREE.Vector3, distance: number) => void;
 }
 
@@ -66,8 +70,15 @@ export function CameraRig({
     duration: 1,
   });
 
-  // Arrow-key hold state (Shift+arrows are reserved for dot browsing)
-  const keysRef = useRef({ up: false, down: false, left: false, right: false });
+  // Held-key state (Shift+arrows are reserved for dot browsing).
+  const keysRef = useRef({
+    panUp: false,
+    panDown: false,
+    panLeft: false,
+    panRight: false,
+    zoomIn: false,
+    zoomOut: false,
+  });
 
   /** Move camera along the view axis so distance to target becomes
    *  distance * factor (factor < 1 zooms in). When a cursor is given, the
@@ -131,19 +142,21 @@ export function CameraRig({
     [camera, controls, gl, minDistance, maxDistance],
   );
 
-  /** Slide camera + target along the view's right axis (map panning). */
+  /** Slide camera + target along the view's right (x) or up (y) axis — so the
+   *  map itself moves up/down as well as left/right. */
   const pan = useCallback(
-    (direction: 1 | -1, dt: number) => {
+    (axis: "x" | "y", direction: 1 | -1, dt: number) => {
       if (!controls) return;
       const dist = camera.position.distanceTo(controls.target);
       const step = dist * 1.2 * dt * direction;
-      const right = new THREE.Vector3().setFromMatrixColumn(
+      // Column 0 = camera right, column 1 = camera up (screen-vertical).
+      const shift = new THREE.Vector3().setFromMatrixColumn(
         camera.matrixWorld,
-        0,
+        axis === "x" ? 0 : 1,
       );
-      right.multiplyScalar(step);
-      camera.position.add(right);
-      controls.target.add(right);
+      shift.multiplyScalar(step);
+      camera.position.add(shift);
+      controls.target.add(shift);
       controls.update();
     },
     [camera, controls],
@@ -151,6 +164,8 @@ export function CameraRig({
 
   const zoomIn = useCallback(() => dolly(1 / 1.25), [dolly]);
   const zoomOut = useCallback(() => dolly(1.25), [dolly]);
+  const panUp = useCallback(() => pan("y", 1, 0.1), [pan]);
+  const panDown = useCallback(() => pan("y", -1, 0.1), [pan]);
 
   const flyTo = useCallback(
     (target: THREE.Vector3, distance: number) => {
@@ -180,11 +195,11 @@ export function CameraRig({
 
   // Expose API to buttons outside the canvas
   useEffect(() => {
-    apiRef.current = { zoomIn, zoomOut, flyTo };
+    apiRef.current = { zoomIn, zoomOut, panUp, panDown, flyTo };
     return () => {
       apiRef.current = null;
     };
-  }, [apiRef, zoomIn, zoomOut, flyTo]);
+  }, [apiRef, zoomIn, zoomOut, panUp, panDown, flyTo]);
 
   // OrbitControls receives disabled zoom/right-button behavior declaratively.
 
@@ -194,6 +209,11 @@ export function CameraRig({
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      // Shift+wheel slides the map up / down (a page-style scroll).
+      if (e.shiftKey) {
+        pan("y", e.deltaY < 0 ? 1 : -1, Math.min(0.12, Math.abs(e.deltaY) * 0.003));
+        return;
+      }
       // Wheel up (deltaY < 0) zooms in — anchored at the cursor position.
       dolly(Math.exp(e.deltaY * 0.002), { cx: e.clientX, cy: e.clientY });
     };
@@ -273,9 +293,11 @@ export function CameraRig({
       el.removeEventListener("pointercancel", onPointerEnd, true);
       el.removeEventListener("contextmenu", onContextMenu);
     };
-  }, [gl, dolly]);
+  }, [gl, dolly, pan]);
 
-  // ↑ / ↓ arrow-key zoom (hold to keep zooming). Ignored while typing.
+  // Keyboard camera control (hold to keep moving). Arrow keys and W/A/S/D
+  // SLIDE the map (↑↓ up/down, ←→ left/right); +/− (and Page Up/Down) zoom.
+  // Ignored while typing, and Shift+arrows stay reserved for dot browsing.
   useEffect(() => {
     const isTyping = () => {
       const el = document.activeElement;
@@ -284,38 +306,50 @@ export function CameraRig({
       return el instanceof HTMLElement && el.isContentEditable;
     };
 
+    const keyMap: Record<string, keyof typeof keysRef.current> = {
+      ArrowUp: "panUp",
+      ArrowDown: "panDown",
+      ArrowLeft: "panLeft",
+      ArrowRight: "panRight",
+      w: "panUp",
+      W: "panUp",
+      s: "panDown",
+      S: "panDown",
+      a: "panLeft",
+      A: "panLeft",
+      d: "panRight",
+      D: "panRight",
+      "+": "zoomIn",
+      "=": "zoomIn",
+      "-": "zoomOut",
+      _: "zoomOut",
+      PageUp: "zoomIn",
+      PageDown: "zoomOut",
+    };
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (isTyping()) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.shiftKey) return; // Shift+arrows belong to dot browsing
-      if (e.key === "ArrowUp") {
-        keysRef.current.up = true;
-        flyRef.current.active = false;
-        e.preventDefault();
-      } else if (e.key === "ArrowDown") {
-        keysRef.current.down = true;
-        flyRef.current.active = false;
-        e.preventDefault();
-      } else if (e.key === "ArrowLeft") {
-        keysRef.current.left = true;
-        flyRef.current.active = false;
-        e.preventDefault();
-      } else if (e.key === "ArrowRight") {
-        keysRef.current.right = true;
-        flyRef.current.active = false;
-        e.preventDefault();
-      }
+      const key = keyMap[e.key];
+      if (!key) return;
+      keysRef.current[key] = true;
+      flyRef.current.active = false;
+      e.preventDefault();
     };
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.key === "ArrowUp") keysRef.current.up = false;
-      else if (e.key === "ArrowDown") keysRef.current.down = false;
-      else if (e.key === "ArrowLeft") keysRef.current.left = false;
-      else if (e.key === "ArrowRight") keysRef.current.right = false;
+      const key = keyMap[e.key];
+      if (key) keysRef.current[key] = false;
     };
     const onBlur = () => {
-      keysRef.current.up = false;
-      keysRef.current.down = false;
-      keysRef.current.left = false;
-      keysRef.current.right = false;
+      keysRef.current = {
+        panUp: false,
+        panDown: false,
+        panLeft: false,
+        panRight: false,
+        zoomIn: false,
+        zoomOut: false,
+      };
     };
 
     window.addEventListener("keydown", onKeyDown);
@@ -328,14 +362,16 @@ export function CameraRig({
     };
   }, []);
 
-  // Per-frame: arrow zoom/pan + fly-to interpolation
+  // Per-frame: keyboard slide/zoom + fly-to interpolation
   useFrame((_, delta) => {
     const keys = keysRef.current;
-    if (keys.up) dolly(Math.exp(-1.8 * delta));
-    if (keys.down) dolly(Math.exp(1.8 * delta));
-    // ← pans the view left, → pans it right (map-app convention).
-    if (keys.left) pan(-1, delta);
-    if (keys.right) pan(1, delta);
+    // ↑ moves the view up, ↓ down, ← left, → right (map-app convention).
+    if (keys.panUp) pan("y", 1, delta);
+    if (keys.panDown) pan("y", -1, delta);
+    if (keys.panLeft) pan("x", -1, delta);
+    if (keys.panRight) pan("x", 1, delta);
+    if (keys.zoomIn) dolly(Math.exp(-1.8 * delta));
+    if (keys.zoomOut) dolly(Math.exp(1.8 * delta));
 
     const fly = flyRef.current;
     if (fly.active && controls) {

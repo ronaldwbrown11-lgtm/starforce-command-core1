@@ -141,7 +141,9 @@ export default function AtlasViewport({
   useEffect(() => {
     if (!canEdit || !atlas || seededRef.current) return;
     seededRef.current = true;
-    if (atlas.quadrants.length === 0) {
+    // `seeded` ignores console-mirrored sectors, so a published console desk
+    // never suppresses the starter Milky Way atlas.
+    if (!atlas.seeded) {
       seedAtlas().catch((err) =>
         console.error("Failed to seed galaxy map:", err),
       );

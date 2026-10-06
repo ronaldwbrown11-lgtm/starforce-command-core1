@@ -50,6 +50,10 @@ export const list = query({
     ]);
 
     return {
+      // True once the canon starter atlas exists. Console-mirrored quadrants
+      // (sourceKey `console:`) don't count, so publishing console sectors
+      // never suppresses the Milky Way seed.
+      seeded: quadrants.some((q) => q.sourceKey === undefined),
       quadrants: quadrants
         .map((q) => ({
           id: q._id,
@@ -343,7 +347,11 @@ export const seed = mutation({
     const user = await ctx.db.get(userId);
     if (user?.mapSeeded) return;
 
-    const existing = await ctx.db.query("quadrants").first();
+    // Only a canon (non-mirror) quadrant means the starter atlas exists;
+    // console-mirrored sectors live in their own quadrant and must not stop
+    // the Milky Way from seeding.
+    const quadrants = await ctx.db.query("quadrants").collect();
+    const existing = quadrants.find((q) => q.sourceKey === undefined);
     if (existing) {
       // Map exists from before the flag — mark it and don't re-seed.
       await ctx.db.patch(userId, { mapSeeded: true });

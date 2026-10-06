@@ -8,7 +8,7 @@ import { starRadius, seededNoise, getGalaxyData } from "./galaxyData";
 import { REAL_STARS } from "./realStars";
 import { WarpLaneEditor, type SavedWarpLane, type WarpCrud, type LaneDraft } from "./WarpLaneEditor";
 import { Html, Line } from "@react-three/drei";
-import { Crosshair } from "lucide-react";
+import { Crosshair, Keyboard } from "lucide-react";
 import { StarLabels } from "./StarLabels";
 import type { StarData, StarCategory } from "./galaxyData";
 import { StarDialog } from "./StarDialog";
@@ -56,6 +56,18 @@ const DIST_GALAXY = 46;
 const DIST_QUADRANT = 34;
 const DIST_SECTOR = 15;
 const DIST_STAR = 0.002;
+
+/** On-canvas control legend (top-center). Mirrors CameraRig + OrbitControls:
+ *  the arrow/WASD keys and Shift+scroll/middle-drag slide the map, +− and
+ *  the wheel zoom it, left-drag orbits. */
+const CONTROL_HINTS: { keys: string[]; label: string }[] = [
+  { keys: ["↑", "↓", "←", "→"], label: "slide" },
+  { keys: ["W", "A", "S", "D"], label: "slide" },
+  { keys: ["+", "−"], label: "zoom" },
+  { keys: ["Shift", "scroll"], label: "slide" },
+  { keys: ["middle-drag"], label: "slide" },
+  { keys: ["left-drag"], label: "orbit" },
+];
 
 /** Camera + canvas size handed over by PickBridge for DOM-side star picking. */
 interface PickScene {
@@ -180,6 +192,8 @@ export function GalaxyCanvas({
     gates: true,
   });
   const [showLayers, setShowLayers] = useState(false);
+  // Collapsible on-canvas control legend (top-center strip).
+  const [showControls, setShowControls] = useState(true);
   // Live position of a sector / star system being dragged on the map.
   const [entityDrag, setEntityDrag] = useState<EntityDragOverride | null>(null);
   const [entityDragging, setEntityDragging] = useState(false);
@@ -1076,6 +1090,59 @@ export function GalaxyCanvas({
         </div>
       )}
 
+      {/* Control legend — the top-center strip is reserved for placement
+          prompts, so the legend yields to them. Hidden in compact embeds. */}
+      {!compact && !builderPlacementMode && !placeKind && !lanePick && (
+        <div className="absolute left-1/2 top-4 z-10 max-w-[calc(100%-2rem)] -translate-x-1/2">
+          {showControls ? (
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-full border border-white/10 bg-slate-950/80 px-3 py-1.5 backdrop-blur-sm">
+              <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/50">
+                <Keyboard className="h-3 w-3" aria-hidden />
+                Controls
+              </span>
+              {CONTROL_HINTS.map((hint) => (
+                <span
+                  key={`${hint.keys.join("+")}:${hint.label}`}
+                  className="flex items-center gap-1 whitespace-nowrap"
+                >
+                  <span className="flex items-center gap-0.5">
+                    {hint.keys.map((k) => (
+                      <kbd
+                        key={k}
+                        className="rounded border border-white/15 bg-white/[0.06] px-1 py-px font-mono text-[10px] text-white/70"
+                      >
+                        {k}
+                      </kbd>
+                    ))}
+                  </span>
+                  <span className="text-[10px] text-white/40">{hint.label}</span>
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={() => setShowControls(false)}
+                aria-label="Hide the atlas control legend"
+                title="Hide the control legend"
+                className="rounded-full border border-white/10 px-1.5 text-[10px] text-white/50 hover:border-white/20 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowControls(true)}
+              aria-label="Show the atlas control legend"
+              title="Show the control legend"
+              className="flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-950/80 px-2.5 py-1 text-[10px] text-white/60 backdrop-blur-sm hover:border-white/20 hover:text-white transition-colors"
+            >
+              <Keyboard className="h-3 w-3" aria-hidden />
+              Controls
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Placement hint */}
       {builderPlacementMode && (
         <div className="absolute left-1/2 top-4 z-30 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 rounded-lg border border-cyan-200/40 bg-slate-950/95 px-4 py-3 text-xs text-cyan-50 shadow-xl">
@@ -1115,14 +1182,33 @@ export function GalaxyCanvas({
         <button onClick={() => { setSelectedStar(null); focusGalaxy(); }} className="ml-3 mt-3 text-xs text-slate-400 underline">Back to galaxy</button>
       </div>}
 
-      {/* Zoom buttons */}
+      {/* Camera buttons — slide the map up/down, then zoom */}
       {!compact && (
         <div className="absolute bottom-4 right-4 z-10 flex flex-col gap-2">
           <button
             type="button"
+            onClick={() => cameraApiRef.current?.panUp()}
+            aria-label="Slide the map up"
+            title="Slide the map up (↑ arrow / W / middle-drag)"
+            className="w-9 h-9 flex items-center justify-center rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white/60 hover:text-white hover:bg-black/80 hover:border-white/20 hover:scale-105 active:scale-95 transition-all text-sm cursor-pointer select-none"
+          >
+            ▲
+          </button>
+          <button
+            type="button"
+            onClick={() => cameraApiRef.current?.panDown()}
+            aria-label="Slide the map down"
+            title="Slide the map down (↓ arrow / S / middle-drag)"
+            className="w-9 h-9 flex items-center justify-center rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white/60 hover:text-white hover:bg-black/80 hover:border-white/20 hover:scale-105 active:scale-95 transition-all text-sm cursor-pointer select-none"
+          >
+            ▼
+          </button>
+          <span aria-hidden className="h-1.5" />
+          <button
+            type="button"
             onClick={() => cameraApiRef.current?.zoomIn()}
             aria-label="Zoom in"
-            title="Zoom in (scroll wheel / pinch / ↑ arrow)"
+            title="Zoom in (scroll wheel / pinch / + key)"
             className="w-9 h-9 flex items-center justify-center rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white/60 hover:text-white hover:bg-black/80 hover:border-white/20 hover:scale-105 active:scale-95 transition-all text-sm font-light cursor-pointer select-none"
           >
             +
@@ -1131,7 +1217,7 @@ export function GalaxyCanvas({
             type="button"
             onClick={() => cameraApiRef.current?.zoomOut()}
             aria-label="Zoom out"
-            title="Zoom out (scroll wheel / pinch / ↓ arrow)"
+            title="Zoom out (scroll wheel / pinch / − key)"
             className="w-9 h-9 flex items-center justify-center rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white/60 hover:text-white hover:bg-black/80 hover:border-white/20 hover:scale-105 active:scale-95 transition-all text-sm font-light cursor-pointer select-none"
           >
             −

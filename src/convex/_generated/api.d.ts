@@ -65,6 +65,7 @@ import type * as rankAdmin from "../rankAdmin.js";
 import type * as rateLimit from "../rateLimit.js";
 import type * as search from "../search.js";
 import type * as sectorMap from "../sectorMap.js";
+import type * as sectorMapMirror from "../sectorMapMirror.js";
 import type * as seed from "../seed.js";
 import type * as seedHelpers from "../seedHelpers.js";
 import type * as serviceDossiers from "../serviceDossiers.js";
@@ -157,6 +158,7 @@ declare const fullApi: ApiFromModules<{
   rateLimit: typeof rateLimit;
   search: typeof search;
   sectorMap: typeof sectorMap;
+  sectorMapMirror: typeof sectorMapMirror;
   seed: typeof seed;
   seedHelpers: typeof seedHelpers;
   serviceDossiers: typeof serviceDossiers;

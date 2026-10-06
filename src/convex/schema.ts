@@ -2034,6 +2034,10 @@ const schema = defineSchema(
       toId: v.string(),
       // When set, `color` overrides the automatic level-based lane color.
       customColor: v.optional(v.boolean()),
+      // Set when the row is mirrored from the Operator Console Sector Map
+      // (see sectorMapMirror.ts) — the mirror only ever owns rows whose
+      // sourceKey starts with `console:`.
+      sourceKey: v.optional(v.string()),
     }).index("by_user", ["userId"]),
 
     // Galactic atlas hierarchy: quadrant -> sector -> star system
@@ -2043,6 +2047,8 @@ const schema = defineSchema(
       description: v.optional(v.string()),
       color: v.string(),
       order: v.number(),
+      // See galaxyLanes.sourceKey — present on console-mirrored quadrants.
+      sourceKey: v.optional(v.string()),
     }).index("by_user", ["userId"]),
 
     sectors: defineTable({
@@ -2057,6 +2063,8 @@ const schema = defineSchema(
       posX: v.optional(v.number()),
       posY: v.optional(v.number()),
       posZ: v.optional(v.number()),
+      // See galaxyLanes.sourceKey — present on console-mirrored sectors.
+      sourceKey: v.optional(v.string()),
     })
       .index("by_user", ["userId"])
       .index("by_quadrant", ["userId", "quadrantId"]),
@@ -2075,6 +2083,8 @@ const schema = defineSchema(
       posZ: v.optional(v.number()),
       // Set when the system was seeded for a star in the star lore list.
       starId: v.optional(v.string()),
+      // See galaxyLanes.sourceKey — present on console-mirrored systems.
+      sourceKey: v.optional(v.string()),
     })
       .index("by_user", ["userId"])
       .index("by_sector", ["userId", "sectorId"]),

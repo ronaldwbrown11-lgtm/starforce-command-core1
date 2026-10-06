@@ -3,6 +3,16 @@ import { v } from "convex/values";
 import { requireOperatorCapability } from "./admin";
 import { internalMutation } from "./_generated/server";
 import { LOCAL_GROUP } from "./atlasSeed";
+import {
+  mirrorBoundary,
+  mirrorGate,
+  mirrorSector,
+  mirrorSystem,
+  unmirrorBoundary,
+  unmirrorGate,
+  unmirrorSector,
+  unmirrorSystem,
+} from "./sectorMapMirror";
 
 // =========================================================================
 // Sector Map — the SVG galaxy map on the Lore page. Each row is a named
@@ -67,6 +77,7 @@ export const upsertSector = mutation({
     const now = Date.now();
 
     let id: string;
+    let sectorSlug: string;
     if (args.id) {
       const existing = await ctx.db.get(args.id);
       if (!existing) throw new Error("Sector not found.");
@@ -79,6 +90,7 @@ export const upsertSector = mutation({
         ...(args.r != null ? { r: Math.max(20, Math.round(args.r)) } : {}),
       });
       id = args.id;
+      sectorSlug = existing.slug;
     } else {
       const slug = slugify(args.slug?.trim() || name);
       if (!slug) throw new Error("Sector slug cannot be empty.");
@@ -96,7 +108,18 @@ export const upsertSector = mutation({
         y: args.y,
         ...(args.r != null ? { r: Math.max(20, Math.round(args.r)) } : {}),
       });
+      sectorSlug = slug;
     }
+
+    // Mirror into the native Star Atlas so the new /map app shows this
+    // sector (and it becomes claimable/chartable there).
+    await mirrorSector(ctx, me, {
+      name,
+      slug: sectorSlug,
+      description,
+      x: args.x,
+      y: args.y,
+    });
 
     await ctx.db.insert("auditLog", {
       actorId: me,
@@ -127,9 +150,14 @@ export const deleteSector = mutation({
     for (const b of boundaries) {
       if (b.sectorSlugs.includes(existing.slug)) {
         await ctx.db.delete(b._id);
+        // The whole boundary is gone, so drop its entire mirrored ring —
+        // otherwise the segments between the surviving vertices linger as a
+        // ghost partial polygon on the native atlas.
+        await unmirrorBoundary(ctx, b._id);
       }
     }
     await ctx.db.delete(args.id);
+    await unmirrorSector(ctx, existing.slug);
     await ctx.db.insert("auditLog", {
       actorId: me,
       action: "sectorMap.delete",
@@ -210,6 +238,9 @@ export const upsertGate = mutation({
       });
     }
 
+    // Mirror the corridor into the native atlas as a warp lane.
+    await mirrorGate(ctx, me, { id, label, fromSlug: lo, toSlug: hi });
+
     await ctx.db.insert("auditLog", {
       actorId: me,
       action: args.id ? "warpGate.edit" : "warpGate.create",
@@ -268,6 +299,9 @@ export const upsertBoundary = mutation({
     } else {
       id = await ctx.db.insert("mapBoundaries", { name, sectorSlugs: slugs, note, createdAt: now });
     }
+    // Mirror the boundary as a closed ring of native lanes.
+    await mirrorBoundary(ctx, me, { id, name, sectorSlugs: slugs });
+
     await ctx.db.insert("auditLog", {
       actorId: me,
       action: args.id ? "mapBoundary.edit" : "mapBoundary.create",
@@ -286,6 +320,7 @@ export const deleteBoundary = mutation({
     const existing = await ctx.db.get(args.id);
     if (!existing) throw new Error("Boundary not found.");
     await ctx.db.delete(args.id);
+    await unmirrorBoundary(ctx, args.id);
     await ctx.db.insert("auditLog", {
       actorId: me,
       action: "mapBoundary.delete",
@@ -304,6 +339,7 @@ export const deleteGate = mutation({
     const existing = await ctx.db.get(args.id);
     if (!existing) throw new Error("Gate not found.");
     await ctx.db.delete(args.id);
+    await unmirrorGate(ctx, args.id);
     await ctx.db.insert("auditLog", {
       actorId: me,
       action: "warpGate.delete",
@@ -351,6 +387,27 @@ export const moveSector = mutation({
         await ctx.db.patch(c._id, { x: c.x + dx, y: c.y + dy });
       }
     }
+    // Keep the native mirror's positions in step with the moved sector.
+    await mirrorSector(ctx, me, {
+      name: existing.name,
+      slug: existing.slug,
+      description: existing.description,
+      x: args.x,
+      y: args.y,
+    });
+    for (const c of children) {
+      if (c.kind === "system" && c.sectorSlug === existing.slug) {
+        await mirrorSystem(ctx, me, {
+          name: c.name,
+          slug: c.slug,
+          description: c.description,
+          x: c.x + dx,
+          y: c.y + dy,
+          distLy: c.distLy,
+          sectorSlug: existing.slug,
+        });
+      }
+    }
     await ctx.db.insert("auditLog", {
       actorId: me,
       action: "sectorMap.move",
@@ -394,17 +451,30 @@ export const addSystem = mutation({
     if (existing) throw new Error(`A sector or system named "${name}" already exists.`);
 
     const now = Date.now();
+    const description = (args.description ?? "").trim().slice(0, 280) || undefined;
+    const distLy = args.distLy != null ? Math.max(0, args.distLy) : undefined;
     const id = await ctx.db.insert("sectorMap", {
       name,
       slug,
-      description: (args.description ?? "").trim().slice(0, 280) || undefined,
+      description,
       x: args.x,
       y: args.y,
       kind: "system",
       sectorSlug: parent.slug,
       // Real-star seeding: optional catalog star, rendered as its own system
       // node with the catalog distance in its tooltip.
-      distLy: args.distLy != null ? Math.max(0, args.distLy) : undefined,
+      distLy,
+    });
+
+    // Mirror the system into the native atlas so it charts in the new app.
+    await mirrorSystem(ctx, me, {
+      name,
+      slug,
+      description,
+      x: args.x,
+      y: args.y,
+      distLy,
+      sectorSlug: parent.slug,
     });
 
     await ctx.db.insert("auditLog", {
@@ -489,6 +559,7 @@ export const deleteSystem = mutation({
       throw new Error("That row is a sector, not a system — use deleteSector.");
     }
     await ctx.db.delete(args.id);
+    await unmirrorSystem(ctx, existing.slug);
     await ctx.db.insert("auditLog", {
       actorId: me,
       action: "sectorMap.deleteSystem",
@@ -497,5 +568,84 @@ export const deleteSystem = mutation({
       createdAt: Date.now(),
     });
     return { ok: true };
+  },
+});
+
+/**
+ * Reconcile the whole console desk into the native Star Atlas. Idempotent:
+ * every console sector / system / gate / boundary is mirrored (upserted by
+ * its `console:` sourceKey), so running it repeatedly never duplicates. Used
+ * to publish rows authored before the write-through mirror existed, and to
+ * push real-catalog star seeds (which write sectorMap rows directly).
+ */
+export const syncAllToAtlas = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { me } = await requireOperatorCapability(ctx, SECTOR_CAPS);
+    const rows = await ctx.db.query("sectorMap").collect();
+    const sectors = rows.filter((r) => r.kind !== "system");
+    const systems = rows.filter((r) => r.kind === "system" && r.sectorSlug);
+    const gates = await ctx.db.query("warpGates").collect();
+    const boundaries = await ctx.db.query("mapBoundaries").collect();
+
+    let sectorCount = 0;
+    for (const row of sectors) {
+      await mirrorSector(ctx, me, {
+        name: row.name,
+        slug: row.slug,
+        description: row.description,
+        x: row.x,
+        y: row.y,
+      });
+      sectorCount++;
+    }
+    let systemCount = 0;
+    for (const row of systems) {
+      const id = await mirrorSystem(ctx, me, {
+        name: row.name,
+        slug: row.slug,
+        description: row.description,
+        x: row.x,
+        y: row.y,
+        distLy: row.distLy,
+        sectorSlug: row.sectorSlug!,
+      });
+      if (id) systemCount++;
+    }
+    let laneCount = 0;
+    for (const gate of gates) {
+      const id = await mirrorGate(ctx, me, {
+        id: gate._id,
+        label: gate.label,
+        fromSlug: gate.fromSlug,
+        toSlug: gate.toSlug,
+      });
+      if (id) laneCount++;
+    }
+    for (const boundary of boundaries) {
+      laneCount += await mirrorBoundary(ctx, me, {
+        id: boundary._id,
+        name: boundary.name,
+        sectorSlugs: boundary.sectorSlugs,
+      });
+    }
+
+    await ctx.db.insert("auditLog", {
+      actorId: me,
+      action: "sectorMap.syncAtlas",
+      target: "atlas:mirror",
+      meta: JSON.stringify({
+        sectors: sectorCount,
+        systems: systemCount,
+        lanes: laneCount,
+      }),
+      createdAt: Date.now(),
+    });
+    return {
+      ok: true,
+      sectors: sectorCount,
+      systems: systemCount,
+      lanes: laneCount,
+    };
   },
 });

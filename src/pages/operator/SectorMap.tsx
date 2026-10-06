@@ -82,6 +82,11 @@ export default function OperatorSectorMap() {
   // Sirius, 47 Ursae Majoris, …) into a sector's local chart. Idempotent per
   // sector: already-charted names are skipped, never duplicated.
   const seedLocalGroup = useMutation(api.atlasSeed.seedLocalGroup);
+  // Write-through mirror: every console write already lands in the native
+  // Star Atlas, but this reconciles pre-existing rows and seeded catalog
+  // stars that were authored before the mirror existed.
+  const syncAtlas = useMutation(api.sectorMap.syncAllToAtlas);
+  const [syncBusy, setSyncBusy] = useState(false);
   const [seedBusySlug, setSeedBusySlug] = useState<string | null>(null);
   const [editing, setEditing] = useState<FormState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -157,11 +162,28 @@ export default function OperatorSectorMap() {
     }
   }
 
+  async function publishAtlas() {
+    if (syncBusy) return;
+    setSyncBusy(true);
+    try {
+      const res = await syncAtlas({});
+      toast.success(
+        `Star Atlas updated — ${res.sectors} sectors, ${res.systems} systems, ${res.lanes} lanes.`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Publish failed.");
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+
   async function onSeed(s: SectorDoc) {
     if (seedBusySlug) return;
     setSeedBusySlug(s.slug);
     try {
       const res = await seedLocalGroup({ sectorSlug: s.slug, includeSol: true, includeUma: true });
+      // Seeded catalog stars write sectorMap directly — mirror them too.
+      await syncAtlas({}).catch(() => {});
       if (res.added > 0) {
         toast.success(
           `${s.name} seeded — ${res.added} catalog stars placed${res.skipped ? `, ${res.skipped} already charted` : ""}.`,
@@ -253,18 +275,35 @@ export default function OperatorSectorMap() {
 
   return (
     <OperatorShell>
-      <header className="mb-6">
-        <span className="uf-eyebrow">Operator Console</span>
-        <h1 className="text-3xl font-semibold mt-2 flex items-center gap-3">
-          <MapIcon className="h-6 w-6 text-uf-cyan" aria-hidden />
-          Sector Map
-        </h1>
-        <p className="text-uf-muted text-sm mt-1 max-w-2xl">
-          Manage the sectors rendered on the public galaxy map. Each sector
-          has an (x, y) position in the map's SVG viewBox and a lore count
-          for node sizing. Clicking a node filters the lore archive by the
-          sector's name, which matches the entries' sector field.
-        </p>
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <span className="uf-eyebrow">Operator Console</span>
+          <h1 className="text-3xl font-semibold mt-2 flex items-center gap-3">
+            <MapIcon className="h-6 w-6 text-uf-cyan" aria-hidden />
+            Sector Map
+          </h1>
+          <p className="text-uf-muted text-sm mt-1 max-w-2xl">
+            Manage the sectors rendered on the public galaxy map. Each sector
+            has an (x, y) position in the map's SVG viewBox and a lore count
+            for node sizing. Clicking a node filters the lore archive by the
+            sector's name, which matches the entries' sector field.
+          </p>
+          <p className="text-uf-muted text-sm mt-2 max-w-2xl">
+            Everything here mirrors into the native Star Atlas on /map —
+            sectors, systems, gates and boundaries all chart there, and
+            mirrored sectors can be claimed. Use “Publish to Star Atlas” to
+            push existing rows and seeded stars.
+          </p>
+        </div>
+        <NeonButton
+          variant="primary"
+          onClick={publishAtlas}
+          loading={syncBusy}
+          disabled={syncBusy}
+        >
+          <Rocket className="h-4 w-4" aria-hidden />
+          Publish to Star Atlas
+        </NeonButton>
       </header>
 
       <section aria-label="Live map preview" className="mb-6">
