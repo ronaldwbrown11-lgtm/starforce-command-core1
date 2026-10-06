@@ -14,13 +14,14 @@ import { usePageMeta } from "@/hooks/use-page-meta";
 // open the built-in page instead of embedding a dead external URL.
 const BUILT_IN_DATABASES: Record<
   string,
-  { label: string; href: string; description: string }
+  { label: string; href: string; description: string; action?: { label: string; href: string } }
 > = {
   "lore-db-sector-atlas": {
     label: "Sector Atlas",
     href: "/map",
     description:
-      "Sector charts are built into the site's Star Atlas. Open the interactive 3D map to browse charted space.",
+      "Charted space is rendered live by the site's own Star Atlas — a native 3D galaxy, never an embed. Browse the canon chart, then author new systems in the Galaxy Lore Builder.",
+    action: { label: "Open the Galaxy Lore Builder", href: "/map#builder" },
   },
   "lore-db-signal-intel": {
     label: "Signal Vault",
@@ -184,9 +185,19 @@ export default function LoreDatabase() {
                 <p className="text-uf-muted text-xs">{builtIn.description}</p>
               </div>
             </div>
-            <NeonButton variant="primary" onClick={() => window.location.href = builtIn.href}>
-              Open the {builtIn.label} →
-            </NeonButton>
+            <div className="flex flex-wrap items-center gap-3">
+              <NeonButton variant="primary" onClick={() => window.location.href = builtIn.href}>
+                Open the {builtIn.label} →
+              </NeonButton>
+              {builtIn.action ? (
+                <Link to={builtIn.action.href}>
+                  <NeonButton variant="gold">
+                    <PenLine className="h-4 w-4" aria-hidden />
+                    {builtIn.action.label}
+                  </NeonButton>
+                </Link>
+              ) : null}
+            </div>
           </HoloCard>
         ) : embedUrl ? (
           <HoloCard className="p-0 overflow-hidden">

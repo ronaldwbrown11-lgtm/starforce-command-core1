@@ -35,11 +35,30 @@ const ATLAS_EDIT_CAPS = [
   "lore_archivist",
 ];
 
+type AtlasPreview = {
+  position: [number, number, number];
+  name: string;
+  color: string;
+} | null;
+
 type AtlasViewportProps = {
   className?: string;
+  builderPlacementMode?: boolean;
+  builderPreview?: AtlasPreview;
+  onBuilderPlace?: (position: [number, number, number], sectorId: string) => void;
+  onCancelBuilderPlacement?: () => void;
 };
 
-export default function AtlasViewport({ className = "" }: AtlasViewportProps) {
+export type AtlasBuilderPin = { position: [number, number, number]; sectorId: string };
+export type AtlasBuilderPreview = { position: [number, number, number]; name: string; color: string };
+
+export default function AtlasViewport({
+  className = "",
+  builderPlacementMode = false,
+  builderPreview = null,
+  onBuilderPlace,
+  onCancelBuilderPlacement,
+}: AtlasViewportProps) {
   const { user } = useAuth();
   const canEdit =
     !!user &&
@@ -305,6 +324,23 @@ export default function AtlasViewport({ className = "" }: AtlasViewportProps) {
 
   const customNameCount = Object.keys(starNames).length;
   const loreCount = Object.keys(loreNotes).length;
+  const chartStars = useMemo(() => {
+    if (!builderPreview) return savedStars;
+    return [
+      ...savedStars,
+      {
+        id: "builder-preview",
+        name: builderPreview.name || "Proposed discovery",
+        defaultName: builderPreview.name || "Proposed discovery",
+        position: builderPreview.position,
+        color: builderPreview.color,
+        size: 1.4,
+        temperature: 5800,
+        magnitude: 1,
+        isCustom: true,
+      },
+    ];
+  }, [savedStars, builderPreview]);
 
   return (
     <div className={`flex flex-col ${className}`}>
@@ -333,7 +369,7 @@ export default function AtlasViewport({ className = "" }: AtlasViewportProps) {
       {/* The galaxy */}
       <div className="relative flex-1 min-h-0">
         <GalaxyCanvas
-          prominentStars={savedStars}
+          prominentStars={chartStars}
           warpLanes={warpLanes}
           warpCrud={warpCrud}
           starNames={starNames}
@@ -347,6 +383,9 @@ export default function AtlasViewport({ className = "" }: AtlasViewportProps) {
           warpGates={gateNodes}
           mapCrud={mapCrud}
           readOnly={!canEdit}
+          builderPlacementMode={builderPlacementMode}
+          onBuilderPlace={onBuilderPlace}
+          onCancelBuilderPlacement={onCancelBuilderPlacement}
         />
       </div>
     </div>

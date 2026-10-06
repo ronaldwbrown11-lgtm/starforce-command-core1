@@ -8,6 +8,7 @@ import { starRadius, seededNoise, getGalaxyData } from "./galaxyData";
 import { REAL_STARS } from "./realStars";
 import { WarpLaneEditor, type SavedWarpLane, type WarpCrud, type LaneDraft } from "./WarpLaneEditor";
 import { Html, Line } from "@react-three/drei";
+import { Crosshair } from "lucide-react";
 import { StarLabels } from "./StarLabels";
 import type { StarData, StarCategory } from "./galaxyData";
 import { StarDialog } from "./StarDialog";
@@ -101,6 +102,10 @@ interface GalaxyCanvasProps {
   compact?: boolean;
   /** View-only mode — creation tools, editors and save paths hidden. */
   readOnly?: boolean;
+  /** Member lore pin placement uses the same native 3D galaxy click plane. */
+  builderPlacementMode?: boolean;
+  onBuilderPlace?: (position: [number, number, number], sectorId: string) => void;
+  onCancelBuilderPlacement?: () => void;
 }
 
 export function GalaxyCanvas({
@@ -119,6 +124,9 @@ export function GalaxyCanvas({
   mapCrud,
   compact = false,
   readOnly = false,
+  builderPlacementMode = false,
+  onBuilderPlace,
+  onCancelBuilderPlacement,
 }: GalaxyCanvasProps) {
   const [selectedStar, setSelectedStar] = useState<StarData | null>(null);
   const [highlightedStar, setHighlightedStar] = useState<StarData | null>(null);
@@ -304,7 +312,7 @@ export function GalaxyCanvas({
   const handleFieldPick = useCallback(
     (e: MouseEvent) => {
       const scene = pickSceneRef.current;
-      if (!scene || compact || placeKind || lanePick || entityDragging) return;
+      if (!scene || compact || placeKind || lanePick || entityDragging || builderPlacementMode) return;
       const dot =
         keyDot ??
         pickGalaxyDot(
@@ -318,7 +326,7 @@ export function GalaxyCanvas({
       if (!dot) return;
       openDotStar(dot);
     },
-    [compact, placeKind, lanePick, entityDragging, keyDot, openDotStar],
+    [compact, placeKind, lanePick, entityDragging, builderPlacementMode, keyDot, openDotStar],
   );
 
   // Pointer activity hands control back from arrow-key navigation.
@@ -518,6 +526,7 @@ export function GalaxyCanvas({
   // ---- Star selection: stop spin + auto-zoom to the star's system ----
   const handleStarClick = useCallback(
     (star: StarData) => {
+      if (builderPlacementMode) return;
       if (lanePick) {
         completeLanePick(star.id); // pick this star as the gate endpoint
         return;
@@ -528,7 +537,27 @@ export function GalaxyCanvas({
       setShowDialog(true); // click a star → create / edit its lore directly
       navigateTo(star.position, Math.max(DIST_STAR, starRadius(star) * 5));
     },
-    [navigateTo, placeKind, lanePick, completeLanePick],
+    [navigateTo, placeKind, lanePick, completeLanePick, builderPlacementMode],
+  );
+
+  const handleBuilderPlace = useCallback(
+    (position: [number, number, number]) => {
+      const angle = Math.atan2(position[2], position[0]);
+      const radius = Math.hypot(position[0], position[2]);
+      const contains = (sector: (typeof placedSectors)[number]) => {
+        const span = sector.wedge.end - sector.wedge.start;
+        const relative = (((angle - sector.wedge.start) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+        return relative < span && radius >= sector.inner && radius <= sector.outer;
+      };
+      const sector = placedSectors.find(contains) ?? [...placedSectors].sort((a, b) => {
+        const da = Math.hypot(a.center[0] - position[0], a.center[2] - position[2]);
+        const db = Math.hypot(b.center[0] - position[0], b.center[2] - position[2]);
+        return da - db;
+      })[0];
+      setRotating(false);
+      onBuilderPlace?.(position, sector?.id ?? "");
+    },
+    [placedSectors, onBuilderPlace],
   );
 
   const handleHoverStar = useCallback(
@@ -759,8 +788,9 @@ export function GalaxyCanvas({
 
         {/* Sol is now a true-position catalog star, not an oversized marker. */}
 
-        {/* Clickable prominent stars */}
-        {stars.length > 0 && (
+        {/* Clickable prominent stars — part of the Systems layer, so the
+            layer toggle hides both the stars and their labels. */}
+        {layers.systems && stars.length > 0 && (
           <ClickableStars
             stars={stars}
             onStarClick={handleStarClick}
@@ -772,7 +802,7 @@ export function GalaxyCanvas({
         )}
 
         {/* Persistent labels on known stars (rotates with the galaxy) */}
-        {stars.length > 0 && (
+        {layers.systems && stars.length > 0 && (
           <StarLabels
             stars={stars}
             starNames={starNames}
@@ -796,7 +826,7 @@ export function GalaxyCanvas({
               systems={placedSystems}
               stars={stars}
               spinRef={spinRef}
-              dragEnabled={placeKind === null && lanePick === null && !readOnly}
+              dragEnabled={placeKind === null && lanePick === null && !readOnly && !builderPlacementMode}
               layers={{ sectors: layers.sectors, systems: layers.systems }}
               onDragStateChange={handleEntityDragState}
               onDragEntity={setEntityDrag}
@@ -806,21 +836,21 @@ export function GalaxyCanvas({
                   completeLanePick(id);
                   return;
                 }
-                if (!placeKind) focusQuadrant(id);
+                if (!placeKind && !builderPlacementMode) focusQuadrant(id);
               }}
               onFocusSector={(id) => {
                 if (lanePick) {
                   completeLanePick(id);
                   return;
                 }
-                if (!placeKind) focusSector(id);
+                if (!placeKind && !builderPlacementMode) focusSector(id);
               }}
               onSelectSystem={(sys) => {
                 if (lanePick) {
                   completeLanePick(sys.id);
                   return;
                 }
-                if (placeKind) return;
+                if (placeKind || builderPlacementMode) return;
                 selectSystem(sys);
                 openMapDialog("system", sys.id);
               }}
@@ -909,6 +939,8 @@ export function GalaxyCanvas({
 
         {/* Click-to-place: maps map clicks to galaxy-local positions */}
         <PlacementClicker active={placeKind !== null} spinRef={spinRef} onPlace={handlePlace} />
+        {/* Lore pin placement shares the real galaxy camera, projection and click plane. */}
+        <PlacementClicker active={builderPlacementMode} spinRef={spinRef} onPlace={handleBuilderPlace} />
         {/* Gate picking: map clicks snap to the nearest warp endpoint */}
         <PlacementClicker active={lanePick !== null} spinRef={spinRef} onPlace={handleLanePickPlace} />
       </Canvas>
@@ -918,7 +950,7 @@ export function GalaxyCanvas({
       </div>
 
       {/* Top-right controls (plain DOM, reliable in iframes and new tabs) */}
-      {!compact && (
+      {!compact && !builderPlacementMode && (
         <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
           {!readOnly && (<>
           <button
@@ -1045,6 +1077,13 @@ export function GalaxyCanvas({
       )}
 
       {/* Placement hint */}
+      {builderPlacementMode && (
+        <div className="absolute left-1/2 top-4 z-30 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 rounded-lg border border-cyan-200/40 bg-slate-950/95 px-4 py-3 text-xs text-cyan-50 shadow-xl">
+          <Crosshair className="h-4 w-4 shrink-0 text-cyan-200" aria-hidden />
+          <span>Pin your lore discovery on the 3D chart. Drag to orbit; click the galactic plane to set coordinates.</span>
+          <button type="button" onClick={onCancelBuilderPlacement} className="shrink-0 rounded border border-white/20 px-2 py-1 text-white/70 hover:text-white">Cancel</button>
+        </div>
+      )}
       {placeKind && (
         <div className="absolute left-1/2 top-4 z-20 -translate-x-1/2 whitespace-nowrap rounded-lg border border-amber-300/40 bg-slate-950/90 px-4 py-2 text-xs text-amber-100">
           {placeKind === "star"
@@ -1101,7 +1140,7 @@ export function GalaxyCanvas({
       )}
 
       {/* Quadrant navigator overlay (hidden while the editor panel is open) */}
-      {!compact && !showMapEditor && (
+      {!compact && !showMapEditor && !builderPlacementMode && (
         <MapOverlay
           focus={focus}
           quadrants={mapQuadrants}
@@ -1116,7 +1155,7 @@ export function GalaxyCanvas({
       )}
 
       {/* CRUD editor for quadrants / sectors / star systems */}
-      {!compact && showMapEditor && (
+      {!compact && showMapEditor && !builderPlacementMode && (
         <MapEditor
           quadrants={mapQuadrants}
           sectors={mapSectors}

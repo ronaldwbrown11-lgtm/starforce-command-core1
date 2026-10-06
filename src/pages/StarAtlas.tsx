@@ -1,8 +1,9 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useState } from "react";
 import { SiteShell, PageHero, GlassPanel } from "@/components/uf";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useFactionCanonSync } from "@/hooks/use-faction-canon-sync";
 import { SectorClaims } from "@/components/widgets/SectorClaims";
+import { GalaxyLoreBuilder } from "@/components/galaxy/GalaxyLoreBuilder";
 
 // =========================================================================
 // Star Atlas — the native galaxy view. Quadrants, sectors, star systems,
@@ -17,8 +18,13 @@ import { SectorClaims } from "@/components/widgets/SectorClaims";
 
 // three.js-based galaxy view — code-split so the landing page stays light.
 const AtlasViewport = lazy(() => import("@/components/galaxy/AtlasViewport"));
+type BuilderPin = { position: [number, number, number]; sectorId: string } | null;
+type BuilderPreview = { position: [number, number, number]; name: string; color: string } | null;
 
 export default function StarAtlas() {
+  const [builderPlacementMode, setBuilderPlacementMode] = useState(false);
+  const [builderPin, setBuilderPin] = useState<BuilderPin>(null);
+  const [builderPreview, setBuilderPreview] = useState<BuilderPreview>(null);
   // One-shot public bootstrap: heals pre-canon faction rows on first visit.
   useFactionCanonSync();
 
@@ -33,12 +39,9 @@ export default function StarAtlas() {
       <PageHero
         eyebrow="Star Atlas"
         title="Chart the Orion Triangle."
-        lead="The galaxy is only as known as the fleet makes it. Explore the shared canon atlas without signing in, then sign in only when you're ready to stake a faction claim."
-        secondary={{
-          label: "Claim a sector",
-          href: "#sector-claims",
-          variant: "primary",
-        }}
+        lead="Explore every quadrant, sector, and star system in the shared canon. Chart new discoveries, write the field lore, and send your proposal straight into the fleet's canon review queue."
+        primary={{ label: "Open the Lore Builder", href: "#builder", variant: "primary" }}
+        secondary={{ label: "Claim a sector", href: "#sector-claims", variant: "ghost" }}
       />
 
       <section className="uf-section max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10">
@@ -68,7 +71,16 @@ export default function StarAtlas() {
               </div>
             }
           >
-            <AtlasViewport className="h-[78vh] min-h-[540px]" />
+            <AtlasViewport
+              className="h-[78vh] min-h-[540px]"
+              builderPlacementMode={builderPlacementMode}
+              builderPreview={builderPreview}
+              onBuilderPlace={(position, sectorId) => {
+                setBuilderPin({ position, sectorId });
+                setBuilderPlacementMode(false);
+              }}
+              onCancelBuilderPlacement={() => setBuilderPlacementMode(false)}
+            />
           </Suspense>
 
           <div className="relative flex flex-wrap items-center gap-2 px-4 py-2.5 border-t border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.65)]">
@@ -79,6 +91,13 @@ export default function StarAtlas() {
           </div>
         </GlassPanel>
       </section>
+
+      <GalaxyLoreBuilder
+        placedPin={builderPin}
+        onRequestPlacement={() => setBuilderPlacementMode(true)}
+        onCancelPlacement={() => setBuilderPlacementMode(false)}
+        onDraftChange={setBuilderPreview}
+      />
 
       <SectorClaims returnTo="/map" />
     </SiteShell>

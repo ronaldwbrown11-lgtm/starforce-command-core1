@@ -344,6 +344,7 @@ export default function CreatorHub() {
 
   const { isAuthenticated, user } = useAuth();
   const proposals = useQuery(api.creatorHub.myProposals, {});
+  const galaxyProposals = useQuery(api.galaxyBuilder.myProposals, {});
   const recentLore = useQuery(api.content.listLore, { limit: 40 });
   const groups = useQuery(api.groups.listGroups, {});
   const forums = useQuery(api.groups.trendingForumThreads, { limit: 4 });
@@ -654,9 +655,9 @@ export default function CreatorHub() {
               <Library className="h-4 w-4" aria-hidden /> Upload a canon bible
             </NeonButton>
           </Link>
-          <Link to="/map">
+          <Link to="/map#builder">
             <NeonButton variant="ghost">
-              <MapIcon className="h-4 w-4" aria-hidden /> Chart a system
+              <MapIcon className="h-4 w-4" aria-hidden /> Open Galaxy Lore Builder
             </NeonButton>
           </Link>
           <Link to="/missions">
@@ -779,6 +780,30 @@ export default function CreatorHub() {
             />
           </div>
         ) : null}
+      </section>
+
+      <GoldDivider glyph="02A" />
+
+      <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12" id="galaxy-builder">
+        <DeckHeader
+          index="02A"
+          label="Galaxy Lore Builder"
+          title="Chart the galaxy. Put your discovery into canon."
+          lead="The Star Atlas is a native creator workshop: place a new system, write its lore, and follow its operator review from your Creator Hub flight log. Missions and contests can open this workshop with their context already attached."
+        />
+        <div className="grid items-center gap-5 rounded-xl border border-cyan-300/20 bg-[radial-gradient(ellipse_at_top_left,rgba(0,229,255,0.1),transparent_55%),rgba(5,11,23,0.8)] p-6 md:grid-cols-[1fr_auto] md:p-8">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusPill variant="cyan">Native Star Atlas</StatusPill>
+              <StatusPill variant="gold">Operator-reviewed canon</StatusPill>
+            </div>
+            <h3 className="mt-3 text-2xl font-semibold">From field coordinates to a living star dossier.</h3>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-uf-muted">Build inside the shared atlas, attach your discovery to a mission or contest, and see the review result beside your other Creator Hub proposals. Approved systems appear on the galaxy map with their star lore.</p>
+          </div>
+          <Link to="/map#builder">
+            <NeonButton variant="primary"><MapIcon className="mr-2 h-4 w-4" aria-hidden />Launch Galaxy Lore Builder</NeonButton>
+          </Link>
+        </div>
       </section>
 
       <GoldDivider glyph="03" />
@@ -1213,6 +1238,69 @@ export default function CreatorHub() {
                 {pendingProposals.length} awaiting review · {approvedProposals.length} published
               </p>
             ) : null}
+          </HoloCard>
+        </div>
+
+        {/* Chart-discovery tracker — output of the Galaxy Lore Builder */}
+        <div className="mt-4">
+          <HoloCard accent="cyan">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <MapIcon className="h-5 w-5" aria-hidden />
+                <h3 className="text-lg font-semibold">Your chart discoveries</h3>
+              </div>
+              <Link to="/map#builder" className="text-uf-cyan text-sm">
+                Open the Galaxy Lore Builder
+              </Link>
+            </div>
+            {isAuthenticated ? (
+              galaxyProposals === undefined ? (
+                <div className="uf-skeleton mt-3" style={{ height: 60 }} />
+              ) : galaxyProposals.length === 0 ? (
+                <p className="text-uf-muted text-sm mt-3">
+                  No chart discoveries filed yet — pin a system on the Star Atlas to begin.
+                </p>
+              ) : (
+                <ul className="mt-3 flex flex-col gap-2 list-none p-0 m-0">
+                  {galaxyProposals.slice(0, 8).map((g) => (
+                    <li
+                      key={g._id}
+                      className="flex items-center justify-between gap-3 border border-[color:var(--uf-border)] rounded-md px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold truncate">{g.name}</p>
+                        <p className="text-uf-muted text-xs">
+                          {g.source === "mission"
+                            ? "Mission chart"
+                            : g.source === "contest"
+                              ? "Contest chart"
+                              : "Free charting"}
+                          {g.contextTitle ? ` · ${g.contextTitle}` : ""}
+                        </p>
+                      </div>
+                      <StatusPill
+                        variant={
+                          g.status === "approved"
+                            ? "success"
+                            : g.status === "rejected"
+                              ? "danger"
+                              : "warning"
+                        }
+                      >
+                        {g.status}
+                      </StatusPill>
+                    </li>
+                  ))}
+                </ul>
+              )
+            ) : (
+              <p className="text-uf-muted text-sm mt-3">
+                <Link to="/auth" className="text-uf-cyan">
+                  Sign in
+                </Link>{" "}
+                to track chart discoveries.
+              </p>
+            )}
           </HoloCard>
         </div>
       </section>

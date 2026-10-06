@@ -465,6 +465,7 @@ const schema = defineSchema(
       authorId: v.id("users"),
       // Mission a report-in belongs to (optional for legacy/general reports).
       missionId: v.optional(v.id("missions")),
+      galaxyProposalId: v.optional(v.id("galaxyProposals")),
       xpAwarded: v.optional(v.number()),
       // Operator review workflow: pending / approved / rejected / flagged.
       reviewStatus: v.optional(v.string()),
@@ -1349,6 +1350,7 @@ const schema = defineSchema(
       authorId: v.id("users"),
       title: v.string(),
       body: v.string(),
+      galaxyProposalId: v.optional(v.id("galaxyProposals")),
       status: v.string(), // submitted / finalist / winner
       awardedAt: v.optional(v.number()),
       // Set when the winner's Wings claim token was auto-issued (wingsPrize).
@@ -1792,7 +1794,7 @@ const schema = defineSchema(
       authorId: v.id("users"),
       source: v.string(), // mission | contest | freehand
       status: v.string(), // proposed | approved | rejected
-      payload: v.string(), // JSON: { name, sectorKey, x, y, z, faction, tags, notes }
+      payload: v.string(), // Legacy JSON submissions from the retired atlas app
       operatorNotes: v.optional(v.string()),
       reviewedAt: v.optional(v.number()),
       reviewerId: v.optional(v.id("users")),
@@ -1801,6 +1803,36 @@ const schema = defineSchema(
     })
       .index("by_status", ["status"])
       .index("by_author", ["authorId"]),
+
+    // Member-authored chart discoveries for the native Galaxy Lore Builder.
+    // Approval publishes both a star-system marker and its star-lore record
+    // into the same shared canon used by /map.
+    galaxyProposals: defineTable({
+      authorId: v.id("users"),
+      sectorId: v.id("sectors"),
+      name: v.string(),
+      description: v.string(),
+      color: v.string(),
+      posX: v.number(),
+      posY: v.number(),
+      posZ: v.number(),
+      category: v.optional(v.string()),
+      faction: v.optional(v.string()),
+      source: v.string(), // freehand | mission | contest
+      contextSlug: v.optional(v.string()),
+      contextTitle: v.optional(v.string()),
+      status: v.string(), // pending | approved | rejected
+      reviewNote: v.optional(v.string()),
+      reviewedAt: v.optional(v.number()),
+      reviewerId: v.optional(v.id("users")),
+      publishedSystemId: v.optional(v.id("starSystems")),
+      xpAwardedAt: v.optional(v.number()),
+      createdAt: v.number(),
+    })
+      .index("by_status", ["status"])
+      .index("by_author", ["authorId"])
+      .index("by_context", ["source", "contextSlug"]),
+
 
     // =======================================================================
     // Capped Star Force Progression System (Deliverable A data model)

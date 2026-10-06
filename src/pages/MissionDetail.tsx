@@ -62,6 +62,10 @@ export default function MissionDetail() {
     mission ? { missionId: mission._id } : "skip",
   );
   const fileReport = useMutation(api.missions.fileMissionReport);
+  const chartDiscoveries = useQuery(
+    api.galaxyBuilder.byContext,
+    slug ? { source: "mission", contextSlug: slug } : "skip",
+  );
 
   usePageMeta({
     title: mission ? `${mission.title} — Mission — Star Force Base 1198` : "Mission — Star Force Base 1198",
@@ -255,6 +259,45 @@ export default function MissionDetail() {
             ) : null}
 
             <ReactionBar targetId={mission._id} targetType="report" />
+
+            <HoloCard accent="cyan">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <MapPin className="h-5 w-5" style={{ color: "var(--uf-cyan)" }} aria-hidden />
+                Chart a mission discovery
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--uf-text-muted)" }}>
+                Log a newly surveyed system on the shared Star Atlas with its coordinates, faction, and field lore. Approved discoveries join the canon chart.
+              </p>
+              <Link
+                to={`/map?source=mission&context=${encodeURIComponent(slug)}&title=${encodeURIComponent(mission.title)}&location=${encodeURIComponent(mission.location ?? "") }#builder`}
+                className="uf-btn uf-btn--primary mt-4 inline-flex"
+              >
+                <MapPin className="mr-2 h-4 w-4" aria-hidden /> Open mission charting
+              </Link>
+              {chartDiscoveries && chartDiscoveries.length > 0 ? (
+                <ul className="mt-4 flex flex-col gap-2 list-none p-0 m-0">
+                  {chartDiscoveries.slice(0, 5).map((d) => (
+                    <li
+                      key={d._id}
+                      className="flex items-center justify-between gap-2 rounded-md border border-[color:var(--uf-border)] px-3 py-2"
+                    >
+                      <span className="text-sm truncate">{d.name}</span>
+                      <StatusPill
+                        variant={
+                          d.status === "approved"
+                            ? "success"
+                            : d.status === "rejected"
+                              ? "danger"
+                              : "warning"
+                        }
+                      >
+                        {d.status}
+                      </StatusPill>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </HoloCard>
           </div>
 
           {/* Report-in panel */}

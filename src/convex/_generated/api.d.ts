@@ -45,6 +45,7 @@ import type * as events from "../events.js";
 import type * as factions from "../factions.js";
 import type * as faqs from "../faqs.js";
 import type * as fleetRecords from "../fleetRecords.js";
+import type * as galaxyBuilder from "../galaxyBuilder.js";
 import type * as galaxyGates from "../galaxyGates.js";
 import type * as galaxyLanes from "../galaxyLanes.js";
 import type * as galaxyMap from "../galaxyMap.js";
@@ -136,6 +137,7 @@ declare const fullApi: ApiFromModules<{
   factions: typeof factions;
   faqs: typeof faqs;
   fleetRecords: typeof fleetRecords;
+  galaxyBuilder: typeof galaxyBuilder;
   galaxyGates: typeof galaxyGates;
   galaxyLanes: typeof galaxyLanes;
   galaxyMap: typeof galaxyMap;

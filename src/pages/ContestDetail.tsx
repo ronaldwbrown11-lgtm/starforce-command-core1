@@ -14,7 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCountdown, countdownLabel } from "@/hooks/use-countdown";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { toast } from "sonner";
-import { CalendarDays, Coins, Crown, PenLine, ScrollText, Trophy, Zap } from "lucide-react";
+import { CalendarDays, Coins, Crown, MapPinned, PenLine, ScrollText, Trophy, Zap } from "lucide-react";
 
 const MAX_TITLE = 120;
 const MAX_BODY = 6000;
@@ -38,6 +38,10 @@ export default function ContestDetail() {
   );
   const submit = useMutation(api.contests.submitContestEntry);
   const removeEntry = useMutation(api.contests.deleteMyContestEntry);
+  const chartDiscoveries = useQuery(
+    api.galaxyBuilder.byContext,
+    slug ? { source: "contest", contextSlug: slug } : "skip",
+  );
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -202,6 +206,38 @@ export default function ContestDetail() {
                     <p className="text-uf-muted text-sm leading-relaxed mt-3 whitespace-pre-wrap">{contest.rules}</p>
                   </HoloCard>
                 )}
+
+                <HoloCard accent="cyan">
+                  <span className="uf-eyebrow">Atlas contest pathway</span>
+                  <h2 className="mt-2 text-xl font-semibold">Chart a discovery for this brief</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-uf-muted">Build a star-system dossier in the native Galaxy Lore Builder. It will keep this contest attached as its source while it moves through canon review.</p>
+                  <Link to={`/map?source=contest&context=${encodeURIComponent(contest.slug)}&title=${encodeURIComponent(contest.title)}#builder`} className="uf-btn uf-btn--primary mt-4 inline-flex">
+                    <MapPinned className="mr-2 h-4 w-4" aria-hidden /> Build a contest discovery
+                  </Link>
+                  {chartDiscoveries && chartDiscoveries.length > 0 ? (
+                    <ul className="mt-4 flex flex-col gap-2 list-none p-0 m-0">
+                      {chartDiscoveries.slice(0, 5).map((d) => (
+                        <li
+                          key={d._id}
+                          className="flex items-center justify-between gap-2 rounded-md border border-[color:var(--uf-border)] px-3 py-2"
+                        >
+                          <span className="text-sm truncate">{d.name}</span>
+                          <StatusPill
+                            variant={
+                              d.status === "approved"
+                                ? "success"
+                                : d.status === "rejected"
+                                  ? "danger"
+                                  : "warning"
+                            }
+                          >
+                            {d.status}
+                          </StatusPill>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </HoloCard>
 
                 <section aria-labelledby="entries-title">
                   <header className="mb-4">

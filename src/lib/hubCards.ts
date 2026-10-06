@@ -114,8 +114,15 @@ export const DEFAULT_HUB_CARDS: HubCardSeed[] = [
     tag: "Reference",
   },
   {
+    label: "Galaxy Lore Builder",
+    description: "Chart new systems, write their star lore, and track canon review in the native Star Atlas.",
+    href: "/map#builder",
+    icon: "globe",
+    tag: "Create",
+  },
+  {
     label: "Star Atlas",
-    description: "The interactive 3D galaxy.",
+    description: "Explore the shared interactive 3D galaxy.",
     href: "/map",
     icon: "globe",
     tag: "Reference",
