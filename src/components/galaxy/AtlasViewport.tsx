@@ -56,6 +56,14 @@ const ATLAS_MIN_H = 480;
 const ATLAS_STEP_H = 48;
 const ATLAS_HEIGHT_KEY = "sf-atlas-window-height";
 
+// The draggable ceiling deliberately runs past the viewport: the map window is
+// allowed to grow taller than the screen (the page simply scrolls), so pulling
+// the bottom edge down always has room to move. Clamping to `innerHeight` left
+// the default `90vh` window already at its maximum on most screens, which is
+// why the handle felt locked.
+const atlasMaxHeight = () =>
+  Math.max(ATLAS_MIN_H + ATLAS_STEP_H, Math.round(window.innerHeight * 1.6));
+
 type AtlasViewportProps = {
   className?: string;
   builderPlacementMode?: boolean;
@@ -90,9 +98,9 @@ export default function AtlasViewport({
   const frameRef = useRef<HTMLDivElement>(null);
 
   const applyHeight = useCallback((px: number) => {
-    // Never taller than the screen minus a little chrome, never a sliver.
-    const max = Math.max(ATLAS_MIN_H, window.innerHeight - 96);
-    const next = Math.min(Math.max(Math.round(px), ATLAS_MIN_H), max);
+    // Never a sliver; the ceiling is generous so the window can grow past the
+    // viewport instead of snapping back and feeling locked.
+    const next = Math.min(Math.max(Math.round(px), ATLAS_MIN_H), atlasMaxHeight());
     setCustomHeight(next);
     try {
       window.localStorage.setItem(ATLAS_HEIGHT_KEY, String(next));
@@ -113,7 +121,8 @@ export default function AtlasViewport({
     try {
       const raw = window.localStorage.getItem(ATLAS_HEIGHT_KEY);
       const n = raw ? Number.parseInt(raw, 10) : Number.NaN;
-      if (Number.isFinite(n) && n >= ATLAS_MIN_H) setCustomHeight(n);
+      if (Number.isFinite(n) && n >= ATLAS_MIN_H)
+        setCustomHeight(Math.min(n, atlasMaxHeight()));
     } catch {
       /* stay responsive */
     }
@@ -144,7 +153,7 @@ export default function AtlasViewport({
     if (!frame) return;
     const startY = e.clientY;
     const startH = currentHeight();
-    const maxH = Math.max(ATLAS_MIN_H, window.innerHeight - 96);
+    const maxH = atlasMaxHeight();
     let latest = startH;
     let moved = false;
     setStretching(true);
@@ -166,16 +175,19 @@ export default function AtlasViewport({
       frame.style.height = `${latest}px`;
       frame.style.minHeight = `${latest}px`;
     };
+    // Listen on the window, not the handle: the handle is only a few pixels
+    // tall, so if pointer capture is dropped (or the pointer drifts off it) the
+    // drag would die instantly. Window-level listeners keep tracking instead.
     const onDone = () => {
-      el.removeEventListener("pointermove", onMove);
-      el.removeEventListener("pointerup", onDone);
-      el.removeEventListener("pointercancel", onDone);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onDone);
+      window.removeEventListener("pointercancel", onDone);
       setStretching(false);
       if (moved) applyHeight(latest);
     };
-    el.addEventListener("pointermove", onMove);
-    el.addEventListener("pointerup", onDone);
-    el.addEventListener("pointercancel", onDone);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onDone);
+    window.addEventListener("pointercancel", onDone);
   };
 
   // Keyboard equivalent: focus the handle, then ArrowDown stretches the map
@@ -526,14 +538,14 @@ export default function AtlasViewport({
         aria-orientation="horizontal"
         aria-label="Stretch the map window"
         aria-valuemin={ATLAS_MIN_H}
-        aria-valuemax={Math.max(ATLAS_MIN_H, window.innerHeight - 96)}
+        aria-valuemax={atlasMaxHeight()}
         aria-valuenow={customHeight ?? undefined}
         tabIndex={0}
         title="Drag down to stretch the map window · double-click to reset"
         onPointerDown={onHandlePointerDown}
         onKeyDown={onHandleKeyDown}
         onDoubleClick={resetHeight}
-        className={`group flex h-4 shrink-0 cursor-ns-resize touch-none select-none items-center justify-center gap-2 border-t border-[color:var(--uf-border)] outline-none transition-colors hover:bg-[rgba(0,229,255,0.10)] focus-visible:bg-[rgba(0,229,255,0.10)] ${
+        className={`group flex h-5 shrink-0 cursor-ns-resize touch-none select-none items-center justify-center gap-2 border-t border-[color:var(--uf-border)] outline-none transition-colors hover:bg-[rgba(0,229,255,0.10)] focus-visible:bg-[rgba(0,229,255,0.10)] ${
           stretching ? "bg-[rgba(0,229,255,0.14)]" : "bg-[rgba(5,8,22,0.65)]"
         }`}
       >
