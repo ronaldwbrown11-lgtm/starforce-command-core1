@@ -40,6 +40,54 @@ so it isn't forgotten.
 
 ---
 
+## Creator Collaboration (approved, not built)
+
+**Idea:** Creators build together instead of alone — shared drafts on top of
+the Creator Hub.
+
+**Model:**
+
+- A draft carries a **collaborator list** (`collabInvites`: draftId + userId +
+  role + invitedAt). Only the draft owner can invite or remove people.
+- Collaborators with the `editor` role can change the draft body and its lore
+  attachments. The **owner stays the single accountable author** — one
+  submission, one approval record, so canon review never has two claimants.
+- Revision history is append-only per draft, so operators can see who changed
+  what before anything enters the review queue.
+- Review handoff reuses the existing canon queue and audit log — no new
+  moderation surface.
+
+**Status (2026-10-06):** Listed on Operator Console → The Road Ahead under
+"Community & collaboration", and on the Operator Dashboard under "On the
+drawing board". Not started.
+
+---
+
+## Live Chat (approved, not built)
+
+**Idea:** Real-time comms on the base, moderatable with the tools the console
+already has.
+
+**Model:**
+
+- Channels first (`chatChannels`: slug + scope `fleet` | `sector` | `group` +
+  tier gate), so rooms map onto structures that already exist rather than a
+  new social graph.
+- Messages live in a capped `chatMessages` table with a retention window, so
+  the table cannot grow without bound.
+- Realtime is free: Convex queries give the live subscription — no separate
+  socket server or third-party chat provider.
+- Moderation routes through the existing `moderationItems` queue and audit
+  log; operator delete is a soft delete with the reason recorded.
+- Presence is best-effort (heartbeat on a `chatPresence` row), never
+  authoritative.
+
+**Status (2026-10-06):** Listed on Operator Console → The Road Ahead under
+"Community & collaboration", and on the Operator Dashboard under "On the
+drawing board". Not started.
+
+---
+
 ## Backlog — smaller wins
 
 - **Ship-name uniqueness check** — see prerequisite above; can ship

@@ -84,6 +84,28 @@ export default function OperatorDashboard() {
               Phase 2 prerequisite and can land on its own anytime.
             </p>
           </HoloCard>
+          <HoloCard className="!p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-uf-cyan">Creator Collaboration</p>
+              <StatusPill variant="info">Planned</StatusPill>
+            </div>
+            <p className="text-uf-muted text-xs mt-1.5">
+              Invite co-authors onto a draft and share live editing on stories
+              and lore, while one accountable owner keeps the canon-review
+              handoff. Sits on top of the Creator Hub. Spec: ROADMAP.md.
+            </p>
+          </HoloCard>
+          <HoloCard className="!p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-uf-cyan">Live Chat</p>
+              <StatusPill variant="info">Planned</StatusPill>
+            </div>
+            <p className="text-uf-muted text-xs mt-1.5">
+              Real-time channels for the fleet, sectors, and groups, routed
+              through the existing moderation queue and audit trail. Convex
+              subscriptions carry the realtime side. Spec: ROADMAP.md.
+            </p>
+          </HoloCard>
         </div>
       </section>
       <section className="uf-grid uf-grid--2 mb-6">

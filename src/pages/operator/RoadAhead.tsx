@@ -5,6 +5,8 @@ import {
   Download,
   FileDown,
   GaugeCircle,
+  Handshake,
+  MessagesSquare,
   ShoppingBag,
   Sparkles,
   Users,
@@ -155,6 +157,30 @@ const STATUS_META: Record<
   ops: { label: "Ops", variant: "default" },
 };
 
+/**
+ * Community & collaboration — the two features on the road next that sit
+ * outside the credit economy. Specs live in ROADMAP.md; the PDF mirrors the
+ * economy plan (Phases 1–5) only, so these are tracked here and in the repo.
+ */
+const COMMUNITY_ROAD = [
+  {
+    title: "Creator Collaboration",
+    icon: Handshake,
+    summary:
+      "Let creators build together instead of alone: invite co-authors onto a draft, share live editing on stories and lore, and keep one accountable owner for the canon-review handoff.",
+    detail:
+      "Ships on top of the Creator Hub — an invite list per draft first, then a shared revision history so the review queue can see who changed what.",
+  },
+  {
+    title: "Live Chat",
+    icon: MessagesSquare,
+    summary:
+      "Real-time comms on the base: presence-aware channels for the fleet, sectors, and groups, running through the moderation queue and audit trail the console already has.",
+    detail:
+      "Fleet-wide channel first, then per-sector and per-group rooms behind the existing tier gates. Convex subscriptions carry the realtime side — no extra socket server.",
+  },
+];
+
 const STANDING_RULES = [
   "Credits buy cosmetics, boosts, and access — never moderation influence, story approval, or rank.",
   "Every grant and spend is audit-logged.",
@@ -257,6 +283,41 @@ export default function OperatorRoadAhead() {
         ))}
       </ol>
 
+      <section aria-label="Community and collaboration roadmap" className="mb-8">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-lg font-semibold tracking-tight">
+            Community &amp; collaboration
+          </h2>
+          <span className="text-xs uppercase tracking-[0.16em] text-uf-muted">
+            On the road next
+          </span>
+        </div>
+        <p className="mb-4 text-sm leading-6 text-uf-muted">
+          Two features that sit outside the credit economy but shape how the
+          base works together.
+        </p>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {COMMUNITY_ROAD.map(({ title, icon: Icon, summary, detail }) => (
+            <HoloCard key={title}>
+              <div className="flex items-start gap-3">
+                <Icon
+                  className="mt-0.5 h-5 w-5 shrink-0 text-[var(--uf-cyan)]"
+                  aria-hidden
+                />
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-base font-semibold">{title}</h3>
+                    <StatusPill variant={STATUS_META.next.variant}>Next</StatusPill>
+                  </div>
+                  <p className="mt-1.5 text-sm leading-6">{summary}</p>
+                  <p className="mt-2 text-xs leading-5 text-uf-muted">{detail}</p>
+                </div>
+              </div>
+            </HoloCard>
+          ))}
+        </div>
+      </section>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <HoloCard>
           <h2 className="text-base font-semibold">Economy hygiene — standing policy</h2>
@@ -295,8 +356,10 @@ export default function OperatorRoadAhead() {
 
       <p className="mt-6 flex items-center gap-2 text-xs text-uf-muted">
         <FileDown className="h-3.5 w-3.5" aria-hidden />
-        This page and <code className="font-mono">/downloads/starforce-growth-plan.pdf</code>{" "}
-        are generated from the same plan — update both together.
+        Phases 1–5 and <code className="font-mono">/downloads/starforce-growth-plan.pdf</code>{" "}
+        are generated from the same plan — update both together. The community
+        &amp; collaboration items above are tracked in{" "}
+        <code className="font-mono">ROADMAP.md</code>.
       </p>
     </OperatorShell>
   );
