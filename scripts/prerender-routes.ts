@@ -21,11 +21,25 @@
  */
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
+// Review content + schema builders are imported from the app's single source
+// of truth so the JSON-LD emitted here can never drift from what /reviews
+// actually renders (Google requires markup to match visible content).
+import { reviewsGraphJsonLd } from "../src/lib/reviews";
 
 const SITE = "https://starforcebase1198.com";
 const distDir = path.resolve("dist");
 
-type Route = { path: string; title: string; description: string };
+type Route = {
+  path: string;
+  title: string;
+  description: string;
+  /**
+   * Structured data baked into the static HTML. `usePageMeta` only injects
+   * JSON-LD after JavaScript runs, and most AI crawlers never run it — so the
+   * crawler-facing copy has to be written here, at build time.
+   */
+  jsonLd?: Record<string, unknown>;
+};
 
 // Public, indexable routes only. Member/private pages (/account, /messages,
 // /operator/*, /auth) are excluded by robots.txt or noindex by design.
@@ -102,6 +116,13 @@ const ROUTES: Route[] = [
     title: "Blog — Star Force Base 1198",
     description:
       "Dispatches, dev logs, and announcements from Star Force Command.",
+  },
+  {
+    path: "/reviews",
+    title: "The Signal Log — What Cadets and Creators Say | Star Force Base 1198",
+    description:
+      "Transmissions from Star Force operators: what the canon review, the Star Atlas, and life on the base are actually like — plus how to add yours.",
+    jsonLd: reviewsGraphJsonLd(),
   },
   {
     path: "/faqs",
@@ -244,6 +265,29 @@ for (const route of ROUTES) {
     /<meta\s+name="twitter:description"\s+content="[\s\S]*?"\s*\/?>/,
     `<meta name="twitter:description" content="${route.description}" />`,
   );
+
+  // Structured data — injected immediately before </head> so it lands in the
+  // static document crawlers fetch, not in a post-hydration side effect.
+  if (route.jsonLd) {
+    const before = (html.match(/application\/ld\+json/g) ?? []).length;
+    const payload = JSON.stringify(
+      { "@context": "https://schema.org", ...route.jsonLd },
+      null,
+      2,
+    );
+    const tag = `  <script type="application/ld+json">\n${payload}\n  </script>\n`;
+    const headEnd = html.lastIndexOf("</head>");
+    if (headEnd === -1) {
+      throw new Error(`[prerender] no </head> found for ${route.path}`);
+    }
+    html = html.slice(0, headEnd) + tag + html.slice(headEnd);
+    const after = (html.match(/application\/ld\+json/g) ?? []).length;
+    if (after !== before + 1) {
+      throw new Error(
+        `[prerender] JSON-LD injection failed for ${route.path} `,
+      );
+    }
+  }
 
   // Fail loudly if a replacement ever misses — a silently-unmodified copy of
   // the shell would ship exactly the duplicate-content problem we're fixing.

@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import {
   ArrowRight,
-  Award,
   BookOpen,
   ChevronRight,
   Compass,
@@ -24,11 +23,11 @@ import {
   HoloCard,
   StatusPill,
   SectionHeader,
-  StatCard,
 } from "@/components/uf";
 import { ScrollReveal, ScaleReveal } from "@/hooks/use-scroll-reveal";
 import { LiveCommandStrip } from "@/components/widgets/LiveCommandStrip";
 import { VOICE } from "@/lib/voice";
+import { REVIEWS, reviewAggregate } from "@/lib/reviews";
 import goldPlateUrl from "@/assets/gold-plate-texture.jpg";
 
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -762,6 +761,60 @@ export default function Home() {
             </Link>
           </CommunityColumn>
         </div>
+      </section>
+
+      {/* =========== SIGNAL LOG — fleet testimonials ============ */}
+      <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+        <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <span className="uf-eyebrow">The Signal Log</span>
+            <h2 className="text-3xl font-semibold mt-2">
+              What the fleet says after the debrief.
+            </h2>
+            <p className="text-uf-muted text-sm mt-2 max-w-2xl">
+              Transmissions from operators with a name, a call sign, and time
+              on the base. Published as sent, with permission.
+            </p>
+          </div>
+          <Link to="/reviews">
+            <NeonButton variant="ghost">Open the full log</NeonButton>
+          </Link>
+        </header>
+        <div className="uf-grid uf-grid--3">
+          {REVIEWS.slice(0, 3).map((review, idx) => (
+            <ScaleReveal key={review.id} staggerIndex={idx}>
+              <HoloCard className="flex h-full flex-col">
+                <span
+                  className="text-xs text-[var(--uf-gold)]"
+                  aria-label={`${review.rating} out of 5 stars`}
+                >
+                  {"★".repeat(review.rating)}
+                  {"☆".repeat(Math.max(0, 5 - review.rating))}
+                </span>
+                <h3 className="mt-3 text-base font-semibold leading-6">
+                  {review.headline}
+                </h3>
+                <p className="text-uf-muted mt-2 flex-1 text-sm leading-6">
+                  {review.quote}
+                </p>
+                <footer className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="text-sm font-semibold">{review.name}</span>
+                  <span className="text-xs text-[var(--uf-cyan)]">
+                    “{review.callSign}”
+                  </span>
+                  <span className="text-xs text-uf-muted">{review.role}</span>
+                </footer>
+              </HoloCard>
+            </ScaleReveal>
+          ))}
+        </div>
+        <p className="text-uf-muted mt-4 text-xs">
+          {reviewAggregate().ratingValue.toFixed(1)} / 5 across{" "}
+          {reviewAggregate().reviewCount} logged transmissions ·{" "}
+          <Link to="/reviews" className="text-[var(--uf-cyan)]">
+            read every one
+          </Link>
+        </p>
       </section>
 
       {/* =========== CONTINUE — slim CTA strip ============ */}

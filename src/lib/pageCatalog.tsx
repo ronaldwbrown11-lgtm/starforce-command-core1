@@ -44,7 +44,7 @@ import Collection from "@/pages/Collection";
 import Awards from "@/pages/Awards";
 import Wings from "@/pages/Wings";
 import HonorWall from "@/pages/HonorWall";
-import { OperatorGuard } from "@/components/operator/OperatorGuard";
+import Reviews from "@/pages/Reviews";
 import BlogPage from "@/pages/Blog";
 import BlogDetailPage from "@/pages/BlogDetail";
 import FaqsPage from "@/pages/Faqs";
@@ -114,6 +114,7 @@ export const PUBLIC_ROUTES: PublicPageRoute[] = [
 
   // ---- Community ---------------------------------------------------------
   { path: "/community", label: "Community", element: <Community /> },
+  { path: "/reviews", label: "The Signal Log", element: <Reviews /> },
   { path: "/creator", label: "Creator Hub", element: <CreatorHub /> },
   { path: "/biology-lab", label: "Biology Lab", element: <BiologyLab /> },
   { path: "/research-lab", label: "Research Lab", element: <ResearchLab /> },
