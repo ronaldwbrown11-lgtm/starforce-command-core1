@@ -40,17 +40,19 @@ export type FleetReview = {
 /**
  * Google Business Profile short link (GBP → Ask for reviews → copy link).
  *
- * DISABLED 2026-10-07: the link resolves to
- * `google.com/maps/place//data=!1s<cid>…` — the place-name segment is empty,
- * so Maps falls back to its homepage instead of a review form. The profile
- * also doesn't appear in Google's Place ID Finder, so there is no `ChIJ…`
- * ID to pull reviews with either. The listing needs to be published/verified
- * before this is useful.
+ * ENABLED 2026-10-08. Confirmed by the operator with a signed-out test:
+ *   · google.com/maps search for "Star Force Base 1198" → listing card
+ *   · google.com search → knowledge panel
+ *   · this link → star selector (review form)
  *
- * Flip `GOOGLE_REVIEW_ENABLED` back to true once opening the short link shows
- * a star selector — nothing else has to change.
+ * The listing had been created under the name `starforcebase1198.com` — a URL,
+ * not the brand name — which is why nothing was findable. Renaming it fixed
+ * all three tests.
+ *
+ * Set back to false if the listing ever stops publishing: `googleReviewUrl()`
+ * then falls back to a Google search so the CTA can never dead-end.
  */
-export const GOOGLE_REVIEW_ENABLED = false;
+export const GOOGLE_REVIEW_ENABLED = true;
 
 export const GOOGLE_REVIEW_LINK = "https://g.page/r/CTCbin2-K2r0EAI/review";
 
