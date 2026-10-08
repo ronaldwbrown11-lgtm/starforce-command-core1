@@ -170,7 +170,7 @@ export const PUBLIC_ROUTES: PublicPageRoute[] = [
   { path: "/account", label: "Account", element: <Account /> },
 
   // ---- Utility (routed, no background slot) ------------------------------
-  { path: "/auth", label: "Sign in", element: <AuthPage redirectAfterAuth="/map" />, appearance: false },
+  { path: "/auth", label: "Sign in", element: <AuthPage redirectAfterAuth="/community" />, appearance: false },
   { path: "/embed/story/:slug", label: "Embedded story", element: <EmbedStory />, appearance: false },
   { path: "/privacy", label: "Privacy", element: <Privacy /> },
   { path: "/terms", label: "Terms", element: <Terms /> },
