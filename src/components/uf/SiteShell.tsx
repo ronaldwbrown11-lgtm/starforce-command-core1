@@ -78,6 +78,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Events", labelKey: "nav.events", href: "/events", desc: "Upcoming ops", descKey: "desc.events" },
       { label: "Submit", labelKey: "nav.submit", href: "/submit", desc: "File a report", descKey: "desc.submit" },
       { label: "Messages", labelKey: "nav.messages", href: "/messages", desc: "Direct comms", descKey: "desc.messages" },
+      { label: "Reviews", labelKey: "nav.reviews", href: "/reviews", desc: "Fleet testimonials", descKey: "desc.reviews" },
     ],
   },
   {
@@ -263,7 +264,6 @@ export function SiteShell({
   cinematic?: boolean;
 }) {
   const { pathname } = useLocation();
-  const { t, locale, setLocale } = useI18n();
   const appearance = useQuery(api.siteAppearance.getAppearance);
 
   // Operator-configured page background: exact route wins, then the section
@@ -754,6 +754,7 @@ function Footer() {
             <li><Link to="/store">{t("nav.store")}</Link></li>
             <li><Link to="/membership">{t("nav.membership")}</Link></li>
             <li><Link to="/high-command">{t("nav.highCommand")}</Link></li>
+            <li><Link to="/reviews">{t("nav.reviews")}</Link></li>
           </ul>
         </div>
         <div>

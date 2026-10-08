@@ -252,6 +252,9 @@ export default function Home() {
               <Link to="/videos">
                 <NeonButton variant="ghost">Browse Now</NeonButton>
               </Link>
+              <Link to="/reviews">
+                <NeonButton variant="ghost">Read the Reviews</NeonButton>
+              </Link>
             </div>
           </ScrollReveal>
 
@@ -777,7 +780,7 @@ export default function Home() {
             </p>
           </div>
           <Link to="/reviews">
-            <NeonButton variant="ghost">Open the full log</NeonButton>
+            <NeonButton variant="ghost">Read all reviews</NeonButton>
           </Link>
         </header>
         <div className="uf-grid uf-grid--3">
@@ -839,6 +842,9 @@ export default function Home() {
             <div className="flex flex-wrap gap-3 relative justify-start md:justify-end">
               <Link to="/auth">
                 <NeonButton variant="primary">Join the Fleet</NeonButton>
+              </Link>
+              <Link to="/reviews">
+                <NeonButton variant="ghost">Read the Reviews</NeonButton>
               </Link>
               <Link to="/community">
                 <NeonButton variant="ghost">Open Command</NeonButton>
