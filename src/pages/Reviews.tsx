@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   REVIEWS,
   REVIEWS_FAQ,
+  GOOGLE_REVIEW_ENABLED,
   googleReviewUrl,
   reviewAggregate,
   reviewsGraphJsonLd,
@@ -195,13 +196,18 @@ export default function Reviews() {
               </p>
             </div>
             <div className="flex shrink-0 flex-wrap gap-3">
-              <a
-                href={googleReviewUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <NeonButton variant="primary">Leave a Google review</NeonButton>
+              <a href="#transmit">
+                <NeonButton variant="primary">Send yours</NeonButton>
               </a>
+              {GOOGLE_REVIEW_ENABLED ? (
+                <a
+                  href={googleReviewUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <NeonButton variant="ghost">Leave a Google review</NeonButton>
+                </a>
+              ) : null}
               <Link to="/first-watch">
                 <NeonButton variant="ghost">Start First Watch</NeonButton>
               </Link>

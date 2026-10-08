@@ -40,11 +40,19 @@ export type FleetReview = {
 /**
  * Google Business Profile short link (GBP → Ask for reviews → copy link).
  *
- * While it's empty we fall back to a Google search for the business name so
- * the CTA never points at a URL we invented. Paste the short link here once
- * the listing exists — the button picks it up with no other edits.
+ * DISABLED 2026-10-07: the link resolves to
+ * `google.com/maps/place//data=!1s<cid>…` — the place-name segment is empty,
+ * so Maps falls back to its homepage instead of a review form. The profile
+ * also doesn't appear in Google's Place ID Finder, so there is no `ChIJ…`
+ * ID to pull reviews with either. The listing needs to be published/verified
+ * before this is useful.
+ *
+ * Flip `GOOGLE_REVIEW_ENABLED` back to true once opening the short link shows
+ * a star selector — nothing else has to change.
  */
-export const GOOGLE_REVIEW_LINK = "";
+export const GOOGLE_REVIEW_ENABLED = false;
+
+export const GOOGLE_REVIEW_LINK = "https://g.page/r/CTCbin2-K2r0EAI/review";
 
 export function googleReviewUrl(): string {
   return (
