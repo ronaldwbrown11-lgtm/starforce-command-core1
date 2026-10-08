@@ -2111,6 +2111,26 @@ const schema = defineSchema(
       posZ: v.number(),
       order: v.number(),
     }).index("by_user", ["userId"]),
+
+    // Site reviews — submissions made on /reviews. Operators approve before
+    // anything renders publicly; only `status: "approved"` is ever returned
+    // to the public query, so a pending draft can't leak onto the page.
+    siteReviews: defineTable({
+      userId: v.id("users"),
+      /** Denormalized at submit time so the public list needs no join. */
+      authorName: v.string(),
+      callSign: v.optional(v.string()),
+      role: v.optional(v.string()),
+      headline: v.string(),
+      body: v.string(),
+      rating: v.number(),
+      status: v.string(), // pending / approved / rejected
+      createdAt: v.number(),
+      decidedAt: v.optional(v.number()),
+      decidedBy: v.optional(v.id("users")),
+    })
+      .index("by_status_created", ["status", "createdAt"])
+      .index("by_user", ["userId"]),
   },
   {
     schemaValidation: false,

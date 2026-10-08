@@ -73,6 +73,7 @@ import type * as ships from "../ships.js";
 import type * as signalForge from "../signalForge.js";
 import type * as signals from "../signals.js";
 import type * as siteAppearance from "../siteAppearance.js";
+import type * as siteReviews from "../siteReviews.js";
 import type * as sitemap from "../sitemap.js";
 import type * as social from "../social.js";
 import type * as socialLinks from "../socialLinks.js";
@@ -166,6 +167,7 @@ declare const fullApi: ApiFromModules<{
   signalForge: typeof signalForge;
   signals: typeof signals;
   siteAppearance: typeof siteAppearance;
+  siteReviews: typeof siteReviews;
   sitemap: typeof sitemap;
   social: typeof social;
   socialLinks: typeof socialLinks;

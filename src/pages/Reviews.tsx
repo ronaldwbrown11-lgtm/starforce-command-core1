@@ -1,8 +1,13 @@
+import { useState, type FormEvent } from "react";
 import { Quote, Star } from "lucide-react";
 import { Link } from "react-router";
+import { useMutation, useQuery } from "convex/react";
+import { toast } from "sonner";
+import { api } from "@/convex/_generated/api";
 import { SiteShell, PageHero, HoloCard, NeonButton } from "@/components/uf";
 import { ScrollReveal, ScaleReveal } from "@/hooks/use-scroll-reveal";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { useAuth } from "@/hooks/use-auth";
 import {
   REVIEWS,
   REVIEWS_FAQ,
@@ -205,6 +210,25 @@ export default function Reviews() {
         </HoloCard>
       </section>
 
+      {/* ---- Submit your own ------------------------------------------------ */}
+      <section
+        id="transmit"
+        className="uf-section max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12"
+      >
+        <header className="mb-6">
+          <span className="uf-eyebrow">Transmit yours</span>
+          <h2 className="text-3xl font-semibold mt-2">Add your call sign to the log.</h2>
+          <p className="text-uf-muted text-sm mt-2 max-w-2xl">
+            Every submission lands in the operator queue first. Nothing renders
+            until it&apos;s approved, and nobody is paid or credited for one.
+          </p>
+        </header>
+        <SubmitReviewForm />
+      </section>
+
+      {/* ---- Approved member submissions ---------------------------------- */}
+      <MemberReviews />
+
       {/* ---- FAQ — rendered open so crawlers see the answers -------------- */}
       <section className="uf-section max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12 pb-20">
         <header className="mb-6">
@@ -233,5 +257,200 @@ export default function Reviews() {
         </p>
       </section>
     </SiteShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Member submissions — Convex-backed, operator-approved. Separate from the
+// curated Signal Log above: that set is static and feeds the JSON-LD (it has
+// to be, because the build-time prerender has no Convex access), so these two
+// blocks are intentionally not merged.
+// ---------------------------------------------------------------------------
+
+const FIELD =
+  "mt-1 w-full rounded-md border border-[color:var(--uf-border)] px-3 py-2 text-sm bg-[rgba(16,24,39,0.5)]";
+const LABEL = "text-xs uppercase tracking-[0.16em] text-uf-muted";
+
+function SubmitReviewForm() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const submit = useMutation(api.siteReviews.submit);
+  const [headline, setHeadline] = useState("");
+  const [body, setBody] = useState("");
+  const [rating, setRating] = useState(5);
+  const [callSign, setCallSign] = useState("");
+  const [role, setRole] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (isLoading) {
+    return <div className="uf-skeleton" style={{ height: 260 }} />;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <HoloCard>
+        <p className="text-uf-muted text-sm">
+          Sign in to transmit a review — the log only carries attributed
+          entries.{' '}
+          <Link to="/auth?returnTo=/reviews" className="text-[var(--uf-cyan)]">
+            Open auth
+          </Link>
+        </p>
+      </HoloCard>
+    );
+  }
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      await submit({
+        headline: headline.trim(),
+        body: body.trim(),
+        rating,
+        callSign: callSign.trim() || undefined,
+        role: role.trim() || undefined,
+      });
+      setHeadline("");
+      setBody("");
+      setCallSign("");
+      setRole("");
+      toast.success("Transmission received — pending operator review.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not send.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <HoloCard>
+      <form className="grid gap-4" onSubmit={onSubmit}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className={LABEL}>
+            Headline
+            <input
+              className={FIELD}
+              value={headline}
+              onChange={(e) => setHeadline(e.target.value)}
+              required
+              minLength={6}
+              maxLength={120}
+              placeholder="The canon review is the whole thing."
+            />
+          </label>
+          <label className={LABEL}>
+            Rating
+            <select
+              className={FIELD}
+              value={rating}
+              onChange={(e) => setRating(Number(e.target.value))}
+            >
+              {[5, 4, 3, 2, 1].map((n) => (
+                <option key={n} value={n}>
+                  {n} / 5
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <label className={LABEL}>
+          Your transmission
+          <textarea
+            className={FIELD}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            required
+            minLength={40}
+            maxLength={2000}
+            rows={6}
+            placeholder="What actually happened — your first featured entry, a sector you charted, a promotion you earned."
+          />
+        </label>
+        <p className="text-uf-muted -mt-2 text-xs">
+          {body.trim().length} characters · minimum 40
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className={LABEL}>
+            Call sign (optional)
+            <input
+              className={FIELD}
+              value={callSign}
+              onChange={(e) => setCallSign(e.target.value)}
+              maxLength={40}
+              placeholder="Nightingale"
+            />
+          </label>
+          <label className={LABEL}>
+            Duty station (optional)
+            <input
+              className={FIELD}
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              maxLength={60}
+              placeholder="Lore Archivist"
+            />
+          </label>
+        </div>
+        <div>
+          <NeonButton variant="primary" type="submit" disabled={busy} loading={busy}>
+            Send for review
+          </NeonButton>
+        </div>
+      </form>
+    </HoloCard>
+  );
+}
+
+function MemberReviews() {
+  const reviews = useQuery(api.siteReviews.listApproved, { limit: 24 });
+  if (!reviews || reviews.length === 0) return null;
+
+  return (
+    <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+      <header className="mb-6">
+        <span className="uf-eyebrow">Fresh from the fleet</span>
+        <h2 className="text-3xl font-semibold mt-2">
+          Member submissions, approved and logged.
+        </h2>
+        <p className="text-uf-muted text-sm mt-2 max-w-2xl">
+          Sent through the form below and cleared by an operator. The curated
+          Signal Log above stays separate.
+        </p>
+      </header>
+      <div className="uf-grid uf-grid--3">
+        {reviews.map((review, idx) => {
+          const day = new Date(review.createdAt).toISOString().slice(0, 10);
+          return (
+            <ScaleReveal key={review.id} staggerIndex={idx % 3}>
+              <HoloCard className="flex h-full flex-col">
+                <div className="flex items-center justify-between gap-3">
+                  <StarRow value={review.rating} />
+                  <time className="font-mono text-[11px] text-uf-muted" dateTime={day}>
+                    {day}
+                  </time>
+                </div>
+                <h3 className="mt-3 text-base font-semibold leading-6">
+                  {review.headline}
+                </h3>
+                <p className="text-uf-muted mt-2 flex-1 text-sm leading-6">
+                  {review.body}
+                </p>
+                <footer className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="text-sm font-semibold">{review.authorName}</span>
+                  {review.callSign ? (
+                    <span className="text-xs text-[var(--uf-cyan)]">
+                      “{review.callSign}”
+                    </span>
+                  ) : null}
+                  {review.role ? (
+                    <span className="text-xs text-uf-muted">{review.role}</span>
+                  ) : null}
+                </footer>
+              </HoloCard>
+            </ScaleReveal>
+          );
+        })}
+      </div>
+    </section>
   );
 }
