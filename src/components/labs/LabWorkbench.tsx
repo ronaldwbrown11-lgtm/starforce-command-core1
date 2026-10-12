@@ -257,6 +257,9 @@ export function LabWorkbench({
     const a = document.createElement("a");
     a.href = url;
     a.download = `${nameKey}-template.csv`;
+    // A blank authoring template (field names only) — members need it to
+    // draft the entry that becomes their own content.
+    a.setAttribute("data-allow-download", "");
     a.click();
     URL.revokeObjectURL(url);
   };

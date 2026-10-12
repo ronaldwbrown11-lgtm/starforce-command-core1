@@ -117,6 +117,9 @@ export function StorageManager() {
       a.target = "_blank";
       a.rel = "noopener noreferrer";
       a.download = fileName;
+      // A member's own uploads: storage.getDownloadUrl refuses any file whose
+      // userId is not the caller, so only your own files ever reach here.
+      a.setAttribute("data-allow-download", "");
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

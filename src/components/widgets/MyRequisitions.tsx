@@ -63,6 +63,9 @@ export function MyRequisitions() {
       a.href = url;
       a.download = fileName;
       a.rel = "noopener";
+      // Bought items download only for their purchaser — the server checks
+      // storeEntitlements before it will mint this URL at all.
+      a.setAttribute("data-allow-download", "");
       document.body.appendChild(a);
       a.click();
       a.remove();

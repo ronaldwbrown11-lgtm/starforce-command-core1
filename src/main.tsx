@@ -8,6 +8,7 @@ import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+import { ContentGuard } from "@/components/ContentGuard";
 import { CookieConsent } from "@/components/CookieConsent";
 import "./index.css";
 import "./types/global.d.ts";
@@ -167,6 +168,9 @@ createRoot(document.getElementById("root")!).render(
           <ConvexAuthProvider client={convex}>
             <BrowserRouter>
           <RouteSyncer />
+          {/* Site-wide copy/download lock — owner exempt, entitlement flows
+              marked [data-allow-download] at their call sites. */}
+          <ContentGuard />
           <AppErrorBoundary>
             <Routes>
               {/* Public routes come from the shared catalog so every page

@@ -81,6 +81,9 @@ export default function Store() {
       a.href = url;
       a.download = fileName;
       a.rel = "noopener";
+      // Purchaser/creator entitlement was already checked server-side by
+      // store.getFileDownloadUrl — ContentGuard lets this download through.
+      a.setAttribute("data-allow-download", "");
       document.body.appendChild(a);
       a.click();
       a.remove();

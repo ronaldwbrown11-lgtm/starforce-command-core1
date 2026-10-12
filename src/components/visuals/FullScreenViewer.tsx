@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Link } from "react-router";
 import { Download, X } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import { CanonBadge } from "./CanonBadge";
 import type { VisualAssetDoc } from "./AssetGrid";
 
@@ -28,6 +29,12 @@ export function FullScreenViewer({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [asset, onClose]);
+
+  const { user } = useAuth();
+  // Content policy: artists keep their own work downloadable, everyone else
+  // only sees the button when the artist left downloads on — and ContentGuard
+  // still blocks that click for anyone who isn't the author or the owner.
+  const isOwnAsset = Boolean(user && asset && user._id === asset.authorId);
 
   if (!asset) return null;
 
@@ -109,6 +116,7 @@ export function FullScreenViewer({
               target="_blank"
               rel="noreferrer"
               download
+              data-allow-download={isOwnAsset ? "" : undefined}
               className="uf-btn uf-btn--goldline text-xs"
             >
               <Download className="h-4 w-4" aria-hidden /> Download

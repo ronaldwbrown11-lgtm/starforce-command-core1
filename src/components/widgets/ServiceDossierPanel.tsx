@@ -209,6 +209,9 @@ export function ServiceDossierPanel({
     const a = document.createElement("a");
     a.href = url;
     a.download = `service-dossier-${(user?.displayName ?? "pilot").toLowerCase().replace(/\s+/g, "-")}.json`;
+    // Export of the member's OWN service record, assembled in the browser
+    // from their own data — ContentGuard allows their own content.
+    a.setAttribute("data-allow-download", "");
     document.body.appendChild(a);
     a.click();
     a.remove();

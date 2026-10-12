@@ -52,7 +52,10 @@ const NAV = [
 ];
 
 export function OperatorShell({ children }: { children: React.ReactNode }) {
-  return <SiteShell hideNav><div className="relative"><ParallaxBackground palette="sapphire" intensity="low" /><div className="uf-opc relative z-10"><OperatorRail /><main className="uf-opc__main min-w-0 overflow-x-hidden" id="uf-main">{children}</main><aside className="uf-opc__notif hidden xl:block" aria-label="Operator notifications"><h2 className="uf-eyebrow mb-3">Right rail</h2><FleetStatus compact={false} /></aside></div></div></SiteShell>;
+  // The console is the staff's own workspace: marking it a copy zone keeps
+  // its tools (audit CSV export, story downloads, link copying) working.
+  // The public site stays locked by ContentGuard for everyone else.
+  return <SiteShell hideNav><div className="relative"><ParallaxBackground palette="sapphire" intensity="low" /><div className="uf-opc relative z-10" data-copy-allow=""><OperatorRail /><main className="uf-opc__main min-w-0 overflow-x-hidden" id="uf-main">{children}</main><aside className="uf-opc__notif hidden xl:block" aria-label="Operator notifications"><h2 className="uf-eyebrow mb-3">Right rail</h2><FleetStatus compact={false} /></aside></div></div></SiteShell>;
 }
 
 function OperatorRail() {

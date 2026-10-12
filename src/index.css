@@ -1455,3 +1455,27 @@
     0 0 8px rgba(230, 168, 23, 0.4);
   animation: sf-shimmer-gold 1.6s ease-in-out infinite;
 }
+
+/* ------------------------------------------------------------------
+   Content lock — mirrors src/components/ContentGuard.tsx.
+
+   For visitors and members the page is not selectable at all; only fields
+   you can type into, and regions marked [data-copy-allow] (the operator
+   console), keep normal selection. The owner's account never gets the
+   `sf-copy-locked` class, so it is unaffected.
+   ------------------------------------------------------------------ */
+html.sf-copy-locked,
+html.sf-copy-locked body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+html.sf-copy-locked input,
+html.sf-copy-locked textarea,
+html.sf-copy-locked select,
+html.sf-copy-locked [contenteditable]:not([contenteditable="false"]),
+html.sf-copy-locked [data-copy-allow],
+html.sf-copy-locked [data-copy-allow] * {
+  -webkit-user-select: text;
+  user-select: text;
+}
