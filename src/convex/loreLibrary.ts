@@ -109,11 +109,17 @@ function slugify(s: string) {
     .slice(0, 80);
 }
 
-// Sealed lore types: the attached file is never served to the general
-// audience. Lore bibles are SOLD in the Requisition Depot — a buyer gets the
-// file from store.getFileDownloadUrl, which checks storeEntitlements, never
-// from the lore page. Lore databases are read on-page only, never downloaded.
-// Image/map plates stay public because their file IS the display art.
+// Sealed lore types — readable by members, never downloadable.
+//
+// Lore bibles and lore databases are the reference material members build
+// new lore from, so signed-in members get a short-lived reader URL (the
+// on-page iframe source). What nobody outside staff/author gets is a
+// DOWNLOAD: no <a download>, no raw storage id in the payload. Buyers still
+// keep a permanent copy through store.getFileDownloadUrl, which checks
+// storeEntitlements. Anonymous visitors get no file at all — the page points
+// them at sign-in or the Requisition Depot.
+//
+// Image/map plates stay fully public: their file IS the display art.
 const SEALED_LORE_TYPES = ["bible", "database"];
 
 type LibraryRow = {
@@ -124,23 +130,23 @@ type LibraryRow = {
   authorId?: Id<"users"> | null | undefined;
 };
 
-async function decorate<T extends LibraryRow>(ctx: QueryCtx, rows: T[]) {
-  // The identity lookup is only needed when a sealed row is in the batch —
-  // a plain image/map list should not pay for it.
-  const hasSealed = rows.some((r) => SEALED_LORE_TYPES.includes(String(r.loreType)));
-  const viewerId = hasSealed ? await getAuthUserId(ctx) : null;
-  const viewer = hasSealed && viewerId ? await ctx.db.get(viewerId) : null;
+type DecorateCtx = Pick<QueryCtx, "db" | "storage">;
+
+async function decorateRows<T extends LibraryRow>(
+  ctx: DecorateCtx,
+  viewerId: Id<"users"> | null,
+  rows: T[],
+) {
+  const viewer = viewerId ? await ctx.db.get(viewerId) : null;
   const isStaff = viewer?.role === "admin" || !!viewer?.opRole;
 
   return Promise.all(
     rows.map(async (r) => {
-      // Staff (console access) and the author who uploaded the item keep
-      // their own copy; everyone else gets no URL at all, so there is
-      // nothing in the page for ContentGuard to defend against.
-      const mayReadFile =
-        !SEALED_LORE_TYPES.includes(String(r.loreType)) ||
-        isStaff ||
-        (viewerId !== null && r.authorId === viewerId);
+      const sealed = SEALED_LORE_TYPES.includes(String(r.loreType));
+      // Reading is a member privilege; keeping a copy is not.
+      const mayReadFile = !sealed || viewerId !== null;
+      const mayDownloadFile =
+        !sealed || isStaff || (viewerId !== null && r.authorId === viewerId);
       const fileUrl =
         r.fileStorageId && mayReadFile
           ? await ctx.storage.getUrl(r.fileStorageId)
@@ -152,8 +158,10 @@ async function decorate<T extends LibraryRow>(ctx: QueryCtx, rows: T[]) {
         // mint a URL for the file elsewhere (assets.coverUrl, /lab-image/),
         // so it only rides along for staff and the author, who need it on the
         // operator desk to replace or remove the attachment.
-        ...(mayReadFile ? {} : { fileStorageId: undefined }),
+        ...(mayDownloadFile ? {} : { fileStorageId: undefined }),
         fileUrl,
+        // The client renders the Download button only for these rows.
+        canDownloadFile: mayDownloadFile,
         // Card thumbnails: dedicated cover first, then the static site-host
         // plate (no Convex egress), then for image items the attached image
         // itself — image plates ARE their own cover when no separate
@@ -168,6 +176,14 @@ async function decorate<T extends LibraryRow>(ctx: QueryCtx, rows: T[]) {
       };
     }),
   );
+}
+
+async function decorate<T extends LibraryRow>(ctx: QueryCtx, rows: T[]) {
+  // The identity lookup is only needed when a sealed row is in the batch —
+  // a plain image/map list should not pay for it.
+  const hasSealed = rows.some((r) => SEALED_LORE_TYPES.includes(String(r.loreType)));
+  const viewerId = hasSealed ? await getAuthUserId(ctx) : null;
+  return await decorateRows(ctx, viewerId, rows);
 }
 
 // -------------------------------------------------------------------------

@@ -34,6 +34,9 @@ import type { Doc } from "@/convex/_generated/dataModel";
 type LibraryItem = Doc<"loreLibrary"> & {
   fileUrl: string | null;
   coverUrl: string | null;
+  // Server-decided: staff and the item's author keep a downloadable copy;
+  // everyone else reads on-page only (see src/convex/loreLibrary.ts).
+  canDownloadFile?: boolean;
 };
 
 export default function LoreDetail() {
@@ -225,7 +228,7 @@ function LibraryItemView({ item }: { item: LibraryItem }) {
                   </p>
                 </div>
               </div>
-              {file ? (
+              {file && item.canDownloadFile ? (
                 <a
                   href={file}
                   target="_blank"
@@ -238,6 +241,11 @@ function LibraryItemView({ item }: { item: LibraryItem }) {
                     Download
                   </NeonButton>
                 </a>
+              ) : file ? (
+                <span className="text-uf-muted text-xs max-w-[16rem] text-right">
+                  Read-only — a copy of this bible is issued through the
+                  Requisition Depot.
+                </span>
               ) : null}
             </div>
             {file ? (
@@ -255,27 +263,46 @@ function LibraryItemView({ item }: { item: LibraryItem }) {
               ) : (
                 <div className="rounded-md border border-dashed border-[color:var(--uf-border)] p-10 text-center text-uf-muted text-sm">
                   <FileText className="h-8 w-8 mx-auto mb-3 opacity-60" aria-hidden />
-                  This document can't be previewed inline. Use the download
-                  button to open <strong>{item.fileMeta?.fileName}</strong>.
+                  {item.canDownloadFile ? (
+                    <>
+                      This document can&apos;t be previewed inline. Use the
+                      download button to open{" "}
+                      <strong>{item.fileMeta?.fileName}</strong>.
+                    </>
+                  ) : (
+                    <>
+                      This document can&apos;t be previewed inline — requisition
+                      a copy from the Depot to open{" "}
+                      <strong>{item.fileMeta?.fileName}</strong>.
+                    </>
+                  )}
                 </div>
               )
             ) : item.fileMeta ? (
-              // A file exists but the server withheld its URL — this bible is
-              // sealed. It is issued through the Requisition Depot, and the
-              // entitlement is what unlocks it in "My downloads".
+              // A file exists but the server gave no URL: the viewer is not
+              // signed in. Members read every bible on this page; a copy is
+              // issued separately through the Requisition Depot.
               <div className="rounded-md border border-dashed border-[rgba(230,168,23,0.45)] p-10 text-center text-uf-muted text-sm">
                 <Lock className="h-8 w-8 mx-auto mb-3 text-[#E0A817]" aria-hidden />
                 <p className="text-sm font-semibold text-uf-text">
-                  Sealed in the Requisition Depot.
+                  Members read this bible on the page.
                 </p>
                 <p className="mt-2">
-                  This bible is issued for a fee — it can&apos;t be read or
-                  downloaded here. Requisition your copy and it stays in your
-                  downloads permanently.
+                  Sign in to open it — the vault is free to read for the fleet.
+                  Requisition a copy from the Depot if you want to keep it in
+                  your downloads permanently.
                 </p>
-                <Link to="/store" className="uf-btn uf-btn--primary mt-4">
-                  Open the Requisition Depot
-                </Link>
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+                  <Link
+                    to={`/auth?returnTo=/lore/${item.slug}`}
+                    className="uf-btn uf-btn--primary"
+                  >
+                    Sign in to read
+                  </Link>
+                  <Link to="/store" className="uf-btn uf-btn--ghost">
+                    Open the Requisition Depot
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="rounded-md border border-dashed border-[color:var(--uf-border)] p-10 text-center text-uf-muted text-sm">
