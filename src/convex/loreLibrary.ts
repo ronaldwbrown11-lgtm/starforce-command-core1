@@ -1,4 +1,5 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { api } from "./_generated/api";
 import { v, type Infer } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
@@ -108,25 +109,50 @@ function slugify(s: string) {
     .slice(0, 80);
 }
 
+// Sealed lore types: the attached file is never served to the general
+// audience. Lore bibles are SOLD in the Requisition Depot — a buyer gets the
+// file from store.getFileDownloadUrl, which checks storeEntitlements, never
+// from the lore page. Lore databases are read on-page only, never downloaded.
+// Image/map plates stay public because their file IS the display art.
+const SEALED_LORE_TYPES = ["bible", "database"];
+
 type LibraryRow = {
   slug?: string | null | undefined;
   loreType?: string | null | undefined;
   fileStorageId?: string | null | undefined;
   coverStorageId?: string | null | undefined;
+  authorId?: Id<"users"> | null | undefined;
 };
 
-async function decorate<T extends LibraryRow>(
-  ctx: { storage: { getUrl(id: string): Promise<string | null> } },
-  rows: T[],
-) {
+async function decorate<T extends LibraryRow>(ctx: QueryCtx, rows: T[]) {
+  // The identity lookup is only needed when a sealed row is in the batch —
+  // a plain image/map list should not pay for it.
+  const hasSealed = rows.some((r) => SEALED_LORE_TYPES.includes(String(r.loreType)));
+  const viewerId = hasSealed ? await getAuthUserId(ctx) : null;
+  const viewer = hasSealed && viewerId ? await ctx.db.get(viewerId) : null;
+  const isStaff = viewer?.role === "admin" || !!viewer?.opRole;
+
   return Promise.all(
     rows.map(async (r) => {
-      const fileUrl = r.fileStorageId
-        ? await ctx.storage.getUrl(r.fileStorageId)
-        : null;
+      // Staff (console access) and the author who uploaded the item keep
+      // their own copy; everyone else gets no URL at all, so there is
+      // nothing in the page for ContentGuard to defend against.
+      const mayReadFile =
+        !SEALED_LORE_TYPES.includes(String(r.loreType)) ||
+        isStaff ||
+        (viewerId !== null && r.authorId === viewerId);
+      const fileUrl =
+        r.fileStorageId && mayReadFile
+          ? await ctx.storage.getUrl(r.fileStorageId)
+          : null;
       const isImage = r.loreType === "image";
       return {
         ...r,
+        // The raw storage id is an internal handle — anyone holding it could
+        // mint a URL for the file elsewhere (assets.coverUrl, /lab-image/),
+        // so it only rides along for staff and the author, who need it on the
+        // operator desk to replace or remove the attachment.
+        ...(mayReadFile ? {} : { fileStorageId: undefined }),
         fileUrl,
         // Card thumbnails: dedicated cover first, then the static site-host
         // plate (no Convex egress), then for image items the attached image

@@ -197,7 +197,8 @@ export function DocViewer({
                     <ExternalLink className="h-4 w-4 mr-1.5" aria-hidden />
                     Open in new tab
                   </a>
-                  <a href={url} download className="uf-btn uf-btn--ghost">
+                  {/* Resource manuals are the owner's downloadable exception. */}
+                  <a href={url} download data-allow-download="" className="uf-btn uf-btn--ghost">
                     <Download className="h-4 w-4 mr-1.5" aria-hidden />
                     Download
                   </a>

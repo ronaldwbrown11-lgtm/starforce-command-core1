@@ -372,6 +372,9 @@ const schema = defineSchema(
       .index("by_status", ["status"])
       .index("by_author", ["authorId"])
       .index("by_featured", ["featured", "featuredOrder"])
+      // Reverse lookup for sealed attachments (bibles / databases) so the
+      // public /lab-image/ route can refuse a leaked storage id cheaply.
+      .index("by_fileStorageId", ["fileStorageId"])
       .searchIndex("search_title", { searchField: "title" }),
 
     transmissions: defineTable({
@@ -1581,7 +1584,9 @@ const schema = defineSchema(
       updatedAt: v.number(),
     })
       .index("by_slug", ["slug"])
-      .index("by_status", ["status"]),
+      .index("by_status", ["status"])
+      // Depot files are buyer-only — see the /lab-image/ refusal in http.ts.
+      .index("by_fileStorageId", ["fileStorageId"]),
 
     storeOrders: defineTable({
       userId: v.id("users"),
@@ -1694,6 +1699,8 @@ const schema = defineSchema(
       updatedAt: v.number(),
     })
       .index("by_item_id", ["itemId"])
+      // Vault payloads are holders-only — see the /lab-image/ refusal.
+      .index("by_fileStorageId", ["fileStorageId"])
       .index("by_kind", ["kind"]),
 
     // A member holding a vault item. One row per (member, item).

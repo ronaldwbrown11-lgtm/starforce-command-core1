@@ -280,9 +280,12 @@ export default function Resources() {
                           ? ` · ${formatBytes(r.fileMeta.byteSize)}`
                           : ""}
                       </button>
+                      {/* Resource files (manuals, guides) are downloadable by
+                          anyone — the site's stated exception. */}
                       <a
                         href={r.fileUrl}
                         download
+                        data-allow-download=""
                         onClick={(e) => e.stopPropagation()}
                         className="uf-btn uf-btn--ghost"
                       >

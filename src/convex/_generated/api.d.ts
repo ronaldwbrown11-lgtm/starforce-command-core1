@@ -63,6 +63,7 @@ import type * as progression from "../progression.js";
 import type * as quest from "../quest.js";
 import type * as rankAdmin from "../rankAdmin.js";
 import type * as rateLimit from "../rateLimit.js";
+import type * as sealedFiles from "../sealedFiles.js";
 import type * as search from "../search.js";
 import type * as sectorMap from "../sectorMap.js";
 import type * as sectorMapMirror from "../sectorMapMirror.js";
@@ -157,6 +158,7 @@ declare const fullApi: ApiFromModules<{
   quest: typeof quest;
   rankAdmin: typeof rankAdmin;
   rateLimit: typeof rateLimit;
+  sealedFiles: typeof sealedFiles;
   search: typeof search;
   sectorMap: typeof sectorMap;
   sectorMapMirror: typeof sectorMapMirror;

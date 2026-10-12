@@ -2,6 +2,8 @@ import { mutation, query } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { v, type Infer } from "convex/values";
 import { requireOperatorCapability } from "./admin";
+import { isSealedStorageId } from "./sealedFiles";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Id } from "./_generated/dataModel";
 
 // =========================================================================
@@ -75,6 +77,17 @@ export const generateUploadUrl = mutation({
 export const coverUrl = query({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, args) => {
+    // Resolving an id to a URL is the site's generic handle for cover art.
+    // Sealed attachments — a sold lore bible, a lore database, a depot
+    // product, a vault payload — must never become a URL this way, so the
+    // resolver refuses them for everyone (see src/convex/sealedFiles.ts).
+    // Staff are the exception: the operator desk previews and replaces those
+    // very files, so it still needs the URL.
+    if (await isSealedStorageId(ctx.db, args.storageId)) {
+      const meId = await getAuthUserId(ctx);
+      const me = meId ? await ctx.db.get(meId) : null;
+      if (!(me?.role === "admin" || !!me?.opRole)) return null;
+    }
     return await ctx.storage.getUrl(args.storageId);
   },
 });

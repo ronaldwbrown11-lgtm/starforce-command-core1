@@ -21,6 +21,7 @@ import {
   Download,
   FileText,
   ImageIcon,
+  Lock,
   PenLine,
 } from "lucide-react";
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -225,7 +226,13 @@ function LibraryItemView({ item }: { item: LibraryItem }) {
                 </div>
               </div>
               {file ? (
-                <a href={file} target="_blank" rel="noreferrer" download={item.fileMeta?.fileName}>
+                <a
+                  href={file}
+                  target="_blank"
+                  rel="noreferrer"
+                  download={item.fileMeta?.fileName}
+                  data-allow-download=""
+                >
                   <NeonButton variant="primary">
                     <Download className="h-4 w-4" aria-hidden />
                     Download
@@ -252,6 +259,24 @@ function LibraryItemView({ item }: { item: LibraryItem }) {
                   button to open <strong>{item.fileMeta?.fileName}</strong>.
                 </div>
               )
+            ) : item.fileMeta ? (
+              // A file exists but the server withheld its URL — this bible is
+              // sealed. It is issued through the Requisition Depot, and the
+              // entitlement is what unlocks it in "My downloads".
+              <div className="rounded-md border border-dashed border-[rgba(230,168,23,0.45)] p-10 text-center text-uf-muted text-sm">
+                <Lock className="h-8 w-8 mx-auto mb-3 text-[#E0A817]" aria-hidden />
+                <p className="text-sm font-semibold text-uf-text">
+                  Sealed in the Requisition Depot.
+                </p>
+                <p className="mt-2">
+                  This bible is issued for a fee — it can&apos;t be read or
+                  downloaded here. Requisition your copy and it stays in your
+                  downloads permanently.
+                </p>
+                <Link to="/store" className="uf-btn uf-btn--primary mt-4">
+                  Open the Requisition Depot
+                </Link>
+              </div>
             ) : (
               <div className="rounded-md border border-dashed border-[color:var(--uf-border)] p-10 text-center text-uf-muted text-sm">
                 <FileText className="h-8 w-8 mx-auto mb-3 opacity-60" aria-hidden />

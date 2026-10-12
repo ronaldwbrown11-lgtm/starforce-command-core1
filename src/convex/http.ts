@@ -4,6 +4,7 @@ import type { Id } from "./_generated/dataModel";
 import { auth } from "./auth";
 import { stripeWebhook } from "./stripeWebhook";
 import { generateSitemap } from "./sitemap";
+import { internal } from "./_generated/api";
 
 const http = httpRouter();
 
@@ -34,6 +35,18 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     const id = new URL(request.url).pathname.split("/").pop() ?? "";
     if (!/^[a-zA-Z0-9_-]{8,64}$/.test(id)) {
+      return new Response("Not found", { status: 404 });
+    }
+    // Content policy: a sealed attachment is refused outright — lore bibles
+    // and lore databases (sold / closed to downloads), digital products in
+    // the Requisition Depot, and vault payloads (holders only). Without this,
+    // a leaked storage id would become a free download of the very content
+    // the base sells. See src/convex/sealedFiles.ts.
+    const sid = id as Id<"_storage">;
+    const sealed = await ctx.runQuery(internal.sealedFiles.isSealedStorageIdQuery, {
+      storageId: sid,
+    });
+    if (sealed) {
       return new Response("Not found", { status: 404 });
     }
     let blob: Blob | null = null;
