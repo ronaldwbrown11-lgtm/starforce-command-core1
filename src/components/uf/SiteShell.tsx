@@ -46,6 +46,7 @@ const NAV_GROUPS: NavGroup[] = [
     labelKey: "group.archive",
     icon: BookOpen,
     items: [
+      { label: "Universe Overview", labelKey: "nav.universeOverview", href: "/universe", desc: "The universe at a glance", descKey: "desc.universeOverview" },
       { label: "Stories", labelKey: "nav.stories", href: "/stories", desc: "Fiction & narratives", descKey: "desc.stories" },
       { label: "Lore", labelKey: "nav.lore", href: "/lore", desc: "Universe canon", descKey: "desc.lore" },
       { label: "Factions", labelKey: "nav.factions", href: "/factions", desc: "Canon faction registry", descKey: "desc.factions" },

@@ -61,6 +61,7 @@ import Submit from "@/pages/Submit";
 import StoryDetail from "@/pages/StoryDetail";
 import Profile from "@/pages/Profile";
 import Messages from "@/pages/Messages";
+import UniverseOverview from "@/pages/UniverseOverview";
 
 // =========================================================================
 // Public page catalog — the SINGLE source of truth for public routes.
@@ -88,6 +89,7 @@ export type PublicPageRoute = {
 export const PUBLIC_ROUTES: PublicPageRoute[] = [
   // ---- Landing & content -------------------------------------------------
   { path: "/", label: "Home", element: <Home /> },
+  { path: "/universe", label: "Universe Overview", element: <UniverseOverview /> },
   { path: "/stories", label: "Stories", element: <Stories /> },
   { path: "/stories/:slug", label: "Story", element: <StoryDetail />, appearance: false },
   { path: "/lore", label: "Lore", element: <Lore /> },

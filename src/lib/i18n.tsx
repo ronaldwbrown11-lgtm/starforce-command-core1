@@ -16,6 +16,8 @@ export const LOCALES: Locale[] = ["en", "es"];
 type Dict = Record<string, string>;
 
 const EN: Dict = {
+  "nav.universeOverview": "Universe Overview",
+  "desc.universeOverview": "The universe at a glance",
   "nav.stories": "Stories",
   "nav.lore": "Lore",
   "nav.arcs": "Lore Arcs",
@@ -92,6 +94,8 @@ const EN: Dict = {
 };
 
 const ES: Dict = {
+  "nav.universeOverview": "Resumen del Universo",
+  "desc.universeOverview": "El universo de un vistazo",
   "nav.stories": "Historias",
   "nav.lore": "Lore",
   "nav.arcs": "Arcos Narrativos",

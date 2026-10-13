@@ -55,6 +55,18 @@ const ROUTES: Route[] = [
       "Original fiction from the Star Force community — field reports, legends, and serialized adventures from across the galaxy.",
   },
   {
+    path: "/universe",
+    title: "Universe Overview — Star Force Base 1198",
+    description:
+      "The Ultra Force Universe is a vast, cinematic science fiction world created by Ron Brown — its setting, the Star Force, major factions, starships, and timeline.",
+    jsonLd: {
+      "@type": "AboutPage",
+      name: "Ultra Force Universe Overview",
+      description:
+        "The Ultra Force Universe is a vast, cinematic science fiction world created by Ron Brown — its setting, the Star Force, major factions, starships, and timeline.",
+    },
+  },
+  {
     path: "/lore",
     title: "Lore Archive — Star Force Base 1198",
     description:
