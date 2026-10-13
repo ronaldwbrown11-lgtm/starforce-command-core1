@@ -219,30 +219,6 @@ export default function Home() {
 
   return (
     <SiteShell>
-      {/* =========== UNIVERSE BRIEF (entity intro, above the hero) ========= *
-          Plain prose carrying the who/what/where of the project: "official
-          home of the Ultra Force Universe, created by Ron Brown". Search and
-          AI crawlers key entity-level facts off visible text, so this copy
-          lives in the page body (and, for crawlers that never run JS, in the
-          static shell's meta + JSON-LD — see index.html). */}
-      <section aria-label="About the Ultra Force Universe" className="uf-container pt-10">
-        <ScrollReveal>
-          <div className="uf-card max-w-4xl p-5 md:p-6">
-            <span className="uf-eyebrow">The Universe</span>
-            <p className="mt-3 text-uf-muted text-sm md:text-base leading-7">
-              Star Force Base 1198 is the official home of the{" "}
-              <strong className="font-semibold text-uf-cyan">Ultra Force Universe</strong> — a
-              living, collaborative science-fiction world created by{" "}
-              <strong className="font-semibold text-uf-cyan">Ron Brown</strong>. Writers, fans,
-              and worldbuilders come together to create canon stories, explore factions, chart
-              star systems, and participate in missions inside a fully realized future galaxy.
-              Join the community, contribute to the universe, and build your legacy as part of
-              the fleet.
-            </p>
-          </div>
-        </ScrollReveal>
-      </section>
-
       {/* =========== HERO + LIVE FROM THE FLEET (right panel) ============ */}
       <section
         aria-labelledby="uf-hero-title"
@@ -268,6 +244,21 @@ export default function Home() {
             </h1>
             <p className="text-uf-muted mt-4 text-base md:text-lg max-w-xl">
               {VOICE.heroLead}
+            </p>
+            {/* Universe entity intro — plain prose carrying the who/what/where
+                of the project, sitting between the hero title/lead and the
+                CTA. Search and AI crawlers key entity-level facts off visible
+                text; crawlers that never run JS get the same facts from the
+                static shell's meta + JSON-LD (see index.html). */}
+            <p className="text-uf-muted mt-3 pt-3 border-t border-[color:var(--uf-border)] text-sm md:text-base leading-7 max-w-xl">
+              Star Force Base 1198 is the official home of the{" "}
+              <strong className="font-semibold text-uf-cyan">Ultra Force Universe</strong> — a
+              living, collaborative science-fiction world created by{" "}
+              <strong className="font-semibold text-uf-cyan">Ron Brown</strong>. Writers, fans,
+              and worldbuilders come together to create canon stories, explore factions, chart
+              star systems, and participate in missions inside a fully realized future galaxy.
+              Join the community, contribute to the universe, and build your legacy as part of
+              the fleet.
             </p>
             <div className="flex flex-wrap gap-3 mt-7">
               <Link to="/auth">
