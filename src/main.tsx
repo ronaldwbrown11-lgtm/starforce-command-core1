@@ -71,6 +71,7 @@ import OpLog from "./pages/operator/LogManage.tsx";
 import OpChangelog from "./pages/operator/ChangelogManage.tsx";
 import OpRoadAhead from "./pages/operator/RoadAhead.tsx";
 import { OperatorGuard } from "./components/operator/OperatorGuard.tsx";
+import { applyRobotsMeta } from "./hooks/use-page-meta";
 
 // This is the public Convex endpoint associated with the current Freebuff
 // project. It is not a migration target and contains no secret credential.
@@ -127,6 +128,14 @@ function RouteSyncer() {
       { type: "iframe-route-change", path: location.pathname },
       "*",
     );
+  }, [location.pathname]);
+
+  // The operator console is ~43 routes that never call `usePageMeta`, so
+  // without this the console would keep the shell's `index, follow` now that
+  // robots.txt no longer blocks it. Runs on every route change — before the
+  // page's own meta effect, which applies the same rule.
+  useEffect(() => {
+    applyRobotsMeta(location.pathname);
   }, [location.pathname]);
 
   useEffect(() => {

@@ -25,7 +25,7 @@ import {
   StreakChip,
 } from "@/components/widgets/FirstWatchPanel";
 import { CodexPanel } from "@/components/widgets/CodexPanel";
-import { Camera, ChevronDown, LogOut, Mail, MessageCircle, Send } from "lucide-react";
+import { Camera, LogOut, Mail, MessageCircle, Send } from "lucide-react";
 
 import { usePageMeta } from "@/hooks/use-page-meta";
 export default function Account() {
@@ -112,7 +112,9 @@ export default function Account() {
     !user.onboarded &&
     !user.displayName &&
     !user.rank;
-  usePageMeta({ title: "Account — Star Force Base 1198", description: "Manage your pilot profile, rank, and account settings.", noindex: false });
+  // Private member page: crawlable (robots.txt no longer Disallows it) but
+  // never indexed — see src/hooks/use-page-meta.ts.
+  usePageMeta({ title: "Account — Star Force Base 1198", description: "Manage your pilot profile, rank, and account settings.", noindex: true });
 
   if (needsOnboarding) {
     return <PilotOnboarding />;

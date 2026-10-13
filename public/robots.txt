@@ -1,7 +1,10 @@
+# No Disallow lines on purpose.
+#
+# `Disallow` is a *crawling* instruction, not an indexing one: it parks the
+# URLs in Search Console's "Blocked by robots.txt" report and stops Google from
+# ever reading the page's indexing signal. Private areas (/account, /messages,
+# /operator/*) stay out of the index the supported way instead — the app emits
+# `noindex, nofollow` on those routes at runtime (see src/hooks/use-page-meta.ts).
 User-agent: *
-Allow: /
-Disallow: /operator
-Disallow: /account
-Disallow: /messages
 
 Sitemap: https://starforcebase1198.com/sitemap.xml

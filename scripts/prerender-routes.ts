@@ -42,7 +42,10 @@ type Route = {
 };
 
 // Public, indexable routes only. Member/private pages (/account, /messages,
-// /operator/*, /auth) are excluded by robots.txt or noindex by design.
+// /operator/*, /auth) are noindexed at runtime by usePageMeta/RouteSyncer and
+// must not be emitted here either. robots.txt deliberately has no Disallow
+// lines — `Disallow` parks the URLs in Search Console's "Blocked by robots.txt"
+// report instead of keeping them out of the index.
 // Root "/" is skipped — dist/index.html already carries the homepage meta.
 const ROUTES: Route[] = [
   {

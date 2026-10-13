@@ -37,6 +37,39 @@ function upsertLink(rel: string, href: string) {
 let jsonLdScript: HTMLScriptElement | null = null;
 
 /**
+ * Routes that must never enter a search index: the member account, the
+ * channel inbox, and every /operator/* console page.
+ *
+ * These used to live in robots.txt as `Disallow` lines instead. That is a
+ * crawling instruction, not an indexing one — it parked the URLs in Search
+ * Console's "Blocked by robots.txt" report and meant Google could never read
+ * the page's own indexing signal. Crawling is allowed now and these paths
+ * emit `noindex, nofollow`, which is the mechanism Google actually applies.
+ */
+const PRIVATE_PREFIXES = ["/operator", "/account", "/messages"];
+
+/** True for a private route — shared by `usePageMeta` and the router. */
+export function isPrivatePath(pathname: string): boolean {
+  return PRIVATE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+/** The robots directive for a route — the single source of indexability. */
+export function robotsContentFor(pathname: string, noindex = false): string {
+  return noindex || isPrivatePath(pathname) ? "noindex, nofollow" : "index, follow";
+}
+
+/**
+ * Upserts `<meta name="robots">` for a route, so a private path can never be
+ * flipped back to `index, follow` by a page that passes `noindex: false` —
+ * or by a page that passes nothing at all.
+ */
+export function applyRobotsMeta(pathname: string, noindex = false) {
+  upsertMeta("name", "robots", robotsContentFor(pathname, noindex));
+}
+
+/**
  * Sets document.title, social/meta tags, canonical URL, and optional
  * JSON-LD structured data for the current page so shared links preview
  * nicely (OG + Twitter cards) and search engines understand the content.
@@ -76,12 +109,8 @@ export function usePageMeta({
     // Canonical
     upsertLink("canonical", url);
 
-    // Robots
-    if (noindex) {
-      upsertMeta("name", "robots", "noindex, nofollow");
-    } else {
-      upsertMeta("name", "robots", "index, follow");
-    }
+    // Robots (private routes always win over the noindex flag)
+    applyRobotsMeta(window.location.pathname, noindex);
 
     // JSON-LD structured data
     if (jsonLd) {

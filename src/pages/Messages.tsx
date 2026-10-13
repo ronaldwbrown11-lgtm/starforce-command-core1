@@ -5,10 +5,10 @@ import { Link, useSearchParams } from "react-router";
 import {
   SiteShell,
   PageHero,
-  HoloCard,
   NeonButton,
   StatusPill,
 } from "@/components/uf";
+import type { Id } from "@/convex/_generated/dataModel";
 import { FleetAffiliation } from "@/components/widgets/FleetAffiliation";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -52,14 +52,16 @@ export default function Messages() {
   const threadMsgs = useQuery(
     api.messages.messagesInThread,
     activeThreadId
-      ? ({ threadId: activeThreadId as any } as any)
+      ? { threadId: activeThreadId as Id<"messageThreads"> }
       : ("skip" as const),
   );
   const send = useMutation(api.messages.sendMessage);
   const markRead = useMutation(api.messages.markThreadRead);
   const heart = useMutation(api.social.heartbeat);
 
-  usePageMeta({ title: "Comms Channel — Star Force Base 1198", description: "Secure messaging between fleet personnel.", noindex: false });
+  // Private member page: crawlable (robots.txt no longer Disallows it) but
+  // never indexed — see src/hooks/use-page-meta.ts.
+  usePageMeta({ title: "Comms Channel — Star Force Base 1198", description: "Secure messaging between fleet personnel.", noindex: true });
 
   useEffect(() => {
     if (isAuthenticated) heart({});
@@ -68,7 +70,7 @@ export default function Messages() {
   // Mark active thread as read whenever new messages arrive.
   useEffect(() => {
     if (!activeThreadId || !threadMsgs || !threadMsgs.length) return;
-    markRead({ threadId: activeThreadId as any });
+    markRead({ threadId: activeThreadId as Id<"messageThreads"> });
   }, [activeThreadId, threadMsgs, markRead]);
 
   // Auto-create a thread when arriving with ?recipient=X
@@ -79,7 +81,7 @@ export default function Messages() {
       try {
         const { threadId } = await send({
           body: "— opened a channel —",
-          recipientId: recipientHint as any,
+          recipientId: recipientHint as Id<"users">,
         });
         if (cancelled) return;
         setParams({ thread: threadId as string }, { replace: true });
@@ -123,7 +125,7 @@ export default function Messages() {
     if (!draft.trim()) return;
     if (!activeThreadId) return;
     try {
-      await send({ body: draft, threadId: activeThreadId as any });
+      await send({ body: draft, threadId: activeThreadId as Id<"messageThreads"> });
       setDraft("");
     } catch {
       // Mutation errors surfaced via Convex's error UI; ignore here.
@@ -152,7 +154,7 @@ export default function Messages() {
             draft={draft}
             setDraft={setDraft}
             onSend={transmit}
-            meId={(user as any)?._id ?? null}
+            meId={user?._id ?? null}
           />
         </div>
       </section>
