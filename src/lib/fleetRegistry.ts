@@ -253,3 +253,63 @@ export async function assignFighterChoice(
     message: pickString(d, "error") ?? `Registry request failed (HTTP ${res.status}).`,
   };
 }
+
+// -----------------------------------------------------------------------------
+// Fleet database reads — the operator console's "Seed vessels" button reseeds
+// its vessel list from the registry's own records (GET /api/vessels), so the
+// console always mirrors the database the Fleet Command editors maintain.
+// Same browser-direct, open-CORS read as everything else above.
+// -----------------------------------------------------------------------------
+
+/**
+ * One vessel record exactly as the fleet database serves it. Fields are
+ * nullable/absent in practice (fighters have no `role`, capitals have no
+ * `name`, `variants` arrives as an array of sub-records rather than a string),
+ * so the consumer normalizes defensively.
+ */
+export interface RegistryVesselRecord {
+  _id?: string | number;
+  designation?: string | null;
+  name?: string | null;
+  badge?: string | null;
+  shipClass?: string | null;
+  registryNumber?: string | null;
+  status?: string | null;
+  role?: string | null;
+  crew?: string | null;
+  builder?: string | null;
+  fleet?: string | null;
+  commissionDate?: string | null;
+  armor?: string | null;
+  propulsion?: string | null;
+  capabilities?: string | null;
+  maneuverability?: string | null;
+  computer?: string | null;
+  primaryArmament?: string | null;
+  secondaryArmament?: string | null;
+  defensiveSystems?: string | null;
+  notes?: string | null;
+  hullLength?: string | number | null;
+  hullWidth?: string | number | null;
+  decks?: string | number | null;
+  weight?: string | null;
+  warpSpeed?: string | null;
+  sublightSpeed?: string | null;
+}
+
+/**
+ * The fleet database's full vessel list — the reseed source for the console.
+ * Throws (via registryJson) when the registry is unreachable or answers
+ * non-2xx, so callers can report the failure instead of mistaking it for
+ * "the database has no ships".
+ */
+export async function fetchRegistryFleet(): Promise<RegistryVesselRecord[]> {
+  const rows = await registryJson<unknown[]>(`/api/vessels`);
+  if (!Array.isArray(rows)) return [];
+  return rows.filter(
+    (r): r is RegistryVesselRecord =>
+      !!r &&
+      typeof r === "object" &&
+      typeof (r as { designation?: unknown }).designation === "string",
+  );
+}
