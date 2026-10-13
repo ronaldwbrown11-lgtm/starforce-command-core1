@@ -214,7 +214,7 @@ export default function Home() {
   const primaryStory = featuredStories?.[0] ?? null;
   const secondaryStory = featuredStories?.[1] ?? null;
   const fleetUpdate = fleetReports?.[0] ?? null;
-  usePageMeta({ title: "Star Force Base 1198 — A Living Sci-Fi Universe", description: "Official home of the Ultra Force Universe, a living sci-fi world created by Ron Brown — canon stories, factions, star systems, and missions.", noindex: false });
+  usePageMeta({ title: "Star Force Base 1198 — A Living Sci-Fi Universe", description: "Star Force Base 1198 is the official home of the Ultra Force Universe — a collaborative science-fiction platform created by Ron Brown.", noindex: false });
 
 
   return (
@@ -253,12 +253,11 @@ export default function Home() {
             <p className="text-uf-muted mt-3 pt-3 border-t border-[color:var(--uf-border)] text-sm md:text-base leading-7 max-w-xl">
               Star Force Base 1198 is the official home of the{" "}
               <strong className="font-semibold text-uf-cyan">Ultra Force Universe</strong> — a
-              living, collaborative science-fiction world created by{" "}
-              <strong className="font-semibold text-uf-cyan">Ron Brown</strong>. Writers, fans,
-              and worldbuilders come together to create canon stories, explore factions, chart
-              star systems, and participate in missions inside a fully realized future galaxy.
-              Join the community, contribute to the universe, and build your legacy as part of
-              the fleet.
+              collaborative science-fiction platform created by{" "}
+              <strong className="font-semibold text-uf-cyan">Ron Brown</strong>. Here you'll
+              find canon stories, lore, missions, maps, characters, factions, and the tools
+              that keep the galaxy alive. This page is your public entry point into the
+              universe, before you step into the in-universe command center below.
             </p>
             <div className="flex flex-wrap gap-3 mt-7">
               <Link to="/auth">
