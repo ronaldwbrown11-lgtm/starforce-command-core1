@@ -155,6 +155,11 @@ function RouteSyncer() {
 // Remove the static boot screen only after this module has loaded successfully.
 // If the module itself fails to load, the HTML fallback remains visible instead
 // of leaving visitors with a blank screen.
+//
+// The boot screen also carries the crawler-first <h1 id="uf-static-title">
+// (<h1> text per route is written by scripts/prerender-routes.ts). It goes
+// with it here, so once React has mounted the page's own <h1> is the only
+// heading in the document — no duplicate H1s for crawlers that run JS.
 document.getElementById("boot-fallback")?.remove();
 
 // PWA offline reading (progressive enhancement): register the service

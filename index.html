@@ -123,18 +123,30 @@
         border-radius: 12px;
         background: rgba(10,22,40,.9);
       }
-      #boot-fallback strong {
+      #boot-fallback h1 {
         display: block;
-        margin-bottom: .5rem;
+        margin: 0 0 .5rem;
         color: #00e5ff;
         letter-spacing: .16em;
         text-transform: uppercase;
         font-size: .75rem;
+        font-weight: 600;
+        line-height: 1.5;
       }
       #boot-fallback p { margin: .5rem 0 0; color: #a9bbdd; }
     </style>
     <div>
-      <strong>Star Force Base 1198</strong>
+      <!-- Crawler-first H1. The SPA renders a page's real top-level heading
+           only after React boots, so without this every route's static HTML
+           shipped with no heading at all — exactly what Bing's Site Scan
+           reports as "missing H1". This one is visible while the app boots,
+           and src/main.tsx removes it together with the boot screen the
+           moment the bundle loads, so the page's own heading ends up the
+           only one in the document. scripts/prerender-routes.ts rewrites
+           the text per route so the static heading matches the real page
+           heading. (Deliberately no literal h1 markup in this comment — a
+           naive heading extractor must not count it twice.) -->
+      <h1 id="uf-static-title">Star Force Base 1198</h1>
       <div>Starting command interface…</div>
       <p>If this message remains, refresh the page or contact the site operator. No database credentials are required in your browser.</p>
     </div>

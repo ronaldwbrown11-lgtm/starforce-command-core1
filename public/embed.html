@@ -43,6 +43,7 @@
     .eyebrow {
       margin: 0 0 12px;
       font-size: 10px;
+      font-weight: 400;
       letter-spacing: 0.22em;
       text-transform: uppercase;
       color: var(--cyan);
@@ -109,7 +110,9 @@
 </head>
 <body>
   <main class="card" id="card" aria-live="polite">
-    <p class="eyebrow">Star Force Base 1198</p>
+    <!-- Top-level heading of the card, in both the pre-fetch state and after
+         the story loads (the story title below it is the h2). -->
+    <h1 class="eyebrow">Star Force Base 1198</h1>
     <p class="status" id="status">Loading transmission…</p>
   </main>
 
@@ -124,6 +127,9 @@
 
     var card = document.getElementById("card");
     var statusEl = document.getElementById("status");
+    // Single source for the card's top-level heading — every state (loading,
+    // story, error) renders exactly this one h1, with the story title as h2.
+    var EYEBROW = '<h1 class="eyebrow">Star Force Base 1198</h1>';
 
     function slugFromUrl() {
       // /embed/story/<slug> (served by .htaccess rewrite) or ?slug=<slug>.
@@ -143,7 +149,7 @@
       var byline = "Filed by <strong>" + esc(story.author.displayName) + "</strong>" +
         (story.author.rank ? " · " + esc(story.author.rank) : "");
       card.innerHTML =
-        '<p class="eyebrow">Star Force Base 1198</p>' +
+        EYEBROW +
         "<h2>" + esc(story.title) + "</h2>" +
         (story.excerpt ? '<p class="excerpt">' + esc(story.excerpt) + "</p>" : "") +
         '<p class="byline">' + byline + "</p>" +
@@ -153,7 +159,7 @@
 
     function renderError(message, retryable) {
       card.innerHTML =
-        '<p class="eyebrow">Star Force Base 1198</p>' +
+        EYEBROW +
         '<p class="status">' + esc(message) + "</p>" +
         (retryable ? '<button type="button" class="retry" id="retry">Retry transmission</button>' : "");
       var btn = document.getElementById("retry");

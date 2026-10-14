@@ -22,6 +22,18 @@ RewriteRule ^embed/story/([A-Za-z0-9_-]+)/?$ embed.html [L]
 # Internal rewrite, NOT a redirect — clean URLs serve unique crawler-first
 # HTML directly. Safe against loops: the -f check fails for
 # lore.html.html, so an already-rewritten URL passes through.
+#
+# Nested routes are prerendered as FLAT dashed files, so this rule is tried
+# FIRST: /tools/assistant → tools-assistant.html, /lore/submit →
+# lore-submit.html, /fleet-registry/armament-sheets →
+# fleet-registry-armament-sheets.html. They must not live in a subdirectory
+# (/lore/submit.html inside a real lore/ directory) because mod_dir would then
+# 301 /lore → /lore/ and an indexed URL would start answering with a redirect
+# instead of lore.html. Dashed first also means a leftover nested page from an
+# older deploy can never win over the current flat file.
+RewriteCond %{DOCUMENT_ROOT}/$1-$2.html -f
+RewriteRule ^(.+?)/([^/]+?)/?$ $1-$2.html [L]
+
 RewriteCond %{DOCUMENT_ROOT}/$1.html -f
 RewriteRule ^(.+?)/?$ $1.html [L]
 
