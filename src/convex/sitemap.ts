@@ -1,5 +1,4 @@
 import { httpAction, query } from "./_generated/server";
-import { v } from "convex/values";
 import { api } from "./_generated/api";
 
 const SITE = "https://starforcebase1198.com";
@@ -88,6 +87,7 @@ export const generateSitemap = httpAction(async (ctx) => {
   entries.push(urlEntry(SITE + "/", now, "1.0", "daily"));
   entries.push(urlEntry(SITE + "/stories", now, "0.9", "daily"));
   entries.push(urlEntry(SITE + "/lore", now, "0.9", "weekly"));
+  entries.push(urlEntry(SITE + "/universe", now, "0.8", "weekly")); // Universe Overview
   entries.push(urlEntry(SITE + "/map", now, "0.8", "weekly"));
   entries.push(urlEntry(SITE + "/missions", now, "0.8", "weekly"));
   entries.push(urlEntry(SITE + "/vault", now, "0.6", "weekly"));
