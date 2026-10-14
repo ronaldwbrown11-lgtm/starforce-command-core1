@@ -14,9 +14,9 @@ import {
  * List all factions for the registry. If the DB has no factions yet, the
  * canon seed catalog is returned in-memory so the registry is never empty.
  * `stored` tells callers whether the data is persisted (false = seed fallback).
- * `needsCanonSync` is true when stored species rows predate the canon
- * charter (no species row yet, or a row whose description lacks the charter's
- * PHYSIOLOGY marker) — callers should run the ensureCanon bootstrap.
+ * `needsCanonSync` is true when stored species rows are missing or have
+ * drifted from the canon charter (name, description, accent, icon, or
+ * order) — callers should run the ensureCanon bootstrap.
  */
 export const listAll = query({
   args: {},
@@ -42,21 +42,29 @@ export const listAll = query({
         if (catCmp !== 0) return catCmp;
         return (a.order ?? 0) - (b.order ?? 0);
       });
-    // Stored species rows are stale when:
-    //  1. Fewer species rows exist than the charter provides (e.g. the table
-    //     was seeded before the charter transcription, or a partial sync was
-    //     interrupted) — the missing rows can never appear otherwise, or
-    //  2. Any stored species description lacks the charter's PHYSIOLOGY
-    //     section marker (pre-canon made-up text).
-    // The detectable marker is the charter's own section header, so check 2
-    // stays correct if the catalog grows (any charter-era row has it).
-    const catalogSpeciesCount = SEED_FACTIONS.filter(
-      (f) => f.category === "species",
-    ).length;
+    // Stored species rows are stale when any catalog species is missing or
+    // has drifted from the canon charter (name, description, accent, icon,
+    // or order). This exact comparison replaces an earlier heuristic (a
+    // literal "PHYSIOLOGY" section marker) which could not detect renamed
+    // species, nor charter text that uses lowercase inline headers — so
+    // needsCanonSync now flips false only when stored rows truly match the
+    // charter. Species rows outside the catalog are handled by reconcileCanon
+    // (retired, not compared); operator deactivations are not staleness.
     const storedSpecies = docs.filter((d) => d.category === "species");
-    const needsCanonSync =
-      storedSpecies.length < catalogSpeciesCount ||
-      storedSpecies.some((d) => !d.description.includes("PHYSIOLOGY"));
+    const storedBySlug = new Map(storedSpecies.map((d) => [d.slug, d]));
+    const needsCanonSync = SEED_FACTIONS.filter(
+      (f) => f.category === "species",
+    ).some((f) => {
+      const row = storedBySlug.get(f.slug);
+      return (
+        !row ||
+        row.name !== f.name ||
+        row.description !== f.description ||
+        row.accent !== f.accent ||
+        row.icon !== f.icon ||
+        (row.order ?? 0) !== f.order
+      );
+    });
     return { stored: true as const, needsCanonSync, items };
   },
 });
