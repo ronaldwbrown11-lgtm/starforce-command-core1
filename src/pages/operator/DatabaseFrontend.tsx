@@ -157,7 +157,7 @@ export default function OperatorDatabaseFrontend() {
               <iframe
                 src={db.databaseUrl}
                 title={db.title}
-                className="w-full h-[62vh] rounded-md border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.85)]"
+                className="w-full h-[88vh] rounded-md border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.85)]"
               />
             ) : (
               <div className="rounded-md border border-dashed border-[color:var(--uf-border)] p-10 text-center text-uf-muted text-sm">

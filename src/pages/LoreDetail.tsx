@@ -16,6 +16,10 @@ import {
   isPersonnelArchive,
 } from "@/components/widgets/PersonnelDossierBrowser";
 import {
+  ArmoryBrowser,
+  isArmoryArchive,
+} from "@/components/widgets/ArmoryBrowser";
+import {
   BookOpenText,
   Database,
   Download,
@@ -314,6 +318,10 @@ function LibraryItemView({ item }: { item: LibraryItem }) {
           </div>
         ) : isDatabase && isPersonnelArchive(item) ? (
           <PersonnelDossierBrowser />
+        ) : isDatabase && isArmoryArchive(item) ? (
+          // Native arsenal manifest — the same front end style as the
+          // personnel roster, with no subdomain embed behind it.
+          <ArmoryBrowser />
         ) : (
           <HoloCard>
             <div className="flex items-center gap-3 mb-4">
@@ -329,7 +337,7 @@ function LibraryItemView({ item }: { item: LibraryItem }) {
               <iframe
                 src={item.databaseUrl}
                 title={item.title}
-                className="w-full h-[68vh] rounded-md border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.85)]"
+                className="w-full h-[88vh] rounded-md border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.85)]"
               />
             ) : (
               <div className="rounded-md border border-dashed border-[color:var(--uf-border)] p-10 text-center text-uf-muted text-sm">

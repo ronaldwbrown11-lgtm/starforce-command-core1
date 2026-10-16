@@ -6,7 +6,10 @@ import {
   PersonnelDossierBrowser,
   isPersonnelArchive,
 } from "@/components/widgets/PersonnelDossierBrowser";
-import { isArmoryArchive } from "@/components/widgets/ArmoryBrowser";
+import {
+  ArmoryBrowser,
+  isArmoryArchive,
+} from "@/components/widgets/ArmoryBrowser";
 import { ArrowLeft, Database, PenLine, Ship } from "lucide-react";
 import { usePageMeta } from "@/hooks/use-page-meta";
 
@@ -158,15 +161,10 @@ export default function LoreDatabase() {
             </NeonButton>
           </HoloCard>
         ) : isArmory ? (
-          <HoloCard className="p-0 overflow-hidden">
-            <iframe
-              src={embedUrl ?? "https://armory.starforcebase1198.com/"}
-              title={item.title}
-              className="w-full h-[78vh] border-0 bg-[rgba(5,8,22,0.85)]"
-              loading="eager"
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
-          </HoloCard>
+          // Native weapons browser — same front end as the personnel roster,
+          // and nothing from the armory subdomain is embedded, so its
+          // "Return to Star Force Base" header button never shows here.
+          <ArmoryBrowser />
         ) : builtIn ? (
           <HoloCard>
             <div className="flex items-center gap-3 mb-4">
@@ -204,7 +202,7 @@ export default function LoreDatabase() {
             <iframe
               src={`${embedUrl}${embedUrl.includes("?") ? "&" : "?"}embeded=public`}
               title={item.title}
-              className="w-full h-[68vh] border-0 bg-[rgba(5,8,22,0.85)]"
+              className="w-full h-[88vh] border-0 bg-[rgba(5,8,22,0.85)]"
             />
           </HoloCard>
         ) : (

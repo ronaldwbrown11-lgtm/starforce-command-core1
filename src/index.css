@@ -1479,3 +1479,55 @@ html.sf-copy-locked [data-copy-allow] * {
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* ------------------------------------------------------------------
+   Arsenal report print sheet — src/components/widgets/ArmoryBrowser.tsx.
+
+   Printing from the staged-records dialog must put the report itself on
+   paper: the modal chrome, its buttons and the rest of the site are hidden,
+   the dialog is un-clipped so long reports paginate, and dark theme colors
+   are forced to ink-on-white so the sheet doesn't burn toner.
+   ------------------------------------------------------------------ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #armory-report-overlay,
+  #armory-report,
+  #armory-report * {
+    visibility: visible;
+  }
+  #armory-report-overlay {
+    position: static !important;
+    display: block !important;
+    inset: auto !important;
+    overflow: visible !important;
+    z-index: auto !important;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+  #armory-report-dialog {
+    position: static !important;
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  #armory-report {
+    background: #ffffff;
+    color: #101820;
+  }
+  #armory-report * {
+    color: #101820 !important;
+    background: transparent !important;
+    border-color: #b8c2cc !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  #armory-report li {
+    break-inside: avoid;
+  }
+}

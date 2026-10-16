@@ -192,7 +192,7 @@ export function PersonnelDossierBrowser() {
               : "No personnel records match."}
           </div>
         ) : (
-          <ul className="list-none m-0 p-2 flex-1 overflow-y-auto lg:max-h-[62vh] flex flex-col gap-1">
+          <ul className="list-none m-0 p-2 flex-1 overflow-y-auto lg:max-h-[80vh] flex flex-col gap-1">
             {filtered.map((p, i) => (
               <li key={`${p.service_num ?? ""}-${i}`}>
                 <PersonnelRow

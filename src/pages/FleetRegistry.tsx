@@ -58,7 +58,7 @@ export default function FleetRegistry() {
           <div className="relative">
             {!loaded && (
               <div
-                className="flex flex-col items-center justify-center gap-3 min-h-[70vh] bg-[rgba(5,8,22,0.85)]"
+                className="flex flex-col items-center justify-center gap-3 min-h-[88vh] bg-[rgba(5,8,22,0.85)]"
                 role="status"
                 aria-live="polite"
               >
@@ -72,7 +72,7 @@ export default function FleetRegistry() {
               title="Star Force Fleet Registry — vessel database"
               src={FLEET_REGISTRY_URL}
               onLoad={() => setLoaded(true)}
-              className="block w-full border-0 min-h-[78vh] bg-[#050816]"
+              className="block w-full border-0 min-h-[88vh] bg-[#050816]"
               loading="eager"
               referrerPolicy="strict-origin-when-cross-origin"
             />
