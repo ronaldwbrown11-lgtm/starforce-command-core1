@@ -35,6 +35,9 @@ export function isArmoryArchive(item: {
   );
 }
 
+/** One attached file carried on a weapon record (image or schematic). */
+type MediaRef = { src?: string; name?: string };
+
 /** Shape of a canon weapon record served by the Hostinger armory API. */
 export type CanonWeapon = {
   /** Stable identity for report selection — survives filtering/sorting. */
@@ -49,6 +52,12 @@ export type CanonWeapon = {
   range?: string;
   rof?: string;
   primarySpec?: string;
+  /** Technical data: record timestamps as served by the read API. */
+  createdAt?: string;
+  updatedAt?: string;
+  /** Attachments: the record's image and schematic files, when it has any. */
+  images: MediaRef[];
+  schematics: MediaRef[];
 };
 
 /** Hostinger SQL-backed armory API — the Armory subdomain's existing
@@ -59,6 +68,86 @@ const ARMORY_API_URL = "https://armory.starforcebase1198.com/weapons.php";
 
 function s(v: unknown): string | undefined {
   return typeof v === "string" && v.trim() ? v : undefined;
+}
+
+/** Normalize every shape an attachment can arrive in — a bare URL string,
+ *  an array of them, or the armory app's {file_path, original_name} rows. */
+function mediaList(v: unknown): MediaRef[] {
+  const out: MediaRef[] = [];
+  const push = (item: unknown) => {
+    if (typeof item === "string") {
+      const t = item.trim();
+      if (t) out.push({ src: t });
+      return;
+    }
+    if (item && typeof item === "object") {
+      const o = item as Record<string, unknown>;
+      const src = s(o.file_path) ?? s(o.filePath) ?? s(o.url) ?? s(o.src);
+      const name = s(o.original_name) ?? s(o.name);
+      if (src || name) out.push({ src, name });
+    }
+  };
+  if (Array.isArray(v)) v.forEach(push);
+  else push(v);
+  return out;
+}
+
+/** Only image-safe schemes may reach an `src` attribute. */
+function safeSrc(src?: string): string | undefined {
+  const t = src?.trim();
+  if (!t) return undefined;
+  return /^(https?:|data:image\/|blob:)/i.test(t) ? t : undefined;
+}
+
+/** "2026-08-11 08:20:00" → "2026-08-11" — no timezone math on DB stamps. */
+function shortDate(v?: string): string | undefined {
+  const t = v?.trim();
+  if (!t) return undefined;
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(t);
+  if (m) return m[1];
+  const d = new Date(t);
+  return Number.isNaN(d.getTime()) ? t : d.toISOString().slice(0, 10);
+}
+
+/** The tactical plate the original armory app drew for every record. Each
+ *  weapon keeps the same visual asset the embedded front end showed, even
+ *  when no photograph is attached to the row. */
+function weaponPlate(title: string, subtitle: string): string {
+  const esc = (v: string) =>
+    v.replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c,
+    );
+  const svg = [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300" viewBox="0 0 600 300">',
+    '<defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">',
+    '<stop offset="0%" stop-color="#050a14"/><stop offset="100%" stop-color="#0a1628"/>',
+    "</linearGradient></defs>",
+    '<rect width="600" height="300" fill="url(#bg)"/>',
+    '<rect x="20" y="20" width="560" height="260" rx="4" fill="none" stroke="#0e2a4a" stroke-width="2"/>',
+    '<path d="M 40 60 L 560 60" stroke="#0e2a4a" stroke-dasharray="4 4"/>',
+    '<text x="40" y="48" fill="#00e5ff" font-family="monospace" font-size="13" font-weight="bold" letter-spacing="2">STAR FORCE TACTICAL SCHEMATIC</text>',
+    '<text x="560" y="48" fill="#ffd54f" font-family="monospace" font-size="12" text-anchor="end">SYS-VER 3.0</text>',
+    '<path d="M 120 180 L 220 120 L 420 120 L 480 160 L 440 210 L 160 210 Z" fill="rgba(0,229,255,0.05)" stroke="#00e5ff" stroke-width="1.5"/>',
+    '<circle cx="200" cy="165" r="18" fill="none" stroke="#ffd54f" stroke-width="1"/>',
+    '<path d="M 240 140 L 380 140 L 360 190 L 260 190 Z" fill="rgba(255,213,79,0.1)" stroke="#ffd54f" stroke-width="1"/>',
+    `<text x="60" y="245" fill="#00e5ff" font-family="monospace" font-size="15" font-weight="bold">${esc(title.slice(0, 44))}</text>`,
+    `<text x="60" y="265" fill="#8aacc1" font-family="monospace" font-size="11">${esc(subtitle.slice(0, 60))}</text>`,
+    "</svg>",
+  ].join("");
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+/** The record's visual asset: the first usable attached image, else the
+ *  generated tactical plate (what the original front end rendered). */
+function imageSrcFor(weapon: CanonWeapon): string {
+  const attached = weapon.images.map((im) => safeSrc(im.src)).find(Boolean);
+  return (
+    attached ??
+    weaponPlate(
+      weaponName(weapon),
+      weapon.builder ? `${weapon.builder} · Star Force Armory` : "Star Force Armory · Sector 1198",
+    )
+  );
 }
 
 /** Selection key: server id → registry number → designation + raw index. */
@@ -87,6 +176,8 @@ function weaponSpecs(
     { label: "Ammunition cell", value: weapon.fleet },
     { label: "Effective range", value: weapon.range },
     { label: "Rate of fire", value: weapon.rof },
+    { label: "Filed", value: shortDate(weapon.createdAt) },
+    { label: "Last revised", value: shortDate(weapon.updatedAt) },
   ].filter((v): v is { label: string; value: string } =>
     Boolean(v.value?.trim()),
   );
@@ -144,6 +235,14 @@ export function ArmoryBrowser() {
             range: s(w.effective_range) ?? s(w.range),
             rof: s(w.rate_of_fire) ?? s(w.rof),
             primarySpec: s(w.primary_spec) ?? s(w.primarySpec),
+            createdAt: s(w.created_at) ?? s(w.createdAt),
+            updatedAt: s(w.updated_at) ?? s(w.updatedAt),
+            images: mediaList(
+              w.images ?? w.image ?? w.image_url ?? w.imageUrl ?? w.preview_image,
+            ),
+            schematics: mediaList(
+              w.schematics ?? w.schematic ?? w.schematic_url ?? w.schematicUrl,
+            ),
           }))
         : [];
       setRecords(mapped);
@@ -465,6 +564,10 @@ function ArsenalReportDialog({
       "Effective range",
       "Rate of fire",
       "Primary specification",
+      "Filed",
+      "Last revised",
+      "Images",
+      "Schematics",
     ];
     const rows = weapons.map((w, i) => [
       String(i + 1),
@@ -477,6 +580,10 @@ function ArsenalReportDialog({
       w.range ?? "",
       w.rof ?? "",
       w.primarySpec ?? "",
+      shortDate(w.createdAt) ?? "",
+      shortDate(w.updatedAt) ?? "",
+      String(w.images.length),
+      String(w.schematics.length),
     ]);
     const csv = [header, ...rows]
       .map((row) =>
@@ -594,6 +701,32 @@ function ReportEntry({ weapon, index }: { weapon: CanonWeapon; index: number }) 
           ))}
         </dl>
       ) : null}
+      <div className="mt-3 flex flex-wrap items-start gap-4">
+        <img
+          src={imageSrcFor(weapon)}
+          alt={`${weaponName(weapon)} — tactical visual asset`}
+          className="w-full sm:w-56 rounded-md border border-[color:var(--uf-border)]"
+        />
+        <div className="flex-1 min-w-[12rem]">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-uf-muted mb-1">
+            Attachments
+          </p>
+          <p className="text-xs text-uf-muted">
+            {weapon.images.length} image{weapon.images.length === 1 ? "" : "s"} ·{" "}
+            {weapon.schematics.length} schematic
+            {weapon.schematics.length === 1 ? "" : "s"} on file
+            {weapon.schematics.length > 0 ? (
+              <>
+                {": "}
+                {weapon.schematics
+                  .map((sc) => sc.name ?? "unnamed")
+                  .join(", ")}
+              </>
+            ) : null}
+            .
+          </p>
+        </div>
+      </div>
       {weapon.primarySpec?.trim() ? (
         <p className="mt-3 text-sm leading-relaxed">{weapon.primarySpec}</p>
       ) : null}
@@ -604,6 +737,80 @@ function ReportEntry({ weapon, index }: { weapon: CanonWeapon; index: number }) 
 // ---------------------------------------------------------------------------
 // Arsenal row + weapon file card
 // ---------------------------------------------------------------------------
+
+/** The record's image and schematic slots — the two frames the original
+ *  front end kept for a weapon's visual asset and attached drawings. */
+function WeaponMedia({ weapon }: { weapon: CanonWeapon }) {
+  const name = weaponName(weapon);
+  const images = weapon.images
+    .map((im) => ({ name: im.name, src: safeSrc(im.src) }))
+    .filter((im) => im.src || im.name);
+  const schematics = weapon.schematics
+    .map((sc) => ({ name: sc.name, src: safeSrc(sc.src) }))
+    .filter((sc) => sc.src || sc.name);
+
+  return (
+    <section className="mt-6 grid gap-4 sm:grid-cols-2" aria-label="Image and schematic">
+      <figure className="m-0 min-w-0">
+        <figcaption className="text-[11px] uppercase tracking-[0.16em] text-uf-muted mb-2">
+          Image
+        </figcaption>
+        <div className="rounded-md overflow-hidden border border-[color:var(--uf-border)] bg-[rgba(5,10,20,0.6)]">
+          <img
+            src={imageSrcFor(weapon)}
+            alt={`${name} — tactical visual asset`}
+            className="block w-full h-auto"
+            loading="lazy"
+          />
+        </div>
+        <p className="text-xs text-uf-muted mt-2">
+          {images.length > 0
+            ? `${images.length} image${images.length === 1 ? "" : "s"} linked.`
+            : "No photograph on file — generated plate shown."}
+        </p>
+      </figure>
+
+      <div className="min-w-0 flex flex-col">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-uf-muted mb-2">
+          Schematic
+        </p>
+        {schematics.length > 0 ? (
+          <ul className="list-none m-0 flex flex-col gap-2 rounded-md border border-[color:var(--uf-border)] p-3">
+            {schematics.map((sc, i) => (
+              <li key={`${sc.name ?? "schematic"}-${i}`} className="text-sm">
+                {sc.src ? (
+                  <a
+                    href={sc.src}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-uf-cyan hover:text-uf-text transition-colors underline-offset-4 hover:underline break-all"
+                  >
+                    {sc.name ?? `Schematic ${i + 1}`}
+                  </a>
+                ) : (
+                  <span className="break-words">{sc.name}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="flex-1 grid place-items-center text-center rounded-md border border-dashed border-[color:var(--uf-border)] p-6 sm:aspect-[2/1]">
+            <div>
+              <FileText className="h-6 w-6 mx-auto mb-2 opacity-60" aria-hidden />
+              <p className="text-sm text-uf-muted">
+                No schematic on file. Attach one from the armory app and it
+                will appear here.
+              </p>
+            </div>
+          </div>
+        )}
+        <p className="text-xs text-uf-muted mt-2">
+          {schematics.length} schematic{schematics.length === 1 ? "" : "s"} linked.
+        </p>
+      </div>
+    </section>
+  );
+}
 
 function WeaponDossier({
   weapon,
@@ -652,6 +859,8 @@ function WeaponDossier({
           <StatusPill variant="info">Ordnance</StatusPill>
         </div>
       </header>
+
+      <WeaponMedia weapon={weapon} />
 
       {specs.length > 0 ? (
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 mt-6 border-t border-[color:var(--uf-border)] pt-5">
