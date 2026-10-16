@@ -11,8 +11,14 @@ if not exist ".git" (
 )
 
 rem ===========================================================================
-rem ship-to-site.bat (v5) - pull the CURRENT source package from the build
+rem ship-to-site.bat (v6) - pull the CURRENT source package from the build
 rem sandbox and push it to GitHub (GitHub Actions builds and deploys).
+rem
+rem v6 (2026-10-16): a rejected push that says "fetch first" / 
+rem      "non-fast-forward" is NOT a login problem - origin/main simply has
+rem      commits this checkout lacks. The script now fetches and rebases onto
+rem      origin/main before pushing, and records a successful ship only AFTER
+rem      the push succeeds (a no-change run still pushes leftover commits).
 rem
 rem This file is NEVER shipped inside the package. The running script must not
 rem overwrite itself: cmd.exe reads batch files line by line by byte offset,
@@ -43,7 +49,7 @@ set "PS=powershell -NoProfile -ExecutionPolicy Bypass -Command"
 set "SCRIPT_NAME=ship-to-site.bat"
 
 echo ============================================================
-echo  Star Force Base 1198 - ship to site (v5)
+echo  Star Force Base 1198 - ship to site (v6)
 echo ============================================================
 
 rem ---------------------------------------------------------------------------
@@ -179,10 +185,9 @@ git add -A
 git diff --cached --quiet
 if errorlevel 1 goto :have_changes
 
-rem ---- no changes: record the package stamp and finish ----
-copy /y "%BUILTAT_FILE%" "%LAST_SHIP_FILE%" >nul
-echo No changes detected - the sandbox and the local repo are already in sync.
-goto :done
+rem ---- no file changes: still push any local commits GitHub lacks ----
+echo No file changes in this package - verifying local commits are pushed...
+goto :push_commits
 
 :have_changes
 for /f "usebackq delims=" %%L in (`%PS% "$b=(Get-Content 'BUILD-INFO.txt' | Where-Object { $_ -like 'Built: *' } | Select-Object -First 1); Write-Output $b.Substring(7)"`) do set "STAMP=%%L"
@@ -192,10 +197,43 @@ if errorlevel 1 (
     echo ERROR: Commit failed - changes are staged but not committed.
     goto :fail
 )
+
+:push_commits
+rem -------------------------------------------------------------------------
+rem Integrate remote commits BEFORE pushing. A rejected push that says
+rem "fetch first" / "non-fast-forward" means origin/main has commits this
+rem checkout does not have - that is NOT a GitHub login failure.
+rem -------------------------------------------------------------------------
+git fetch origin
+if errorlevel 1 (
+    echo ERROR: Could not fetch from GitHub - check your connection and login.
+    echo        Your commits are safe locally; re-run this script once GitHub
+    echo        is reachable.
+    goto :fail
+)
+set "BEHIND=0"
+for /f "usebackq delims=" %%N in (`git rev-list --count HEAD..origin/main`) do set "BEHIND=%%N"
+if "!BEHIND!"=="0" goto :push_now
+echo        Remote has !BEHIND! commit(s) this checkout does not - integrating them...
+git pull --rebase origin main
+if errorlevel 1 (
+    git rebase --abort >nul 2>&1
+    echo ERROR: Could not integrate the remote commits automatically (conflict).
+    echo        Your local commits are still safe. Finish it by hand:
+    echo            git pull --rebase origin main
+    echo        resolve any conflicts with:  git add -A ^& git rebase --continue
+    echo        then:  git push origin main  - or just re-run this script.
+    goto :fail
+)
+
+:push_now
 git push origin main
 if errorlevel 1 (
-    echo ERROR: Push failed - check your GitHub login.
-    echo        The commit is safe locally; re-run after fixing auth.
+    echo ERROR: Push failed - read the git message above:
+    echo        "fetch first" / "non-fast-forward" = the remote changed again;
+    echo                                  re-run this script (it rebases now).
+    echo        authentication / permission     = fix your GitHub login.
+    echo        Commits are safe locally; re-run after fixing.
     goto :fail
 )
 copy /y "%BUILTAT_FILE%" "%LAST_SHIP_FILE%" >nul
