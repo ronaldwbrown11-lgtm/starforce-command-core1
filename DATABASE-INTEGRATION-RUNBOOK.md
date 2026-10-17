@@ -67,8 +67,9 @@ barrel also derive from existing canon text, so they display immediately;
 damage and radius need storage first. One-time Hostinger steps, in order:
 
 1. phpMyAdmin → `u102692168_Star_Force` → SQL tab → run
-   `armory-app/weapons-upgrade.sql` (guarded ALTER TABLEs + canon backfills;
-   safe to run twice).
+   `armory-app/weapons-upgrade.sql` (guarded ALTER TABLEs for the five tech
+   columns + the `images` media column, plus canon backfills; safe to run
+   twice).
 2. Get the four files from the bundle
    `https://crisp-turtles-fall.freebuff.dev/armory-technical-upgrade.tar.gz`
    (contains `weapons.php`, `weapons-sync.php`, `weapons-upgrade.sql`,
@@ -78,8 +79,10 @@ damage and radius need storage first. One-time Hostinger steps, in order:
    `armory-app/` in the repo. **Copy the live DB password into the two PHP
    files first** (the repo copies carry `CHANGE_ME`).
 3. Verify markers: `curl https://armory.starforcebase1198.com/weapons.php`
-   must report `"file":"weapons-read-v3"`; a write must report
-   `"file":"weapons-sync-v5"`.
+   must report `"file":"weapons-read-v4"` (decodes the `images` column into
+   a real array); a write must report `"file":"weapons-sync-v6"` (writes the
+   `images` media column). Pre-upgrade markers were `weapons-read-v3` /
+   `weapons-sync-v5`.
 
 `weapons-sync.php` reads the column list at runtime, so it works even if it
 is uploaded **before** the SQL runs — the extra fields are simply skipped
@@ -114,7 +117,7 @@ so the built download page matches, verify checksums in `dist/`.
 | Database | Subdomain | Read API | Write API | App | Site widget | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | Personnel (Service Record Manager) | `personnel.` | `api/records.php` | n/a (app-owned) | existing | `PersonnelDossierBrowser.tsx` | ✅ done, live |
-| Armory | `armory.` | `weapons.php` (marker `weapons-read-v3` — `SELECT *`) | `weapons-sync.php` (marker `weapons-sync-v5` — tech columns) | `index.html` (sync-enabled + tech fields) | `ArmoryBrowser.tsx` | ✅ done, live |
+| Armory | `armory.` | `weapons.php` (marker `weapons-read-v4` — `SELECT *` + image decode) | `weapons-sync.php` (marker `weapons-sync-v6` — tech columns + `images`) | `index.html` (sync-enabled + tech fields + image pipeline) | `ArmoryBrowser.tsx` (renders `images[]`, JSON-string tolerant) | ✅ done, live |
 | Sector Atlas | — n/a (built into site) | Convex `sectorMap` table | Convex mutations (operator console) | `/map` + `/maps` pages | `DiscoveryMap.tsx` | ✅ done, built-in |
 | Fleet Registry | `fleetregistry.` | `api.php` (vehicle read API) | app-owned (`/api/auth/login` console) | React app on subdomain (`/registry`) | iframe on `/fleet-registry` | ✅ done, live |
 

@@ -36,6 +36,16 @@
       <p><small>Build timestamp: September 5, 2026 — group management live (Operator Console → Groups: add / edit / delete with cascade cleanup, owner column, privacy pills), faction registry live (Operator Console → Factions: add, edit, hide, delete, and restore the 33 seeded canon factions), clearance layer (tier-gated Signal Vault ciphers with locked-card UI, Command-tier event hosting with operator approval queue), ship assignment (six-step onboarding wizard, ship profile cards, per-class missions, fleet registry grouping, command-deck dashboard; cosmetic + identity only), tier pricing corrected (Command $19, Elite $25), tier identity layer, Discord presence bridge (<em>Test transmission</em>), <em>Send digest now</em>, visual vividness pass, external fleet registry app, and OTP relay support.</small></p>
     </section>
     <section>
+      <h2>Star Force Armory — subdomain files</h2>
+      <p>Hostinger deployment package for the armory console and its two API files: record images (console → database → weapon card) plus the technical-data columns. Upload to the <code>armory.starforcebase1198.com</code> folder in File Manager, overwriting the old files.</p>
+      <a href="/armory-technical-upgrade.tar.gz" download>Download Armory package</a>
+      <p><small>Extract with <code>tar -xzf armory-technical-upgrade.tar.gz</code>. Contains <code>weapons.php</code> (read API, marker <code>weapons-read-v4</code>), <code>weapons-sync.php</code> (write API, marker <code>weapons-sync-v6</code>), <code>index.html</code> (the console), and <code>weapons-upgrade.sql</code>. <strong>Copy the live DB credentials from the server's current <code>weapons.php</code> into the two PHP files first</strong> — the package carries <code>CHANGE_ME</code> placeholders.</small></p>
+      <p><small>One-time setup: open <code>weapons-upgrade.sql</code> from the extracted package in Notepad, copy all of it, and run it in phpMyAdmin (Hostinger → Databases → phpMyAdmin → <code>u102692168_Star_Force</code> → SQL tab → Go). It adds the <code>images</code> column the card renders. Safe to run twice.</small></p>
+      <p><small>SHA-256: <code>7e59e7258b950110d34b9f45cd5d3dad787da0d2c687a89d394b01422c9e16e3</code> · 24,464 bytes</small></p>
+      <p><small>Build timestamp: October 17, 2026 — images on the front-facing weapon card (the console's picture now persists through the API instead of staying in one browser's localStorage), image downscaling to stay under upload limits, JSON-string tolerance in the card so a partially deployed server still renders.</small></p>
+      <p><small>Note for keeping this button alive on the live site: deploys never ship <code>*.tar.gz</code> (deliberate — keeps source and backup archives off the public root), so also upload <code>armory-technical-upgrade.tar.gz</code> itself into <code>public_html/</code> once via File Manager — the same way the Nighthawk package got there.</small></p>
+    </section>
+    <section>
       <h2>Nighthawk Armored Vehicle Database</h2>
       <p>Hostinger deployment package for the detailed vehicle database connected to the existing <code>vehicles</code> table.</p>
       <a href="/nighthawk-vehicle-database-package.tar.gz" download>Download Nighthawk package</a>

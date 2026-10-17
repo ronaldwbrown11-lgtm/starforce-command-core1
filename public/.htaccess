@@ -6,6 +6,11 @@ RewriteCond %{HTTP:X-Forwarded-Proto} !https
 RewriteCond %{HTTPS} off
 RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 
+# /downloads (plural) is the PDF asset folder and answers 403 without an
+# index — send the browser to the real download page, /download
+# (singular). Exact match only, so /downloads/*.pdf keeps working.
+RewriteRule ^downloads/?$ /download [R=301,L]
+
 # Never send missing JavaScript/CSS asset requests through the SPA fallback.
 # A missing asset should be a clear 404, not index.html returned as JavaScript.
 RewriteRule ^assets/ - [L]

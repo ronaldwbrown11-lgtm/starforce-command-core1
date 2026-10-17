@@ -76,9 +76,24 @@ function s(v: unknown): string | undefined {
 }
 
 /** Normalize every shape an attachment can arrive in — a bare URL string,
- *  an array of them, or the armory app's {file_path, original_name} rows. */
-function mediaList(v: unknown): MediaRef[] {
+ *  an array of them, or the armory app's {file_path, original_name} rows.
+ *  A single JSON-encoded string (the SQL column served raw by an older
+ *  weapons.php) is decoded first so the card still finds the attachment. */
+export function mediaList(v: unknown): MediaRef[] {
   const out: MediaRef[] = [];
+  if (typeof v === "string") {
+    const t = v.trim();
+    if (t.startsWith("[") || t.startsWith("{")) {
+      try {
+        const parsed: unknown = JSON.parse(t);
+        if (Array.isArray(parsed) || (parsed && typeof parsed === "object")) {
+          return mediaList(parsed);
+        }
+      } catch {
+        // Not JSON after all — fall through and treat it as a bare src.
+      }
+    }
+  }
   const push = (item: unknown) => {
     if (typeof item === "string") {
       const t = item.trim();
@@ -98,7 +113,7 @@ function mediaList(v: unknown): MediaRef[] {
 }
 
 /** Only image-safe schemes may reach an `src` attribute. */
-function safeSrc(src?: string): string | undefined {
+export function safeSrc(src?: string): string | undefined {
   const t = src?.trim();
   if (!t) return undefined;
   return /^(https?:|data:image\/|blob:)/i.test(t) ? t : undefined;
@@ -134,7 +149,7 @@ function weaponPlate(title: string, subtitle: string): string {
 
 /** The record's visual asset: the first usable attached image, else the
  *  generated tactical plate (what the original front end rendered). */
-function imageSrcFor(weapon: CanonWeapon): string {
+export function imageSrcFor(weapon: CanonWeapon): string {
   const attached = weapon.images.map((im) => safeSrc(im.src)).find(Boolean);
   return (
     attached ??
