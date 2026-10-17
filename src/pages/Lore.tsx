@@ -75,16 +75,11 @@ export default function Lore() {
 
   return (
     <SiteShell>
-      <PageHero
-        eyebrow="Lore Library"
-        title="The Records of Sector 1198"
-        lead="Lore bibles, image plates, and live databases — plus the cross-referenced entry archive. Everything canonical, in one vault."
-        primary={{ label: "Submit lore", href: "/lore/submit", variant: "primary" }}
-        secondary={{ label: "Browse the archive", href: "#lore-archive", variant: "ghost" }}
-      />
-
-      <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
-        <div className="mb-8 flex flex-wrap items-center gap-2">
+      {/* Section pills — lifted above the banner and pinned under the site
+          header so the archive sections are always one click away without
+          scrolling back up. */}
+      <div className="sticky top-16 z-30 border-b border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.92)] backdrop-blur-md">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 py-4 flex flex-wrap items-center gap-2">
           <div
             className="flex gap-2 flex-wrap"
             role="tablist"
@@ -111,8 +106,17 @@ export default function Lore() {
             </NeonButton>
           </Link>
         </div>
+      </div>
 
+      <PageHero
+        eyebrow="Lore Library"
+        title="The Records of Sector 1198"
+        lead="Lore bibles, image plates, and live databases — plus the cross-referenced entry archive. Everything canonical, in one vault."
+        primary={{ label: "Submit lore", href: "/lore/submit", variant: "primary" }}
+        secondary={{ label: "Browse the archive", href: "#lore-archive", variant: "ghost" }}
+      />
 
+      <section className="uf-section max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
         {tab === "bibles" ? <BibleGrid items={bibles} loading={library === undefined} /> : null}
         {tab === "images" ? <ImageGrid items={images} loading={library === undefined} /> : null}
         {tab === "databases" ? <DatabasePanel items={databases} loading={library === undefined} /> : null}

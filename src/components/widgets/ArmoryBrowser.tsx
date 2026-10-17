@@ -58,6 +58,14 @@ export type CanonWeapon = {
   /** Attachments: the record's image and schematic files, when it has any. */
   images: MediaRef[];
   schematics: MediaRef[];
+  /** Extra technical data: magazine capacity, feed mechanism, barrel length,
+   *  and damage figures. Served once the upgraded weapons table carries
+   *  them; feed / magazine / barrel also derive from canon text. */
+  magazine?: string;
+  feed?: string;
+  barrel?: string;
+  damage?: string;
+  damageRadius?: string;
 };
 
 /** Hostinger SQL-backed armory API — the Armory subdomain's existing
@@ -164,6 +172,47 @@ function weaponName(w: CanonWeapon): string {
   return w.designation || w.registryNumber || "Unregistered";
 }
 
+/** Feed mechanism — the explicit column first, else derived from the
+ *  taxonomy ("V. Teleporter-Fed Small Arms") and the ammunition text. */
+function feedOf(weapon: CanonWeapon): string | undefined {
+  if (weapon.feed?.trim()) return weapon.feed;
+  const hay = `${weapon.category ?? ""} ${weapon.primarySpec ?? ""}`.toLowerCase();
+  if (
+    hay.includes("teleporter-fed") ||
+    hay.includes("teleporter fed") ||
+    hay.includes("portal node")
+  ) {
+    return "Teleporter-fed";
+  }
+  const fleet = (weapon.fleet ?? "").toLowerCase();
+  if (fleet.includes("magazine") || fleet.includes("clip")) return "Magazine-fed";
+  if (fleet.includes("belt")) return "Belt-fed";
+  if (fleet.includes("capacitor") || fleet.includes("cell")) return "Energy-cell fed";
+  return undefined;
+}
+
+/** Magazine capacity — the explicit column first, else the round count the
+ *  ammunition cell already states ("30-round … magazine"), or the portal
+ *  feed's infinite capacity the primary specification declares. */
+function magazineOf(weapon: CanonWeapon): string | undefined {
+  if (weapon.magazine?.trim()) return weapon.magazine;
+  if (/infinite magazine/i.test(weapon.primarySpec ?? "")) {
+    return "Unlimited (teleporter-fed)";
+  }
+  const m = /(\d[\d,]*[\s-]?round(?:s)?[^,;.]*?)\s*$/i.exec(weapon.fleet ?? "");
+  return m?.[1]?.trim() || undefined;
+}
+
+/** Barrel length — the explicit column first, else the melee reach the range
+ *  text records ("Melee (90 cm length)"). */
+function barrelOf(weapon: CanonWeapon): string | undefined {
+  if (weapon.barrel?.trim()) return weapon.barrel;
+  const m = /\((\d+(?:[.,]\d+)?\s*(?:cm|mm|m))\s*length\)/i.exec(
+    weapon.range ?? "",
+  );
+  return m?.[1] ? m[1].replace(",", ".") : undefined;
+}
+
 /** Every field worth printing — shared by the dossier card and the report. */
 function weaponSpecs(
   weapon: CanonWeapon,
@@ -176,6 +225,11 @@ function weaponSpecs(
     { label: "Ammunition cell", value: weapon.fleet },
     { label: "Effective range", value: weapon.range },
     { label: "Rate of fire", value: weapon.rof },
+    { label: "Feed", value: feedOf(weapon) },
+    { label: "Magazine capacity", value: magazineOf(weapon) },
+    { label: "Barrel length", value: barrelOf(weapon) },
+    { label: "Damage", value: weapon.damage },
+    { label: "Damage radius", value: weapon.damageRadius },
     { label: "Filed", value: shortDate(weapon.createdAt) },
     { label: "Last revised", value: shortDate(weapon.updatedAt) },
   ].filter((v): v is { label: string; value: string } =>
@@ -243,6 +297,12 @@ export function ArmoryBrowser() {
             schematics: mediaList(
               w.schematics ?? w.schematic ?? w.schematic_url ?? w.schematicUrl,
             ),
+            magazine:
+              s(w.magazine_capacity) ?? s(w.magCapacity) ?? s(w.magazine),
+            feed: s(w.feed_mechanism) ?? s(w.feedMechanism) ?? s(w.feed),
+            barrel: s(w.barrel_length) ?? s(w.barrelLength) ?? s(w.barrel),
+            damage: s(w.damage) ?? s(w.destructive_power),
+            damageRadius: s(w.damage_radius) ?? s(w.damageRadius),
           }))
         : [];
       setRecords(mapped);
@@ -568,6 +628,11 @@ function ArsenalReportDialog({
       "Last revised",
       "Images",
       "Schematics",
+      "Feed",
+      "Magazine capacity",
+      "Barrel length",
+      "Damage",
+      "Damage radius",
     ];
     const rows = weapons.map((w, i) => [
       String(i + 1),
@@ -584,6 +649,11 @@ function ArsenalReportDialog({
       shortDate(w.updatedAt) ?? "",
       String(w.images.length),
       String(w.schematics.length),
+      feedOf(w) ?? "",
+      magazineOf(w) ?? "",
+      barrelOf(w) ?? "",
+      w.damage ?? "",
+      w.damageRadius ?? "",
     ]);
     const csv = [header, ...rows]
       .map((row) =>
