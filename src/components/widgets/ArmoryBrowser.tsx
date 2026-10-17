@@ -52,9 +52,6 @@ export type CanonWeapon = {
   range?: string;
   rof?: string;
   primarySpec?: string;
-  /** Technical data: record timestamps as served by the read API. */
-  createdAt?: string;
-  updatedAt?: string;
   /** Attachments: the record's image and schematic files, when it has any. */
   images: MediaRef[];
   schematics: MediaRef[];
@@ -105,16 +102,6 @@ function safeSrc(src?: string): string | undefined {
   const t = src?.trim();
   if (!t) return undefined;
   return /^(https?:|data:image\/|blob:)/i.test(t) ? t : undefined;
-}
-
-/** "2026-08-11 08:20:00" → "2026-08-11" — no timezone math on DB stamps. */
-function shortDate(v?: string): string | undefined {
-  const t = v?.trim();
-  if (!t) return undefined;
-  const m = /^(\d{4}-\d{2}-\d{2})/.exec(t);
-  if (m) return m[1];
-  const d = new Date(t);
-  return Number.isNaN(d.getTime()) ? t : d.toISOString().slice(0, 10);
 }
 
 /** The tactical plate the original armory app drew for every record. Each
@@ -230,8 +217,6 @@ function weaponSpecs(
     { label: "Barrel length", value: barrelOf(weapon) },
     { label: "Damage", value: weapon.damage },
     { label: "Damage radius", value: weapon.damageRadius },
-    { label: "Filed", value: shortDate(weapon.createdAt) },
-    { label: "Last revised", value: shortDate(weapon.updatedAt) },
   ].filter((v): v is { label: string; value: string } =>
     Boolean(v.value?.trim()),
   );
@@ -289,8 +274,6 @@ export function ArmoryBrowser() {
             range: s(w.effective_range) ?? s(w.range),
             rof: s(w.rate_of_fire) ?? s(w.rof),
             primarySpec: s(w.primary_spec) ?? s(w.primarySpec),
-            createdAt: s(w.created_at) ?? s(w.createdAt),
-            updatedAt: s(w.updated_at) ?? s(w.updatedAt),
             images: mediaList(
               w.images ?? w.image ?? w.image_url ?? w.imageUrl ?? w.preview_image,
             ),
@@ -624,8 +607,6 @@ function ArsenalReportDialog({
       "Effective range",
       "Rate of fire",
       "Primary specification",
-      "Filed",
-      "Last revised",
       "Images",
       "Schematics",
       "Feed",
@@ -645,8 +626,6 @@ function ArsenalReportDialog({
       w.range ?? "",
       w.rof ?? "",
       w.primarySpec ?? "",
-      shortDate(w.createdAt) ?? "",
-      shortDate(w.updatedAt) ?? "",
       String(w.images.length),
       String(w.schematics.length),
       feedOf(w) ?? "",
