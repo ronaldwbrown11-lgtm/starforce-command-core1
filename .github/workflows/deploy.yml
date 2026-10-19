@@ -8,6 +8,9 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    # A stalled FTP connection used to hang this job indefinitely, which made
+    # a broken deploy look "pending" for hours. Fail loudly instead.
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,8 +57,12 @@ jobs:
           lftp -c "
             set ssl:verify-certificate no;
             set ftp:ssl-allow yes;
+            set net:timeout 20;
+            set net:max-retries 3;
+            set net:persist-retries 3;
+            set net:reconnect-interval-base 5;
             open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
-            mirror --reverse --verbose \
+            mirror --reverse --verbose --parallel=3 \
               --exclude-glob .git \
               --exclude-glob .github \
               --exclude-glob node_modules \
