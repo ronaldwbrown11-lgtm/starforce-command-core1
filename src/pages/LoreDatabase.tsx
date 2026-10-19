@@ -44,6 +44,15 @@ const PLACEHOLDER_HOST_TO_LIVE: Record<string, string> = {
   "nighthawk.starforce.local": "https://nighthawk.starforcebase1198.com",
 };
 
+// Embedded subdomains serve plain HTML with no Cache-Control header, so a
+// browser can keep rendering a console build that was replaced on the server.
+// A per-load query string forces the iframe to fetch the current file.
+const EMBED_CACHE_BUST = Date.now().toString(36);
+
+function withCacheBust(url: string): string {
+  return `${url}${url.includes("?") ? "&" : "?"}v=${EMBED_CACHE_BUST}`;
+}
+
 function resolveDatabaseUrl(item: { databaseUrl?: string | null }): string | null {
   const raw = item.databaseUrl?.trim();
   if (!raw) return null;
@@ -200,7 +209,7 @@ export default function LoreDatabase() {
         ) : embedUrl ? (
           <HoloCard className="p-0 overflow-hidden">
             <iframe
-              src={`${embedUrl}${embedUrl.includes("?") ? "&" : "?"}embeded=public`}
+              src={`${withCacheBust(embedUrl)}&embeded=public`}
               title={item.title}
               className="w-full h-[88vh] border-0 bg-[rgba(5,8,22,0.85)]"
             />

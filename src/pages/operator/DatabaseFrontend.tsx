@@ -14,6 +14,16 @@ import {
   Save,
 } from "lucide-react";
 
+// Subdomains serve plain HTML with no Cache-Control header, so a browser can
+// keep showing a console build that was replaced on the server days ago. A
+// per-load query string gives the iframe (and the fullscreen link) a fresh URL
+// every visit, so what you see is the file that is actually uploaded.
+const MOUNT_CACHE_BUST = Date.now().toString(36);
+
+function withCacheBust(url: string): string {
+  return `${url}${url.includes("?") ? "&" : "?"}v=${MOUNT_CACHE_BUST}`;
+}
+
 const STATUS_TONE: Record<string, "info" | "warning" | "gold" | "default" | "danger"> = {
   approved: "info",
   submitted: "warning",
@@ -140,7 +150,7 @@ export default function OperatorDatabaseFrontend() {
               </div>
               {db.databaseUrl ? (
                 <a
-                  href={db.databaseUrl}
+                  href={withCacheBust(db.databaseUrl)}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.16em] text-uf-cyan hover:underline"
@@ -155,7 +165,7 @@ export default function OperatorDatabaseFrontend() {
             </p>
             {db.databaseUrl ? (
               <iframe
-                src={db.databaseUrl}
+                src={withCacheBust(db.databaseUrl)}
                 title={db.title}
                 className="w-full h-[88vh] rounded-md border border-[color:var(--uf-border)] bg-[rgba(5,8,22,0.85)]"
               />

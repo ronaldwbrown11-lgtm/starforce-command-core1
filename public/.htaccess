@@ -63,6 +63,6 @@ RewriteRule ^ /index.html [L]
 # <a download> hint), so the operator never gets a file to upload.
 <Files "armory-console.html">
   ForceType application/octet-stream
-  Header set Content-Disposition "attachment; filename=index.html"
+  Header set Content-Disposition "attachment; filename=armory-console.html"
   Header set Cache-Control "no-cache, no-store, must-revalidate"
 </Files>

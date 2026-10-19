@@ -1,0 +1,68 @@
+STAR FORCE ARMORY - console + database API (BUILD 2026-10-19.2)
+================================================================
+
+Upload these to the web root of armory.starforcebase1198.com (the same
+folder that already holds weapons.php):
+
+    weapons.php          read API    - answers "file":"weapons-read-v5"
+    weapons-sync.php     write API   - answers "file":"weapons-sync-v7"
+    index.html           the console - header shows BUILD 2026-10-19.2
+    weapons-upgrade.sql  only if the `images` column is missing (safe to re-run)
+
+Do not rename index.html, and do not touch any other file in that folder.
+
+
+BEFORE YOU UPLOAD THE TWO PHP FILES
+-----------------------------------
+Both ship with  $DB_PASS = "CHANGE_ME";  and will answer 500 until it is
+replaced. In Hostinger File Manager open the CURRENT weapons.php (the one
+that works today), copy its four credential lines, and paste them into the
+matching block near the top of BOTH new files:
+
+    $DB_HOST = "localhost";
+    $DB_NAME = "u102692168_Star_Force";
+    $DB_USER = "u102692168_Seven";
+    $DB_PASS = "<the live password>";
+
+Nothing else in those lines changes.
+
+
+WHAT WAS BROKEN AND WHAT CHANGED
+--------------------------------
+v7 (weapons-sync.php) - POST no longer uses INSERT ... ON DUPLICATE KEY UPDATE.
+    The weapons table has a UNIQUE index on registry_number, and every record
+    with a blank registry number shares the single empty-string slot. The old
+    statement therefore rewrote whichever weapon held that slot and still
+    answered 201, so a save could report success while the record you edited
+    never changed and a different weapon was overwritten. POST now looks the
+    row up by id and updates it, inserts only when the id is genuinely new,
+    stores a blank registry number as NULL (NULLs do not collide), and answers
+    409 instead of silently overwriting on a real registry-number clash.
+    PUT/DELETE were already keyed on id and are unchanged.
+
+v5 (weapons.php) - sends Cache-Control: no-store, so neither the browser nor
+    the host CDN can replay the arsenal from before the save. The main site's
+    Armory Browser also adds a cache-buster of its own.
+
+Console - BUILD 2026-10-19.2 stages the picture when you pick it, sends the
+    database an absolute URL (works when embedded, not just on the subdomain),
+    and reads the record back after saving: "Image confirmed in database" or
+    "IMAGE NOT STORED".
+
+
+VERIFY AFTER UPLOAD
+-------------------
+1. https://armory.starforcebase1198.com/weapons.php
+   -> {"success":true,...,"file":"weapons-read-v5"}
+2. Open the console embedded at
+   https://starforcebase1198.com/operator/lore-library/databases/the-armory
+   (Ctrl+Shift+R). The header badge must read BUILD 2026-10-19.2.
+3. Edit an existing weapon, pick a new picture, press SAVE RECORD.
+   The API log must end with "Image confirmed in database (1 attached)".
+4. Reload the front-facing card at
+   https://starforcebase1198.com/lore/databases/the-armory
+   - the new picture replaces the generated plate.
+
+If step 3 says "IMAGE NOT STORED", the weapons table is missing the `images`
+column: run weapons-upgrade.sql in phpMyAdmin (Hostinger -> Databases ->
+u102692168_Star_Force -> SQL -> paste -> Go).

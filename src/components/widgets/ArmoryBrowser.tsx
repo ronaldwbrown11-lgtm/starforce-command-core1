@@ -253,8 +253,11 @@ export function ArmoryBrowser() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(ARMORY_API_URL, {
-        headers: { Accept: "application/json" },
+      // Cache-buster: the API sent no caching header, so a browser or CDN
+      // could replay the arsenal from before a save and make a successful
+      // database write look like it never happened.
+      const res = await fetch(`${ARMORY_API_URL}?t=${Date.now()}`, {
+        headers: { Accept: "application/json", "Cache-Control": "no-cache" },
       });
       if (!res.ok) {
         throw new Error(`Armory database error (HTTP ${res.status}).`);
