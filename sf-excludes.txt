@@ -35,8 +35,15 @@ backups
 public/backup-hostinger-dist.zip
 
 # Hostinger-only backend apps deployed separately (kept in repo, not in this
-# package — they upload straight to their subdomains)
-armory-app
+# package — they upload straight to their subdomains).
+# EXCEPTION: armory-app/index.html MUST ship. scripts/package-source.ts
+# publishes public/armory-console.html from it and refuses to build without
+# it, so excluding the whole folder broke CI (the checkout had no console
+# source). Exclude the folder by explicit files instead of a bare segment.
+armory-app/weapons-backup-2026-10-17.json
+armory-app/weapons-sync.php
+armory-app/weapons-upgrade.sql
+armory-app/weapons.php
 public/fleetregistry-api.php
 public/fleetregistry-config.example.php
 public/fleetregistry-migration-runbook.md

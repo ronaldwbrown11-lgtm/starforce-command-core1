@@ -276,6 +276,28 @@
                             <input type="text" id="form-rof" class="form-input" placeholder="e.g. 900 rpm" />
                         </div>
                     </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">MAGAZINE CAPACITY</label>
+                            <input type="text" id="form-magazine" class="form-input" placeholder="e.g. 30-round micro-dart polymer magazine" />
+                        </div>
+                        <div>
+                            <label class="form-label">FEED MECHANISM</label>
+                            <input type="text" id="form-feed" class="form-input" placeholder="e.g. Teleporter-fed" />
+                        </div>
+                        <div>
+                            <label class="form-label">BARREL LENGTH</label>
+                            <input type="text" id="form-barrel" class="form-input" placeholder="e.g. 38 cm" />
+                        </div>
+                        <div>
+                            <label class="form-label">DAMAGE</label>
+                            <input type="text" id="form-damage" class="form-input" placeholder="e.g. Heavy incendiary burn" />
+                        </div>
+                        <div>
+                            <label class="form-label">DAMAGE RADIUS</label>
+                            <input type="text" id="form-damage-radius" class="form-input" placeholder="e.g. 8-meter melt zone" />
+                        </div>
+                    </div>
                     <div>
                         <label class="form-label">DAMAGE & CHARACTERISTICS / PAYLOAD</label>
                         <textarea id="form-primary-spec" class="form-input" rows="3" placeholder="Detailed characteristics..."></textarea>
@@ -736,28 +758,48 @@
                 var raw = Array.isArray(data) ? data : (data.records || []);
                 if (!Array.isArray(raw) || raw.length === 0) return;
                 var localIds = {}, serverIds = {}, merged = recordsData.slice();
+                var refreshed = false;
                 recordsData.forEach(function (r) { localIds[r.id] = true; });
+                function applyServerFields(target, r) {
+                    target.designation = r.designation;
+                    target.category = r.category;
+                    target.builder = r.builder;
+                    target.registryNumber = r.registry_number || r.registryNumber;
+                    target.status = r.status;
+                    target.fleet = r.fleet;
+                    target.range = r.effective_range || r.range;
+                    target.rof = r.rate_of_fire || r.rof;
+                    target.primarySpec = r.primary_spec || r.primarySpec;
+                    target.created_at = r.created_at || target.created_at;
+                    target.magazine = r.magazine_capacity || r.magazine || '';
+                    target.feed = r.feed_mechanism || r.feed || '';
+                    target.barrel = r.barrel_length || r.barrel || '';
+                    target.damage = r.damage || '';
+                    target.damageRadius = r.damage_radius || r.damageRadius || '';
+                    target.images = mediaArray(r.images);
+                }
                 raw.forEach(function (r) {
                     serverIds[r.id] = true;
                     if (!localIds[r.id]) {
-                        merged.push({
-                            id: r.id,
-                            designation: r.designation,
-                            category: r.category,
-                            builder: r.builder,
-                            registryNumber: r.registry_number || r.registryNumber,
-                            status: r.status,
-                            fleet: r.fleet,
-                            range: r.effective_range || r.range,
-                            rof: r.rate_of_fire || r.rof,
-                            primarySpec: r.primary_spec || r.primarySpec,
-                            created_at: r.created_at,
-                            images: [],
-                            schematics: []
-                        });
+                        var pushed = { id: r.id, schematics: [] };
+                        applyServerFields(pushed, r);
+                        merged.push(pushed);
+                    } else {
+                        // The MySQL table is the single source of truth: refresh
+                        // records that also exist locally, so values written
+                        // elsewhere (API, phpMyAdmin, another window) show up
+                        // here, editable fields prefill correctly, and stale
+                        // local attachments can't ride along into the next save.
+                        for (var mi = 0; mi < merged.length; mi++) {
+                            if (merged[mi].id === r.id) {
+                                applyServerFields(merged[mi], r);
+                                refreshed = true;
+                                break;
+                            }
+                        }
                     }
                 });
-                if (merged.length !== recordsData.length) {
+                if (refreshed || merged.length !== recordsData.length) {
                     recordsData = merged;
                     saveDatabase();
                     renderSidebar();
@@ -786,6 +828,54 @@
     var ARMORY_SYNC_URL = 'weapons-sync.php';
     var ARMORY_SYNC_KEY = '1641';
 
+    // Normalize a media list that may arrive as an array, a JSON-encoded
+    // string column (weapons.php older than the `images` column), or nothing.
+    function mediaArray(v) {
+        if (Array.isArray(v)) return v;
+        if (typeof v === 'string' && v) {
+            try {
+                var parsed = JSON.parse(v);
+                if (Array.isArray(parsed)) return parsed;
+            } catch (e) {}
+        }
+        return [];
+    }
+
+    // Read the chosen picture for sync. The JSON body counts towards the
+    // host's post_max_size, so anything big is re-encoded to a card-sized
+    // JPEG (max 1280px, quality 0.82) before it becomes a data URL.
+    function readImageForSync(file, cb) {
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            var dataUrl = e.target.result;
+            if (!/^data:image\//i.test(dataUrl)) { cb(dataUrl); return; }
+            var img = new Image();
+            img.onload = function () {
+                var maxDim = 1280;
+                var largest = Math.max(img.width || 0, img.height || 0);
+                // Keep small, reasonably sized uploads byte-for-byte; re-encode
+                // anything that would bloat the sync body (over ~1.2 MB) or
+                // render larger than the card ever shows (over 1280px).
+                if (file.size <= 1200000 && largest <= maxDim) { cb(dataUrl); return; }
+                var scale = Math.min(1, maxDim / (largest || 1));
+                var canvas = document.createElement('canvas');
+                canvas.width = Math.max(1, Math.round((img.width || 1) * scale));
+                canvas.height = Math.max(1, Math.round((img.height || 1) * scale));
+                var ctx = canvas.getContext('2d');
+                if (!ctx) { cb(dataUrl); return; }
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                try {
+                    cb(canvas.toDataURL('image/jpeg', 0.82));
+                } catch (err) {
+                    cb(dataUrl);
+                }
+            };
+            img.onerror = function () { cb(dataUrl); };
+            img.src = dataUrl;
+        };
+        reader.readAsDataURL(file);
+    }
+
     function serverPayload(r) {
         return {
             id: r.id,
@@ -798,27 +888,45 @@
             effective_range: r.range || r.effective_range || '',
             rate_of_fire: r.rof || r.rate_of_fire || '',
             primary_spec: r.primarySpec || r.primary_spec || '',
+            magazine_capacity: r.magazine || r.magazine_capacity || '',
+            feed_mechanism: r.feed || r.feed_mechanism || '',
+            barrel_length: r.barrel || r.barrel_length || '',
+            damage: r.damage || '',
+            damage_radius: r.damageRadius || r.damage_radius || '',
+            images: mediaArray(r.images),
             created_at: r.created_at || new Date().toISOString()
         };
     }
 
     function syncRecordToServer(record, isUpdate) {
+        var action = (isUpdate ? 'PUT' : 'POST') + ' /weapons-sync.php (' + record.id + ')';
         try {
             var payload = serverPayload(record);
             payload.key = ARMORY_SYNC_KEY;
+            logApiAction(action, 'Waiting for database confirmation…', 'pending');
             fetch(ARMORY_SYNC_URL, {
                 method: isUpdate ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Sync-Key': ARMORY_SYNC_KEY },
                 body: JSON.stringify(payload)
             }).then(function (res) {
-                logApiAction((isUpdate ? 'PUT /api/records/' : 'POST /api/records/') + record.id,
-                    res.ok ? 'Synced to database' : 'Sync failed (HTTP ' + res.status + ')');
-            }).catch(function () {
-                logApiAction((isUpdate ? 'PUT /api/records/' : 'POST /api/records/') + record.id,
-                    'Sync failed — saved locally only');
+                return res.text().then(function (text) {
+                    var result = null;
+                    try { result = text ? JSON.parse(text) : null; } catch (err) {}
+                    if (!res.ok || !result || result.success !== true) {
+                        var reason = result && result.error ? result.error : 'HTTP ' + res.status + ' returned no success confirmation.';
+                        throw new Error(reason);
+                    }
+                    if (isUpdate && result.updated === false) {
+                        throw new Error('The database did not find a matching record id (' + record.id + ').');
+                    }
+                    logApiAction(action, 'Database confirmed save (HTTP ' + res.status + ').', 'success');
+                });
+            }).catch(function (err) {
+                logApiAction(action, err && err.message ? err.message : 'Network error; saved locally only.', 'error');
             });
         } catch (err) {
             console.warn('Server sync error:', err);
+            logApiAction(action, err && err.message ? err.message : 'Could not send save request.', 'error');
         }
     }
 
@@ -886,11 +994,15 @@
         reader.readAsText(file);
     }
 
-    function logApiAction(action, endpoint) {
+    function logApiAction(action, detail, outcome) {
         var logBox = document.getElementById('api-status-log');
         if (!logBox) return;
         var timeStr = new Date().toLocaleTimeString();
-        logBox.textContent = '[' + timeStr + '] SUCCESS: ' + action + ' -> ' + endpoint;
+        var state = outcome || 'success';
+        var label = state === 'error' ? 'DATABASE ERROR' : state === 'pending' ? 'DATABASE PENDING' : 'SUCCESS';
+        logBox.classList.remove('text-sfgreen', 'text-amber', 'text-plasma');
+        logBox.classList.add(state === 'error' ? 'text-plasma' : state === 'pending' ? 'text-amber' : 'text-sfgreen');
+        logBox.textContent = '[' + timeStr + '] ' + label + ': ' + action + ' -> ' + detail;
     }
 
     function renderSidebar() {
@@ -984,6 +1096,11 @@
                             <div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">MANUFACTURER</span><span class="text-cyan font-bold mt-0.5 block">${escapeHTML(r.builder || 'N/A')}</span></div>
                             <div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">EFFECTIVE RANGE</span><span class="text-cyan font-bold mt-0.5 block">${escapeHTML(r.range || 'N/A')}</span></div>
                             <div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">RATE OF FIRE</span><span class="text-cyan font-bold mt-0.5 block">${escapeHTML(r.rof || 'N/A')}</span></div>
+                            ${r.magazine ? '<div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">MAGAZINE CAPACITY</span><span class="text-amber font-bold mt-0.5 block">' + escapeHTML(r.magazine) + '</span></div>' : ''}
+                            ${r.feed ? '<div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">FEED MECHANISM</span><span class="text-amber font-bold mt-0.5 block">' + escapeHTML(r.feed) + '</span></div>' : ''}
+                            ${r.barrel ? '<div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">BARREL LENGTH</span><span class="text-amber font-bold mt-0.5 block">' + escapeHTML(r.barrel) + '</span></div>' : ''}
+                            ${r.damage ? '<div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">DAMAGE</span><span class="text-amber font-bold mt-0.5 block">' + escapeHTML(r.damage) + '</span></div>' : ''}
+                            ${r.damageRadius ? '<div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">DAMAGE RADIUS</span><span class="text-amber font-bold mt-0.5 block">' + escapeHTML(r.damageRadius) + '</span></div>' : ''}
                             <div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">ATTACHED IMAGES</span><span class="text-sfgreen font-bold mt-0.5 block">${(r.images || []).length} files linked</span></div>
                             <div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">ATTACHED SCHEMATICS</span><span class="text-amber font-bold mt-0.5 block">${(r.schematics || []).length} files linked</span></div>
                             <div class="p-3 bg-terminal-panel/50 rounded border-l-2 border-cyan"><span class="text-cyan/50 text-[10px] block">POWER FEED / AMMO</span><span class="text-cyan font-bold mt-0.5 block">${escapeHTML(r.fleet || 'Standard')}</span></div>
@@ -1122,6 +1239,11 @@
             document.getElementById('form-range').value = '';
             document.getElementById('form-rof').value = '';
             document.getElementById('form-primary-spec').value = '';
+            document.getElementById('form-magazine').value = '';
+            document.getElementById('form-feed').value = '';
+            document.getElementById('form-barrel').value = '';
+            document.getElementById('form-damage').value = '';
+            document.getElementById('form-damage-radius').value = '';
             if (modal) modal.classList.remove('hidden');
         };
     }
@@ -1141,6 +1263,11 @@
         document.getElementById('form-range').value = r.range || '';
         document.getElementById('form-rof').value = r.rof || '';
         document.getElementById('form-primary-spec').value = r.primarySpec || '';
+        document.getElementById('form-magazine').value = r.magazine || '';
+        document.getElementById('form-feed').value = r.feed || '';
+        document.getElementById('form-barrel').value = r.barrel || '';
+        document.getElementById('form-damage').value = r.damage || '';
+        document.getElementById('form-damage-radius').value = r.damageRadius || '';
         if (modal) modal.classList.remove('hidden');
     };
 
@@ -1163,7 +1290,12 @@
                 fleet: document.getElementById('form-fleet').value.trim(),
                 range: document.getElementById('form-range').value.trim(),
                 rof: document.getElementById('form-rof').value.trim(),
-                primarySpec: document.getElementById('form-primary-spec').value.trim()
+                primarySpec: document.getElementById('form-primary-spec').value.trim(),
+                magazine: document.getElementById('form-magazine').value.trim(),
+                feed: document.getElementById('form-feed').value.trim(),
+                barrel: document.getElementById('form-barrel').value.trim(),
+                damage: document.getElementById('form-damage').value.trim(),
+                damageRadius: document.getElementById('form-damage-radius').value.trim()
             };
 
             var primaryImageInput = document.getElementById('form-primary-image-file');
@@ -1174,12 +1306,9 @@
 
             if (primaryImageInput && primaryImageInput.files && primaryImageInput.files[0]) {
                 var fileObj = primaryImageInput.files[0];
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    var base64Data = e.target.result;
+                readImageForSync(fileObj, function(base64Data) {
                     finalizeSave(base64Data, fileObj.name);
-                };
-                reader.readAsDataURL(fileObj);
+                });
                 return;
             }
 
@@ -1212,7 +1341,6 @@
                         if (newSchematics.length) recordsData[idx].schematics = (recordsData[idx].schematics || []).concat(newSchematics);
                         saveDatabase();
                         syncRecordToServer(recordsData[idx], true);
-                        logApiAction('PUT /api/records/' + editId, 'Record Updated & Image Replaced');
                     }
                     currentRecordId = editId;
                 } else {
@@ -1247,7 +1375,6 @@
                     recordsData.push(newRecord);
                     syncRecordToServer(newRecord, false);
                     saveDatabase();
-                    logApiAction('POST /api/records', newId);
                     currentRecordId = newId;
                 }
 

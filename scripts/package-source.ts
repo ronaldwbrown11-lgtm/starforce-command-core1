@@ -213,8 +213,8 @@ function main(): number {
   }
 
   // Publish the standalone armory console for the site's Downloads page.
-  // The subdomain app itself is excluded from the source archive and static
-  // site mirror, so explicitly copy this one self-contained HTML deliverable.
+  // armory-app/index.html is the editable source of that download and MUST
+  // stay in this package (see sf-excludes.txt) — CI has no copy otherwise.
   if (!existsSync(ARMORY_CONSOLE_SOURCE)) {
     console.error("[package-source] Armory console source is missing; cannot publish its download.");
     return 1;
@@ -256,6 +256,7 @@ function main(): number {
     "public/logo.svg",
     ".github/workflows/deploy.yml", // without it, a push deploys nothing
     ".github/workflows/deploy-staging.yml",
+    "armory-app/index.html", // source of the published console download
   ];
   const missing = required.filter((f) => !files.includes(f));
   if (missing.length > 0) {
