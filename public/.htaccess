@@ -56,3 +56,13 @@ RewriteRule ^ /index.html [L]
 <Files "index.html">
   Header set Cache-Control "no-cache, no-store, must-revalidate"
 </Files>
+
+# The armory console is a FILE to download and upload to the armory
+# subdomain, not a page to browse. Without an explicit attachment header the
+# browser renders the .html inline (and opening the URL directly ignores the
+# <a download> hint), so the operator never gets a file to upload.
+<Files "armory-console.html">
+  ForceType application/octet-stream
+  Header set Content-Disposition "attachment; filename=index.html"
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+</Files>

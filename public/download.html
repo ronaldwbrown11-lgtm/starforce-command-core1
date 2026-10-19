@@ -44,7 +44,7 @@
       <p><small>SHA-256: <code>7e59e7258b950110d34b9f45cd5d3dad787da0d2c687a89d394b01422c9e16e3</code> · 24,464 bytes</small></p>
       <p><small>Build timestamp: October 17, 2026 — images on the front-facing weapon card (the console's picture now persists through the API instead of staying in one browser's localStorage), image downscaling to stay under upload limits, JSON-string tolerance in the card so a partially deployed server still renders.</small></p>
       <p><small><strong>Updated console only (BUILD 2026-10-19):</strong> download this file, upload it to the armory subdomain's web root as <code>index.html</code>, then hard-refresh the console (Ctrl+Shift+R) — the old page is cached without a <code>Cache-Control</code> header, so a normal reload can keep running the pre-image build. The new build stamps <code>BUILD 2026-10-19</code> in the console header. It verifies each save by reading the record back and reports <code>IMAGE NOT STORED</code> in the API log if the database rejected the picture. No PHP or schema change.</small></p>
-      <a href="/armory-console.html" download="index.html">Download updated armory console (HTML)</a>
+      <a href="/armory-console.html" download="index.html">Download updated armory console (saves as index.html)</a>
       <p><small>This standalone file is regenerated from the current <code>armory-app/index.html</code> during each site package build.</small></p>
       <p><small>Note: the full <code>*.tar.gz</code> package is not shipped in site deploys. The standalone HTML download is served as a regular public file instead.</small></p>
     </section>
