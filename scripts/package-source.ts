@@ -39,6 +39,8 @@ import { join, relative, sep } from "node:path";
 
 const ROOT = process.cwd();
 const OUT = join(ROOT, "public", "starforce-source-latest.tar.gz");
+const ARMORY_CONSOLE_SOURCE = join(ROOT, "armory-app", "index.html");
+const ARMORY_CONSOLE_PUBLIC = join(ROOT, "public", "armory-console.html");
 const STAMP = join(ROOT, "BUILD-INFO.txt");
 const EXCLUDE_FILE = join(ROOT, "sf-excludes.txt");
 
@@ -209,6 +211,28 @@ function main(): number {
     );
     return 1;
   }
+
+  // Publish the standalone armory console for the site's Downloads page.
+  // The subdomain app itself is excluded from the source archive and static
+  // site mirror, so explicitly copy this one self-contained HTML deliverable.
+  if (!existsSync(ARMORY_CONSOLE_SOURCE)) {
+    console.error("[package-source] Armory console source is missing; cannot publish its download.");
+    return 1;
+  }
+  const armoryHtml = readFileSync(ARMORY_CONSOLE_SOURCE, "utf8");
+  if (!armoryHtml.includes("Waiting for database confirmation")) {
+    console.error("[package-source] Armory console source lacks the database-confirmation save fix; refusing to publish a stale download.");
+    return 1;
+  }
+  mkdirSync(join(ROOT, "public"), { recursive: true });
+  writeFileSync(ARMORY_CONSOLE_PUBLIC, armoryHtml);
+  for (const dir of ["dist", "isolate"]) {
+    const targetDir = join(ROOT, dir);
+    if (!existsSync(targetDir)) continue;
+    copyFileSync(ARMORY_CONSOLE_SOURCE, join(targetDir, "armory-console.html"));
+    copyFileSync(join(ROOT, "public", "download.html"), join(targetDir, "download.html"));
+  }
+  console.log("[package-source] Published public/armory-console.html from armory-app/index.html");
 
   console.log("[package-source] Scanning source tree…");
   const excludes = readSfExcludes();
