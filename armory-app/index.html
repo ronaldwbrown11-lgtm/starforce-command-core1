@@ -152,7 +152,7 @@
                         <input type="file" id="import-db-file" class="hidden" accept=".json" />
                     </label>
                     <span class="text-cyan/70 hidden sm:inline" id="stardate-display">SD 2847.6</span>
-                    <span class="text-[9px] px-2 py-1 border border-cyan/30 text-cyan/60 rounded" id="console-build-badge" title="Console build date — hard-refresh if this is older than the download page">BUILD 2026-10-19</span>
+                    <span class="text-[9px] px-2 py-1 border border-cyan/30 text-cyan/60 rounded" id="console-build-badge" title="Console build date — hard-refresh if this is older than the download page">BUILD 2026-10-19.2</span>
                 </div>
             </div>
         </header>
@@ -309,7 +309,8 @@
                         <div>
                             <label class="form-label">REPLACE / ADD PREVIEW IMAGE</label>
                             <input type="file" id="form-primary-image-file" class="form-input text-[10px]" accept="image/*" />
-                            <span class="text-[9px] text-cyan/50 mt-1 block">Uploading a new image will replace the current visual asset for this weapon record.</span>
+                            <span id="primary-image-status" class="text-[9px] text-cyan/50 mt-1 block">No new image selected — the current one stays.</span>
+                            <span class="text-[9px] text-cyan/40 mt-1 block">The picture is read the moment you choose it and saved with this record.</span>
                         </div>
                         <div>
                             <label class="form-label">ADD ADDITIONAL SCHEMATICS</label>
@@ -749,13 +750,21 @@
         console.warn('Storage read error, falling back to defaults:', err);
     }
 
+    // Absolute endpoints: the console is served from the armory subdomain, the
+    // main site's /armory-console.html, and the build preview. A relative URL
+    // only worked on the subdomain — anywhere else the save silently went to a
+    // path that does not exist. Both PHP files send Access-Control-Allow-Origin.
+    var ARMORY_API_BASE = 'https://armory.starforcebase1198.com/';
+    var ARMORY_READ_URL = ARMORY_API_BASE + 'weapons.php';
+    var ARMORY_SYNC_URL = ARMORY_API_BASE + 'weapons-sync.php';
+
     // Merge in records from the Hostinger database and push any local-only
     // records up to it, so the MySQL table is the single source of truth.
     try {
         // Cache-buster: the manifest response carries no Cache-Control header,
         // so a browser may replay a stale copy that has no images — which then
         // wipes the local attachment list during the merge below.
-        fetch('weapons.php?t=' + Date.now(), { headers: { 'Accept': 'application/json', 'Cache-Control': 'no-cache' } })
+        fetch(ARMORY_READ_URL + '?t=' + Date.now(), { headers: { 'Accept': 'application/json', 'Cache-Control': 'no-cache' } })
             .then(function (res) { return res.ok ? res.json() : null; })
             .then(function (data) {
                 if (!data) return;
@@ -852,8 +861,8 @@
     }
 
     // ---- Hostinger MySQL sync (weapons-sync.php) ----
-    // Set ARMORY_SYNC_KEY to the same value as $SYNC_KEY in weapons-sync.php.
-    var ARMORY_SYNC_URL = 'weapons-sync.php';
+    // Endpoints are declared above (before the first read); set
+    // ARMORY_SYNC_KEY to the same value as $SYNC_KEY in weapons-sync.php.
     var ARMORY_SYNC_KEY = '1641';
 
     // Normalize a media list that may arrive as an array, a JSON-encoded
@@ -930,7 +939,7 @@
     // silently drops columns it does not know. Read the row back and say so.
     function verifyImages(record) {
         if (mediaArray(record.images).length === 0) return;
-        fetch('weapons.php?verify=' + Date.now(), { headers: { 'Accept': 'application/json', 'Cache-Control': 'no-cache' } })
+        fetch(ARMORY_READ_URL + '?verify=' + Date.now(), { headers: { 'Accept': 'application/json', 'Cache-Control': 'no-cache' } })
             .then(function (res) { return res.ok ? res.json() : null; })
             .then(function (data) {
                 if (!data) return;
@@ -956,7 +965,11 @@
         try {
             var payload = serverPayload(record);
             payload.key = ARMORY_SYNC_KEY;
-            logApiAction(action, 'Waiting for database confirmation…', 'pending');
+            var imgCount = payload.images ? payload.images.length : 0;
+            var kb = Math.round(JSON.stringify(payload).length / 1024);
+            logApiAction(action,
+                'Sending ' + imgCount + ' image' + (imgCount === 1 ? '' : 's') + ', ' + kb + ' KB. Waiting for database confirmation…',
+                'pending');
             fetch(ARMORY_SYNC_URL, {
                 method: isUpdate ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Sync-Key': ARMORY_SYNC_KEY },
@@ -1275,6 +1288,35 @@
     var exportPdfBtn = document.getElementById('export-pdf-btn');
     var exportDocBtn = document.getElementById('export-doc-btn');
 
+    // Stage the picture as soon as it is chosen. Reading it at click-time (and
+    // caching the data URL) means the save can never lose the file because the
+    // input was cleared, re-rendered, or the async read raced the save click.
+    var pendingImage = null;
+    function imageStatus(text, tone) {
+        var note = document.getElementById('primary-image-status');
+        if (!note) return;
+        note.textContent = text;
+        note.className = 'text-[9px] mt-1 block ' + (tone === 'ok' ? 'text-sfgreen' : tone === 'warn' ? 'text-amber' : 'text-cyan/50');
+    }
+    function resetImagePicker(message) {
+        pendingImage = null;
+        var field = document.getElementById('form-primary-image-file');
+        if (field) field.value = '';
+        imageStatus(message || 'No new image selected — the current one stays.', null);
+    }
+    var primaryImageField = document.getElementById('form-primary-image-file');
+    if (primaryImageField) {
+        primaryImageField.onchange = function () {
+            var f = this.files && this.files[0];
+            if (!f) { resetImagePicker(); return; }
+            imageStatus('Reading ' + f.name + '…', 'warn');
+            readImageForSync(f, function (dataUrl) {
+                pendingImage = { name: f.name, dataUrl: dataUrl };
+                imageStatus('ATTACHED: ' + f.name + ' (' + Math.round(dataUrl.length / 1024) + ' KB) — saves with this record.', 'ok');
+            });
+        };
+    }
+
     if (reseedBtn) reseedBtn.onclick = reseedDatabase;
     if (backupBtn) backupBtn.onclick = backupDatabaseJSON;
     if (importFile) importFile.onchange = restoreDatabaseJSON;
@@ -1284,6 +1326,7 @@
     if (addBtn) {
         addBtn.onclick = function() {
             isEditing = false;
+            resetImagePicker();
             document.getElementById('modal-title').textContent = 'REGISTER NEW RECORD';
             document.getElementById('form-record-id').value = '';
             document.getElementById('form-designation').value = '';
@@ -1306,6 +1349,7 @@
         var r = recordsData.find(function(item) { return item.id === (id || currentRecordId); });
         if (!r) return;
         isEditing = true;
+        resetImagePicker('Current image stays unless you choose a new file.');
         document.getElementById('modal-title').textContent = 'EDIT RECORD (' + r.id + ')';
         document.getElementById('form-record-id').value = r.id;
         document.getElementById('form-designation').value = r.designation || '';
@@ -1358,11 +1402,20 @@
             var newImages = [];
             var newSchematics = [];
 
-            if (primaryImageInput && primaryImageInput.files && primaryImageInput.files[0]) {
-                var fileObj = primaryImageInput.files[0];
-                readImageForSync(fileObj, function(base64Data) {
-                    finalizeSave(base64Data, fileObj.name);
+            // Prefer the picture staged when it was chosen; fall back to the
+            // live file input; then to the existing record image.
+            var chosenFile = (primaryImageInput && primaryImageInput.files && primaryImageInput.files[0]) || null;
+            if (chosenFile && !(pendingImage && pendingImage.name === chosenFile.name && pendingImage.dataUrl)) {
+                readImageForSync(chosenFile, function (base64Data) {
+                    pendingImage = null;
+                    finalizeSave(base64Data, chosenFile.name);
                 });
+                return;
+            }
+            if (pendingImage && pendingImage.dataUrl) {
+                var staged = pendingImage;
+                pendingImage = null;
+                finalizeSave(staged.dataUrl, staged.name);
                 return;
             }
 
@@ -1432,6 +1485,7 @@
                     currentRecordId = newId;
                 }
 
+                resetImagePicker('Saved. No new image selected — the current one stays.');
                 if (modal) modal.classList.add('hidden');
                 renderSidebar();
                 renderMainContent();
