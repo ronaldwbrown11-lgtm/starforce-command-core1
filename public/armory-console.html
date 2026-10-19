@@ -152,6 +152,7 @@
                         <input type="file" id="import-db-file" class="hidden" accept=".json" />
                     </label>
                     <span class="text-cyan/70 hidden sm:inline" id="stardate-display">SD 2847.6</span>
+                    <span class="text-[9px] px-2 py-1 border border-cyan/30 text-cyan/60 rounded" id="console-build-badge" title="Console build date — hard-refresh if this is older than the download page">BUILD 2026-10-19</span>
                 </div>
             </div>
         </header>
@@ -751,7 +752,10 @@
     // Merge in records from the Hostinger database and push any local-only
     // records up to it, so the MySQL table is the single source of truth.
     try {
-        fetch('weapons.php', { headers: { 'Accept': 'application/json' } })
+        // Cache-buster: the manifest response carries no Cache-Control header,
+        // so a browser may replay a stale copy that has no images — which then
+        // wipes the local attachment list during the merge below.
+        fetch('weapons.php?t=' + Date.now(), { headers: { 'Accept': 'application/json', 'Cache-Control': 'no-cache' } })
             .then(function (res) { return res.ok ? res.json() : null; })
             .then(function (data) {
                 if (!data) return;
@@ -776,7 +780,16 @@
                     target.barrel = r.barrel_length || r.barrel || '';
                     target.damage = r.damage || '';
                     target.damageRadius = r.damage_radius || r.damageRadius || '';
-                    target.images = mediaArray(r.images);
+                    // Only a non-empty server list replaces the local one. An
+                    // empty/null value means "not stored yet" (old console, or
+                    // a manifest read before the save landed), never "delete
+                    // the picture the operator just attached".
+                    var serverImages = mediaArray(r.images);
+                    if (serverImages.length) {
+                        target.images = serverImages;
+                    } else if (!Array.isArray(target.images)) {
+                        target.images = [];
+                    }
                 }
                 raw.forEach(function (r) {
                     serverIds[r.id] = true;
@@ -805,8 +818,23 @@
                     renderSidebar();
                     renderMainContent();
                 }
+                // Self-heal: a picture attached before image sync existed lives
+                // only in localStorage. Push real uploads (never the generated
+                // SVG plate) back to the database so they stop disappearing.
+                function isUploadedImage(im) {
+                    var p = im && im.file_path ? String(im.file_path) : '';
+                    return /^data:image\//i.test(p) && !/^data:image\/svg\+xml/i.test(p);
+                }
                 recordsData.forEach(function (r) {
-                    if (!serverIds[r.id]) syncRecordToServer(r, false);
+                    if (!serverIds[r.id]) { syncRecordToServer(r, false); return; }
+                    var row = null;
+                    for (var ri = 0; ri < raw.length; ri++) {
+                        if (raw[ri].id === r.id) { row = raw[ri]; break; }
+                    }
+                    if (row && mediaArray(row.images).length === 0 &&
+                        mediaArray(r.images).some(isUploadedImage)) {
+                        syncRecordToServer(r, true);
+                    }
                 });
             }).catch(function () {});
     } catch (err) {}
@@ -898,6 +926,31 @@
         };
     }
 
+    // A 2xx response is not proof the picture landed — an older sync script
+    // silently drops columns it does not know. Read the row back and say so.
+    function verifyImages(record) {
+        if (mediaArray(record.images).length === 0) return;
+        fetch('weapons.php?verify=' + Date.now(), { headers: { 'Accept': 'application/json', 'Cache-Control': 'no-cache' } })
+            .then(function (res) { return res.ok ? res.json() : null; })
+            .then(function (data) {
+                if (!data) return;
+                var rows = Array.isArray(data) ? data : (data.records || []);
+                var row = null;
+                for (var i = 0; i < rows.length; i++) {
+                    if (rows[i].id === record.id) { row = rows[i]; break; }
+                }
+                var stored = row ? mediaArray(row.images).length : 0;
+                if (stored > 0) {
+                    logApiAction('VERIFY /weapons.php (' + record.id + ')',
+                        'Image confirmed in database (' + stored + ' attached).', 'success');
+                } else {
+                    logApiAction('VERIFY /weapons.php (' + record.id + ')',
+                        'IMAGE NOT STORED — the database has no attachment for this record.', 'error');
+                }
+            })
+            .catch(function () {});
+    }
+
     function syncRecordToServer(record, isUpdate) {
         var action = (isUpdate ? 'PUT' : 'POST') + ' /weapons-sync.php (' + record.id + ')';
         try {
@@ -920,6 +973,7 @@
                         throw new Error('The database did not find a matching record id (' + record.id + ').');
                     }
                     logApiAction(action, 'Database confirmed save (HTTP ' + res.status + ').', 'success');
+                    verifyImages(record);
                 });
             }).catch(function (err) {
                 logApiAction(action, err && err.message ? err.message : 'Network error; saved locally only.', 'error');
