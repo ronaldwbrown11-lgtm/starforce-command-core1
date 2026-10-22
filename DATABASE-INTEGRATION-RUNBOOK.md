@@ -45,6 +45,17 @@ $DB_PASS = "<owner fills in — never guess>";
 The owner must fill `$DB_PASS` themselves; bake everything else in so they
 don't have to edit more than one line.
 
+**The password lives in `armory-config.php`, not in the endpoints.** Both PHP
+files `require` that file (falling back to an empty value) and answer
+`"Database password not set. Open armory-config.php …"` when it is missing.
+Before this, every uploaded copy of `weapons.php` carried a `CHANGE_ME`
+placeholder, and overwriting the live endpoint replaced the working password
+with it — the site went down with `"Database connection failed"` / `"file":"weapons-read-v5"`.
+Never ship a copy of an endpoint with credentials inline. The recovery is to
+copy `$db_pass` from another PHP file on the same hosting account
+(`fleetregistry-api.php`, `records.php`) — same MySQL user, same database —
+into `armory-config.php`; the endpoint needs no edit.
+
 ### 3. Site side (this repo)
 
 - Widget component in `src/components/widgets/` (e.g. `ArmoryBrowser.tsx`)
@@ -70,19 +81,25 @@ damage and radius need storage first. One-time Hostinger steps, in order:
    `armory-app/weapons-upgrade.sql` (guarded ALTER TABLEs for the five tech
    columns + the `images` media column, plus canon backfills; safe to run
    twice).
-2. Get the four files from the bundle
-   `https://crisp-turtles-fall.freebuff.dev/armory-technical-upgrade.tar.gz`
-   (contains `weapons.php`, `weapons-sync.php`, `weapons-upgrade.sql`,
-   `index.html` under their real upload names — the packer keeps
-   `armory-app/` and `*.tar.gz` out of the source package, so the bundle is
-   the download channel, same as the nighthawk package), or from
-   `armory-app/` in the repo. **Copy the live DB password into the two PHP
-   files first** (the repo copies carry `CHANGE_ME`).
+2. Get the six files from the bundle
+   `https://crisp-turtles-fall.freebuff.dev/armory-upgrade-2026-10-19.3.zip`
+   (ZIP, because the host serves `.tar.gz` decompressed and `deploy.yml`
+   excludes `*.tar.gz`/`*.zip` from the FTP mirror, so an archive URL on the
+   live domain never updates)
+   (contains `armory-config.php`, `weapons.php`, `weapons-sync.php`,
+   `weapons-upgrade.sql`, `index.html` under their real upload names — the
+   packer keeps `armory-app/` and `*.tar.gz` out of the source package, so the
+   bundle is the download channel, same as the nighthawk package), or from
+   `armory-app/` in the repo. **Fill in `armory-config.php` once** and upload
+   it next to the endpoints — the endpoints themselves carry no password.
 3. Verify markers: `curl https://armory.starforcebase1198.com/weapons.php`
-   must report `"file":"weapons-read-v4"` (decodes the `images` column into
-   a real array); a write must report `"file":"weapons-sync-v6"` (writes the
-   `images` media column). Pre-upgrade markers were `weapons-read-v3` /
-   `weapons-sync-v5`.
+   must report `"file":"weapons-read-v6"` (decodes the `images` column into
+   a real array, sends `Cache-Control: no-store`, reads credentials from
+   `armory-config.php`); a write must report `"file":"weapons-sync-v8"`
+   (writes the `images` media column, resolves POST by id, and stores a blank
+   `registry_number` as NULL so the table's UNIQUE index cannot make one save
+   silently overwrite another weapon). Previous markers: `weapons-read-v5` /
+   `weapons-sync-v7`; pre-upgrade `weapons-read-v4` / `weapons-sync-v6`.
 
 `weapons-sync.php` reads the column list at runtime, so it works even if it
 is uploaded **before** the SQL runs — the extra fields are simply skipped
@@ -117,7 +134,7 @@ so the built download page matches, verify checksums in `dist/`.
 | Database | Subdomain | Read API | Write API | App | Site widget | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | Personnel (Service Record Manager) | `personnel.` | `api/records.php` | n/a (app-owned) | existing | `PersonnelDossierBrowser.tsx` | ✅ done, live |
-| Armory | `armory.` | `weapons.php` (marker `weapons-read-v4` — `SELECT *` + image decode) | `weapons-sync.php` (marker `weapons-sync-v6` — tech columns + `images`) | `index.html` (sync-enabled + tech fields + image pipeline) | `ArmoryBrowser.tsx` (renders `images[]`, JSON-string tolerant) | ✅ done, live |
+| Armory | `armory.` | `weapons.php` live at `weapons-read-v5` (28 records, healthy again after the placeholder-password outage); `weapons-read-v6` adds the config-file credentials and is ready to upload | `weapons-sync.php` live at `weapons-sync-v7`; `weapons-sync-v8` adds the config-file credentials | `index.html` (sync-enabled + tech fields + image pipeline) | `ArmoryBrowser.tsx` (renders `images[]`, JSON-string tolerant; surfaces the API's own error text) | ✅ live; uploading `armory-config.php` + v6/v8 prevents the outage from repeating |
 | Sector Atlas | — n/a (built into site) | Convex `sectorMap` table | Convex mutations (operator console) | `/map` + `/maps` pages | `DiscoveryMap.tsx` | ✅ done, built-in |
 | Fleet Registry | `fleetregistry.` | `api.php` (vehicle read API) | app-owned (`/api/auth/login` console) | React app on subdomain (`/registry`) | iframe on `/fleet-registry` | ✅ done, live |
 
@@ -160,8 +177,22 @@ change). Armory wiring zip: `7ebebbbb…` (contains `weapons.php`,
 7. **A broken read API looks like "the data is gone."** `weapons.php`
    returning 500 "Database connection failed" after a re-upload is almost
    always stale `CHANGE_ME` credentials in the newly uploaded copy — check
-   `$DB_PASS`/`$DB_USER` before touching anything else.
-8. **Verify from here after every user upload.** curl the endpoints and run
+   `$DB_PASS`/`$DB_USER` before touching anything else. Credentials now live
+   in `armory-config.php`, and `/armory-config.php?check=1` answers
+   `{"success":true,"database":"connected"}` so the password can be proven
+   before anything live is overwritten.
+8. **`Failed to fetch` is not a database error — it is CORS.** The armory
+   browser sent a `Cache-Control` request header, which is not CORS-safelisted,
+   so the browser preflighted with `OPTIONS`. `weapons.php` answered that with
+   `405` and no `Access-Control-Allow-*`, so the browser cancelled the real GET:
+   the page said "Failed to fetch" while curl got a healthy 200. Any endpoint
+   that is read cross-origin must answer `OPTIONS` with 204 +
+   `Access-Control-Allow-Methods`/`-Headers`. Prefer safelisted request
+   headers on the client (the `?t=` cache-buster needs no header at all).
+9. **A `$` in a password inside double quotes becomes a PHP variable.**
+   Write the password in single quotes in `armory-config.php`, or it silently
+   turns into a wrong string (sometimes with a warning printed into the JSON).
+10. **Verify from here after every user upload.** curl the endpoints and run
    the E2E write/read/delete loop rather than trusting "it's in place."
 
 ---

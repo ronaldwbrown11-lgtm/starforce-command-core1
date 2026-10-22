@@ -1,35 +1,92 @@
-STAR FORCE ARMORY - console + database API (BUILD 2026-10-19.2)
+STAR FORCE ARMORY - console + database API (BUILD 2026-10-19.3)
 ================================================================
 
-Upload these to the web root of armory.starforcebase1198.com (the same
-folder that already holds weapons.php):
+READ THIS FIRST IF weapons.php SAYS "Database connection failed"
+----------------------------------------------------------------
+That means the password in the uploaded file is not filled in. Nothing is
+wrong with the database. Recover the password from another PHP file that
+already talks to the same database - on this Hostinger account that is
+fleetregistry-api.php (Fleet Registry subdomain) or records.php (personnel).
+It is the same MySQL user, u102692168_Seven, on the same database,
+u102692168_Star_Force, so the same password works here.
 
-    weapons.php          read API    - answers "file":"weapons-read-v5"
-    weapons-sync.php     write API   - answers "file":"weapons-sync-v7"
-    index.html           the console - header shows BUILD 2026-10-19.2
+Then put it in ONE place: armory-config.php (instructions below). You never
+edit weapons.php or weapons-sync.php again.
+
+If you cannot find a copy of the password: hPanel -> Databases -> MySQL
+Databases -> the user u102692168_Seven -> Change Password, then update the
+password in fleetregistry-api.php and records.php too (they share it), or
+those two apps will stop working.
+
+DO NOT re-upload the old weapons.php to "fix" this - that is what removed the
+password in the first place.
+
+
+FILES IN THIS PACKAGE
+---------------------
+    armory-config.php    ONE-TIME setup file - holds the DB password
+    weapons.php          read API    - answers "file":"weapons-read-v6"
+    weapons-sync.php     write API   - answers "file":"weapons-sync-v8"
+    index.html           the console - header shows BUILD 2026-10-19.3
     weapons-upgrade.sql  only if the `images` column is missing (safe to re-run)
 
-Do not rename index.html, and do not touch any other file in that folder.
+Upload all of them to the web root of armory.starforcebase1198.com (the same
+folder that already holds weapons.php). Do not rename index.html, and do not
+touch any other file in that folder.
 
 
-BEFORE YOU UPLOAD THE TWO PHP FILES
------------------------------------
-Both ship with  $DB_PASS = "CHANGE_ME";  and will answer 500 until it is
-replaced. In Hostinger File Manager open the CURRENT weapons.php (the one
-that works today), copy its four credential lines, and paste them into the
-matching block near the top of BOTH new files:
+SETUP - DO IT IN THIS ORDER (nothing goes down on the way)
+---------------------------------------------------------
+1. Open armory-config.php in Notepad. Replace only the password between the
+   SINGLE quotes:
 
-    $DB_HOST = "localhost";
-    $DB_NAME = "u102692168_Star_Force";
-    $DB_USER = "u102692168_Seven";
-    $DB_PASS = "<the live password>";
+       'pass' => 'PASTE_PASSWORD_HERE',
 
-Nothing else in those lines changes.
+   becomes
+
+       'pass' => 'the-real-password',
+
+   Keep the single quotes and the trailing comma. Single quotes matter: a `$`
+   inside double quotes is treated as a variable and the password silently
+   becomes wrong. If the password itself contains an apostrophe, write it as
+   \' (backslash then apostrophe). host / name / user are already correct.
+   Save. Upload it next to the current weapons.php - do NOT overwrite
+   weapons.php yet.
+
+2. Open this URL and confirm the password is right BEFORE you change
+   anything that is live:
+
+       https://armory.starforcebase1198.com/armory-config.php?check=1
+
+       {"success":true,"database":"connected",...,"file":"armory-config-v1"}
+
+   "Password not filled in"  -> the "pass" line is still the placeholder.
+   "MySQL rejected"           -> wrong password; copy it again from
+                                 fleetregistry-api.php / records.php.
+   The password is never printed by this URL.
+
+3. Now upload weapons.php, weapons-sync.php and index.html. They read
+   armory-config.php on every request, so a future upload of either endpoint
+   cannot wipe the password again.
+
+4. Open https://armory.starforcebase1198.com/?v=3
+   The header badge must read BUILD 2026-10-19.3.
+
+5. Open https://starforcebase1198.com/lore/databases/the-armory
+   The weapon cards must list 28 records instead of "Failed to fetch". That
+   page needs the new weapons.php OR a site redeploy - the old one blocked the
+   browser's CORS preflight.
+
+The two endpoints now fail with a named error instead of a generic one:
+
+    "error":"Database password not set. Open armory-config.php ..."
+
+means step 1 is missing or the placeholder was not replaced.
 
 
 WHAT WAS BROKEN AND WHAT CHANGED
 --------------------------------
-v7 (weapons-sync.php) - POST no longer uses INSERT ... ON DUPLICATE KEY UPDATE.
+v8 (weapons-sync.php) - POST no longer uses INSERT ... ON DUPLICATE KEY UPDATE.
     The weapons table has a UNIQUE index on registry_number, and every record
     with a blank registry number shares the single empty-string slot. The old
     statement therefore rewrote whichever weapon held that slot and still
@@ -40,11 +97,25 @@ v7 (weapons-sync.php) - POST no longer uses INSERT ... ON DUPLICATE KEY UPDATE.
     409 instead of silently overwriting on a real registry-number clash.
     PUT/DELETE were already keyed on id and are unchanged.
 
-v5 (weapons.php) - sends Cache-Control: no-store, so neither the browser nor
+v6 (weapons.php) - answers the CORS preflight. The site's armory browser sent
+    a "Cache-Control" request header, which is not CORS-safelisted, so the
+    browser first asked with OPTIONS. This endpoint answered 405 with no
+    Access-Control-Allow-* headers, so the browser cancelled the real GET and
+    the page showed "Failed to fetch" while curl showed a healthy 200. OPTIONS
+    now returns 204 with Allow-Methods: GET, OPTIONS and Allow-Headers
+    including Cache-Control. The site build also drops the header, so either
+    side alone fixes it.
+
+v6 (weapons.php) - sends Cache-Control: no-store, so neither the browser nor
     the host CDN can replay the arsenal from before the save. The main site's
     Armory Browser also adds a cache-buster of its own.
 
-Console - BUILD 2026-10-19.2 stages the picture when you pick it, sends the
+v6/v8 (both) - the database password moved into armory-config.php. Both files
+    ship with an empty password and refuse to connect with a message naming
+    that file, instead of a generic 500. Output from that file is buffered and
+    discarded, so a PHP warning there can never corrupt the JSON response.
+
+Console - BUILD 2026-10-19.3 stages the picture when you pick it, sends the
     database an absolute URL (works when embedded, not just on the subdomain),
     and reads the record back after saving: "Image confirmed in database" or
     "IMAGE NOT STORED".
@@ -53,12 +124,18 @@ Console - BUILD 2026-10-19.2 stages the picture when you pick it, sends the
 VERIFY AFTER UPLOAD
 -------------------
 1. https://armory.starforcebase1198.com/weapons.php
-   -> {"success":true,...,"file":"weapons-read-v5"}
+   -> {"success":true,...,"file":"weapons-read-v6"}
+   If it says "Database password not set", armory-config.php did not upload
+   next to it. If it says "Database connection failed", the password in
+   armory-config.php does not match the MySQL user - rerun the ?check=1 URL.
+
 2. Open the console embedded at
    https://starforcebase1198.com/operator/lore-library/databases/the-armory
-   (Ctrl+Shift+R). The header badge must read BUILD 2026-10-19.2.
+   (Ctrl+Shift+R). The header badge must read BUILD 2026-10-19.3.
+
 3. Edit an existing weapon, pick a new picture, press SAVE RECORD.
    The API log must end with "Image confirmed in database (1 attached)".
+
 4. Reload the front-facing card at
    https://starforcebase1198.com/lore/databases/the-armory
    - the new picture replaces the generated plate.

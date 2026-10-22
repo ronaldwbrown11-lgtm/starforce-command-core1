@@ -67,6 +67,13 @@
       }
     }
   </script>
+
+  <!-- Trustpilot TrustBox bootstrap — powers the Review Collector bar on
+       /reviews (src/pages/Reviews.tsx). `async` so it never blocks paint; it
+       only defines window.Trustpilot, and the reviews page calls
+       window.Trustpilot.loadFromElement when the widget div mounts, which is
+       Trustpilot's documented single-page-application integration. -->
+  <script type="text/javascript" src="https://widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js" async></script>
 </head>
 
 <body>

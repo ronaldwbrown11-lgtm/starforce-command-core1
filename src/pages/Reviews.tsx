@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Quote, Star } from "lucide-react";
 import { Link } from "react-router";
 import { useMutation, useQuery } from "convex/react";
@@ -19,6 +19,74 @@ import {
 } from "@/lib/reviews";
 
 const PAGE_URL = "https://starforcebase1198.com/reviews";
+
+declare global {
+  /** Injected by the TrustBox bootstrap script in index.html. */
+  interface Window {
+    Trustpilot?: {
+      loadFromElement: (element: HTMLElement, force?: boolean) => void;
+    };
+  }
+}
+
+/**
+ * Trustpilot TrustBox — "Review Collector" bar (the free-plan widget; the
+ * account-bound template/business-unit ids come from Trustpilot's snippet and
+ * must never be guessed).
+ *
+ * The bootstrap script in index.html loads async and only defines
+ * window.Trustpilot, so — per Trustpilot's single-page-application guide —
+ * the effect waits for it and then asks Trustpilot to render into this div.
+ * Trustpilot's loadFromElement skips a container whose first child is already
+ * its iframe, so the script's own auto-scan, StrictMode's double effect, and
+ * this effect can all fire without ever double-rendering the bar.
+ */
+function TrustBox() {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      const el = ref.current;
+      if (cancelled || !el) {
+        window.clearInterval(timer);
+        return;
+      }
+      if (!window.Trustpilot) {
+        // Async script still in flight — poll for ~5s, then give up quietly.
+        if (++tries >= 50) window.clearInterval(timer);
+        return;
+      }
+      window.clearInterval(timer);
+      window.Trustpilot.loadFromElement(el);
+    }, 100);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className="trustpilot-widget mb-6"
+      data-locale="en-US"
+      data-template-id="56278e9abfbbba0bdcd568bc"
+      data-businessunit-id="6ada88aef9e712e2988df4ae"
+      data-style-height="52px"
+      data-style-width="100%"
+    >
+      <a
+        href="https://www.trustpilot.com/review/starforcebase1198.com"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Trustpilot
+      </a>
+    </div>
+  );
+}
 
 /** Star row — the number lives in `aria-label`, the glyphs are decorative. */
 function StarRow({ value }: { value: number }) {
@@ -107,8 +175,9 @@ export default function Reviews() {
         secondary={{ label: "Read fleet stories", href: "/stories", variant: "ghost" }}
       />
 
-      {/* ---- Aggregate strip + featured transmission -------------------- */}
+      {/* ---- TrustBox header, then aggregate strip + featured transmission */}
       <section className="uf-section max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12">
+        <TrustBox />
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-[color:var(--uf-border)] px-5 py-4">
           <div className="flex items-center gap-3">
             <StarRow value={Math.round(aggregate.ratingValue)} />

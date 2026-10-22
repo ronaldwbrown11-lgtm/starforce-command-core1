@@ -237,6 +237,16 @@ function weaponSpecs(
   );
 }
 
+/** The API names its own failure ("Database password not set. Open
+ *  armory-config.php …", "Database connection failed"). Show that rather than
+ *  a bare status code, or the card just looks dead. */
+export function armoryFailure(status: number, body: unknown): string {
+  const detail = (body as { error?: unknown } | null)?.error;
+  return typeof detail === "string" && detail.trim()
+    ? detail
+    : `Armory database error (HTTP ${status}).`;
+}
+
 export function ArmoryBrowser() {
   const [records, setRecords] = useState<CanonWeapon[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -255,12 +265,17 @@ export function ArmoryBrowser() {
     try {
       // Cache-buster: the API sent no caching header, so a browser or CDN
       // could replay the arsenal from before a save and make a successful
-      // database write look like it never happened.
+      // database write look like it never happened. The `?t=` query does that
+      // on its own — do NOT add a `Cache-Control` request header here. It is
+      // not CORS-safelisted, so it forces an OPTIONS preflight, and a server
+      // that answers preflights with 405 makes the browser abort the fetch as
+      // "Failed to fetch" even though the GET itself works.
       const res = await fetch(`${ARMORY_API_URL}?t=${Date.now()}`, {
-        headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+        headers: { Accept: "application/json" },
       });
       if (!res.ok) {
-        throw new Error(`Armory database error (HTTP ${res.status}).`);
+        const body: unknown = await res.json().catch(() => null);
+        throw new Error(armoryFailure(res.status, body));
       }
       const data: unknown = await res.json();
       const raw = Array.isArray(data)

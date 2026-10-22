@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { CanonWeapon, imageSrcFor, mediaList, safeSrc } from "./ArmoryBrowser";
+import {
+  armoryFailure,
+  CanonWeapon,
+  imageSrcFor,
+  mediaList,
+  safeSrc,
+} from "./ArmoryBrowser";
 
 const DATA_JPG = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
 
@@ -57,5 +63,25 @@ describe("armory card media", () => {
   test("a malformed media string falls back to the plate instead of crashing", () => {
     const w = weaponWith("[{not json");
     expect(imageSrcFor(w).startsWith("data:image/svg+xml")).toBe(true);
+  });
+});
+
+describe("armory API failures", () => {
+  test("shows the error the API names (missing DB password, bad credentials)", () => {
+    expect(
+      armoryFailure(500, {
+        success: false,
+        error:
+          "Database password not set. Open armory-config.php in this folder and set \"pass\" to the MySQL password for u102692168_Seven.",
+        file: "weapons-read-v6",
+      }),
+    ).toContain("armory-config.php");
+  });
+
+  test("falls back to the status code when the body carries no message", () => {
+    expect(armoryFailure(502, null)).toBe("Armory database error (HTTP 502).");
+    expect(armoryFailure(500, { error: "   " })).toBe(
+      "Armory database error (HTTP 500).",
+    );
   });
 });
