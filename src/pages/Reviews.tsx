@@ -41,13 +41,15 @@ declare global {
  * its iframe, so the script's own auto-scan, StrictMode's double effect, and
  * this effect can all fire without ever double-rendering the bar.
  *
- * The white card wrapper is deliberate: an iframe's canvas paints white by
- * default, and the Trustbox's content (stars + button) is centered with slack
- * on each side — on this dark page that read as long white strips beside the
- * button. The wrapper is white too, with matching padding and rounded,
- * overflow-hidden corners, so the iframe's white merges into one compact
- * Trustpilot card instead of bleeding out to the section width. The iframe
- * interior is cross-origin, so recoloring it from here is not possible.
+ * The frame uses the site's house glass (sf-glass — frosted blur, gold-lined
+ * edge, cyan glow) so the widget sits in the page instead of on it. Two
+ * constraints shaped it: at this compact width Trustpilot's full-width white
+ * panels are absent, so the bar's interior renders transparent over the page
+ * and glass shows through — while at section width (>750px) the same widget
+ * paints white around its content (the original "white strips" beside the
+ * button). Keep this container well under 750px and keep the white card out:
+ * the widget's interior is cross-origin, so nothing inside it can be styled
+ * from here.
  */
 function TrustBox() {
   const ref = useRef<HTMLDivElement>(null);
@@ -76,7 +78,7 @@ function TrustBox() {
   }, []);
 
   return (
-    <div className="mx-auto mb-6 w-full max-w-[560px] overflow-hidden rounded-xl bg-white p-2 shadow-xl shadow-black/30">
+    <div className="sf-glass mx-auto mb-5 w-full max-w-[340px] overflow-hidden rounded-xl p-1.5">
       <div
         ref={ref}
         className="trustpilot-widget"
