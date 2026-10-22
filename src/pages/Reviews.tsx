@@ -40,6 +40,14 @@ declare global {
  * Trustpilot's loadFromElement skips a container whose first child is already
  * its iframe, so the script's own auto-scan, StrictMode's double effect, and
  * this effect can all fire without ever double-rendering the bar.
+ *
+ * The white card wrapper is deliberate: an iframe's canvas paints white by
+ * default, and the Trustbox's content (stars + button) is centered with slack
+ * on each side — on this dark page that read as long white strips beside the
+ * button. The wrapper is white too, with matching padding and rounded,
+ * overflow-hidden corners, so the iframe's white merges into one compact
+ * Trustpilot card instead of bleeding out to the section width. The iframe
+ * interior is cross-origin, so recoloring it from here is not possible.
  */
 function TrustBox() {
   const ref = useRef<HTMLDivElement>(null);
@@ -68,22 +76,24 @@ function TrustBox() {
   }, []);
 
   return (
-    <div
-      ref={ref}
-      className="trustpilot-widget mb-6"
-      data-locale="en-US"
-      data-template-id="56278e9abfbbba0bdcd568bc"
-      data-businessunit-id="6ada88aef9e712e2988df4ae"
-      data-style-height="52px"
-      data-style-width="100%"
-    >
-      <a
-        href="https://www.trustpilot.com/review/starforcebase1198.com"
-        target="_blank"
-        rel="noopener noreferrer"
+    <div className="mx-auto mb-6 w-full max-w-[560px] overflow-hidden rounded-xl bg-white p-2 shadow-xl shadow-black/30">
+      <div
+        ref={ref}
+        className="trustpilot-widget"
+        data-locale="en-US"
+        data-template-id="56278e9abfbbba0bdcd568bc"
+        data-businessunit-id="6ada88aef9e712e2988df4ae"
+        data-style-height="52px"
+        data-style-width="100%"
       >
-        Trustpilot
-      </a>
+        <a
+          href="https://www.trustpilot.com/review/starforcebase1198.com"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Trustpilot
+        </a>
+      </div>
     </div>
   );
 }
