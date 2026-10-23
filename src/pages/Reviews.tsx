@@ -41,15 +41,14 @@ declare global {
  * its iframe, so the script's own auto-scan, StrictMode's double effect, and
  * this effect can all fire without ever double-rendering the bar.
  *
- * The frame uses the site's house glass (sf-glass — frosted blur, gold-lined
- * edge, cyan glow) so the widget sits in the page instead of on it. Two
- * constraints shaped it: at this compact width Trustpilot's full-width white
- * panels are absent, so the bar's interior renders transparent over the page
- * and glass shows through — while at section width (>750px) the same widget
- * paints white around its content (the original "white strips" beside the
- * button). Keep this container well under 750px and keep the white card out:
- * the widget's interior is cross-origin, so nothing inside it can be styled
- * from here.
+ * Placement matters more than styling here: the widget's canvas paints white
+ * inside Trustpilot's cross-origin iframe (nothing inside it can be styled
+ * from this side), and a white box mid-page reads as a bug on this dark
+ * theme. It therefore lives at the very BOTTOM of /reviews — an exit badge
+ * after the FAQ, where a small white element reads as an outbound link
+ * rather than a page centerpiece. The sf-glass frame and the sub-750px
+ * width (Trustpilot paints white around its content above that) keep it at
+ * chip scale.
  */
 function TrustBox() {
   const ref = useRef<HTMLDivElement>(null);
@@ -78,7 +77,7 @@ function TrustBox() {
   }, []);
 
   return (
-    <div className="sf-glass mx-auto mb-5 w-full max-w-[340px] overflow-hidden rounded-xl p-1.5">
+    <div className="sf-glass mx-auto mt-8 w-full max-w-[340px] overflow-hidden rounded-xl p-1.5">
       <div
         ref={ref}
         className="trustpilot-widget"
@@ -187,9 +186,8 @@ export default function Reviews() {
         secondary={{ label: "Read fleet stories", href: "/stories", variant: "ghost" }}
       />
 
-      {/* ---- TrustBox header, then aggregate strip + featured transmission */}
+      {/* ---- Aggregate strip + featured transmission -------------------- */}
       <section className="uf-section max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12">
-        <TrustBox />
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-[color:var(--uf-border)] px-5 py-4">
           <div className="flex items-center gap-3">
             <StarRow value={Math.round(aggregate.ratingValue)} />
@@ -342,6 +340,10 @@ export default function Reviews() {
           from the same list rendered above, so it can never claim a review the
           page doesn&apos;t show.
         </p>
+
+        {/* Trustpilot exit badge — deliberately last, so the widget's white
+            canvas sits at the page boundary, never mid-page. */}
+        <TrustBox />
       </section>
     </SiteShell>
   );
